@@ -2,13 +2,16 @@
   "name": "mydev-bychat-io",
   "version": "1.0.0",
   "description": "mydev.bychat.io - Electron desktop application",
-  "main": "main.js",
+  "main": "main/index.js",
   "scripts": {
-    "start": "electron .",
-    "build": "electron-builder",
-    "build:mac": "electron-builder --mac",
-    "build:win": "electron-builder --win",
-    "build:linux": "electron-builder --linux"
+    "dev": "concurrently \"npm run dev:renderer\" \"npm run dev:electron\"",
+    "dev:renderer": "vite",
+    "dev:electron": "wait-on http://localhost:5173 && electron .",
+    "start": "vite build && electron .",
+    "build": "vite build && electron-builder",
+    "build:mac": "vite build && electron-builder --mac",
+    "build:win": "vite build && electron-builder --win",
+    "build:linux": "vite build && electron-builder --linux"
   },
   "build": {
     "appId": "io.bychat.mydev",
@@ -16,6 +19,11 @@
     "directories": {
       "output": "dist"
     },
+    "files": [
+      "main/**/*",
+      "preload.js",
+      "renderer/dist/**/*"
+    ],
     "mac": {
       "target": "dmg"
     },
@@ -30,7 +38,15 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.0",
+    "concurrently": "^9.0.0",
     "electron": "^33.0.0",
-    "electron-builder": "^25.0.0"
+    "electron-builder": "^25.0.0",
+    "vite": "^6.0.0",
+    "wait-on": "^8.0.0"
+  },
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   }
 }
