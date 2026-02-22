@@ -74,6 +74,14 @@ export interface ElectronAPI {
   aiChat: (baseUrl: string, apiKey: string, model: string, messages: ChatMessage[]) => Promise<AIChatResult>;
   aiLoadSettings: () => Promise<AISettings>;
   aiSaveSettings: (settings: AISettings) => Promise<{ success: boolean }>;
+  // Terminal
+  terminalCreate: (cwd: string) => Promise<{ id: string; shell: string }>;
+  terminalInput: (id: string, data: string) => void;
+  terminalResize: (id: string, cols: number, rows: number) => void;
+  terminalKill: (id: string) => Promise<void>;
+  onTerminalData: (cb: (id: string, data: string) => void) => () => void;
+  onTerminalExit: (cb: (id: string) => void) => () => void;
+  onToggleTerminal: (cb: () => void) => () => void;
 }
 
 declare global {

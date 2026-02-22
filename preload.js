@@ -11,4 +11,24 @@ contextBridge.exposeInMainWorld('electronAPI', {
   aiChat: (baseUrl, apiKey, model, messages) => ipcRenderer.invoke('ai-chat', baseUrl, apiKey, model, messages),
   aiLoadSettings: () => ipcRenderer.invoke('ai-load-settings'),
   aiSaveSettings: (settings) => ipcRenderer.invoke('ai-save-settings', settings),
+  // Terminal
+  terminalCreate: (cwd) => ipcRenderer.invoke('terminal-create', cwd),
+  terminalInput: (id, data) => ipcRenderer.send('terminal-input', id, data),
+  terminalResize: (id, cols, rows) => ipcRenderer.send('terminal-resize', id, cols, rows),
+  terminalKill: (id) => ipcRenderer.invoke('terminal-kill', id),
+  onTerminalData: (cb) => {
+    const listener = (_event, id, data) => cb(id, data);
+    ipcRenderer.on('terminal-data', listener);
+    return () => ipcRenderer.removeListener('terminal-data', listener);
+  },
+  onTerminalExit: (cb) => {
+    const listener = (_event, id) => cb(id);
+    ipcRenderer.on('terminal-exit', listener);
+    return () => ipcRenderer.removeListener('terminal-exit', listener);
+  },
+  onToggleTerminal: (cb) => {
+    const listener = () => cb();
+    ipcRenderer.on('toggle-terminal', listener);
+    return () => ipcRenderer.removeListener('toggle-terminal', listener);
+  },
 });

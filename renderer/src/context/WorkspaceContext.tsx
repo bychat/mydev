@@ -65,6 +65,18 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       const changes = await window.electronAPI.gitStatus(result.folderPath);
       setGitChanges(changes);
     }
+
+    // Auto-open README or first root file
+    const rootFiles = result.tree.filter(e => e.type === 'file');
+    const readme = rootFiles.find(f => f.name.toLowerCase().startsWith('readme'));
+    const toOpen = readme ?? rootFiles[0];
+    if (toOpen) {
+      const res = await window.electronAPI.readFile(toOpen.path);
+      if (res.success && res.content) {
+        setOpenTabs([{ name: toOpen.name, path: toOpen.path, content: res.content, modified: false }]);
+        setActiveTabPath(toOpen.path);
+      }
+    }
   }, []);
 
   const openFile = useCallback(async (name: string, filePath: string, readOnly = false) => {
