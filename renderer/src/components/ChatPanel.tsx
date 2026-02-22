@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback, type ChangeEvent, type KeyboardEvent, type DragEvent } from 'react';
 import type { AISettings, ChatMessage } from '../types';
 import SettingsModal from './SettingsModal';
+import Markdown from './Markdown';
 import { useWorkspace } from '../context/WorkspaceContext';
 
 type ChatMode = 'Agent' | 'Chat' | 'Edit';
@@ -243,7 +244,11 @@ export default function ChatPanel() {
                     ))}
                   </div>
                 )}
-                {msg.text}
+                {msg.sender === 'bot' ? (
+                  <div className="md-content"><Markdown>{msg.text}</Markdown></div>
+                ) : (
+                  msg.text
+                )}
               </div>
             </div>
           ))
