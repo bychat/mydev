@@ -1,5 +1,6 @@
 import { ipcMain, dialog } from 'electron';
 import { readDirectoryTree, getGitChangedFiles, getGitDiff, getGitIgnoredPaths } from './fileSystem';
+import { checkOllama, listModels, chatComplete, loadSettings, saveSettings, type AISettings } from './ai';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -49,5 +50,32 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('git-diff', async (_event, folderPath: string, filePath: string) => {
     return getGitDiff(folderPath, filePath);
+  });
+
+  // ── AI Handlers ──
+  ipcMain.handle('ai-check-ollama', async () => {
+    return checkOllama();
+  });
+
+  ipcMain.handle('ai-list-models', async (_event, baseUrl: string, apiKey: string) => {
+    return listModels(baseUrl, apiKey);
+  });
+
+  ipcMain.handle('ai-chat', async (_event, baseUrl: string, apiKey: string, model: string, messages: { role: 'user' | 'assistant' | 'system'; content: string }[]) => {
+    try {
+      const reply = await chatComplete(baseUrl, apiKey, model, messages);
+      return { success: true, reply };
+    } catch (err: unknown) {
+      return { success: false, error: (err as Error).message };
+    }
+  });
+
+  ipcMain.handle('ai-load-settings', async () => {
+    return loadSettings();
+  });
+
+  ipcMain.handle('ai-save-settings', async (_event, settings: AISettings) => {
+    saveSettings(settings);
+    return { success: true };
   });
 }

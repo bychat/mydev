@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { useWorkspace } from '../context/WorkspaceContext';
+import SettingsModal from './SettingsModal';
 
 function GitIcon() {
   return (
@@ -18,6 +20,7 @@ function NpmIcon() {
 
 export default function StatusBar() {
   const { hasGit, hasPackageJson, packageName, folderPath } = useWorkspace();
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
     <div className="status-bar">
@@ -26,7 +29,11 @@ export default function StatusBar() {
         {hasGit && <span className="badge git"><GitIcon /> Git</span>}
         {hasPackageJson && <span className="badge npm"><NpmIcon /> {packageName ?? 'npm'}</span>}
       </div>
-      {folderPath && <span className="status-path">{folderPath}</span>}
+      <div className="status-right">
+        {folderPath && <span className="status-path">{folderPath}</span>}
+        <button className="status-settings-btn" onClick={() => setSettingsOpen(true)} title="AI Settings">⚙️</button>
+      </div>
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} onSaved={() => setSettingsOpen(false)} />
     </div>
   );
 }
