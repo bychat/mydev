@@ -38,6 +38,12 @@ export interface GitChange {
   status: string;
 }
 
+export interface GitFileChange {
+  file: string;
+  status: string;
+  staged: boolean;
+}
+
 export interface DiffResult {
   oldContent: string;
   newContent: string;
@@ -68,7 +74,13 @@ export interface ElectronAPI {
   readFile: (filePath: string) => Promise<FileResult>;
   saveFile: (filePath: string, content: string) => Promise<SaveResult>;
   gitStatus: (folderPath: string) => Promise<GitChange[]>;
+  gitStatusSplit: (folderPath: string) => Promise<GitFileChange[]>;
   gitDiff: (folderPath: string, filePath: string) => Promise<DiffResult>;
+  gitStage: (folderPath: string, filePath: string) => Promise<SaveResult>;
+  gitUnstage: (folderPath: string, filePath: string) => Promise<SaveResult>;
+  gitStageAll: (folderPath: string) => Promise<SaveResult>;
+  gitUnstageAll: (folderPath: string) => Promise<SaveResult>;
+  gitCommit: (folderPath: string, message: string) => Promise<SaveResult>;
   aiCheckOllama: () => Promise<boolean>;
   aiListModels: (baseUrl: string, apiKey: string) => Promise<string[]>;
   aiChat: (baseUrl: string, apiKey: string, model: string, messages: ChatMessage[]) => Promise<AIChatResult>;

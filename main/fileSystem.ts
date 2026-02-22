@@ -35,6 +35,12 @@ export function readDirectoryTree(dirPath: string): TreeEntry[] {
     });
 }
 
+export interface GitFileChange {
+  file: string;
+  status: string;
+  staged: boolean;
+}
+
 export function getGitChangedFiles(folderPath: string): { file: string; status: string }[] {
   try {
     const out = execSync('git status --porcelain', { cwd: folderPath, encoding: 'utf-8' });
@@ -44,6 +50,62 @@ export function getGitChangedFiles(folderPath: string): { file: string; status: 
     }));
   } catch {
     return [];
+  }
+}
+
+export function getGitChangedFilesSplit(folderPath: string): GitFileChange[] {
+  try {
+    const out = execSync('git status --porcelain', { cwd: folderPath, encoding: 'utf-8' });
+    const result: GitFileChange[] = [];
+    for (const line of out.trim().split('\n').filter(Boolean)) {
+      const indexStatus = line[0];   // staged column
+      const wtStatus = line[1];      // working tree column
+      const file = line.substring(3);
+
+      // Staged change (index column has a letter, not space or ?)
+      if (indexStatus !== ' ' && indexStatus !== '?') {
+        result.push({ file, status: indexStatus, staged: true });
+      }
+      // Unstaged / working tree change
+      if (wtStatus !== ' ' && wtStatus !== undefined) {
+        // Untracked files show as '??' — only add once as unstaged
+        if (indexStatus === '?') {
+          result.push({ file, status: '??', staged: false });
+        } else {
+          result.push({ file, status: wtStatus, staged: false });
+        }
+      }
+    }
+    return result;
+  } catch {
+    return [];
+  }
+}
+
+export function gitStageFile(folderPath: string, filePath: string): void {
+  const rel = path.relative(folderPath, filePath.startsWith('/') ? filePath : path.join(folderPath, filePath));
+  execSync(`git add -- "${rel}"`, { cwd: folderPath });
+}
+
+export function gitUnstageFile(folderPath: string, filePath: string): void {
+  const rel = path.relative(folderPath, filePath.startsWith('/') ? filePath : path.join(folderPath, filePath));
+  execSync(`git reset HEAD -- "${rel}"`, { cwd: folderPath });
+}
+
+export function gitStageAll(folderPath: string): void {
+  execSync('git add -A', { cwd: folderPath });
+}
+
+export function gitUnstageAll(folderPath: string): void {
+  execSync('git reset HEAD', { cwd: folderPath });
+}
+
+export function gitCommit(folderPath: string, message: string): { success: boolean; error?: string } {
+  try {
+    execSync(`git commit -m "${message.replace(/"/g, '\\"')}"`, { cwd: folderPath, encoding: 'utf-8' });
+    return { success: true };
+  } catch (err: unknown) {
+    return { success: false, error: (err as Error).message };
   }
 }
 

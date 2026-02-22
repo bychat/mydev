@@ -1,5 +1,5 @@
 import { ipcMain, dialog } from 'electron';
-import { readDirectoryTree, getGitChangedFiles, getGitDiff, getGitIgnoredPaths } from './fileSystem';
+import { readDirectoryTree, getGitChangedFiles, getGitChangedFilesSplit, getGitDiff, getGitIgnoredPaths, gitStageFile, gitUnstageFile, gitStageAll, gitUnstageAll, gitCommit } from './fileSystem';
 import { checkOllama, listModels, chatComplete, loadSettings, saveSettings, type AISettings } from './ai';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -48,8 +48,52 @@ export function registerIpcHandlers(): void {
     return getGitChangedFiles(folderPath);
   });
 
+  ipcMain.handle('git-status-split', async (_event, folderPath: string) => {
+    return getGitChangedFilesSplit(folderPath);
+  });
+
   ipcMain.handle('git-diff', async (_event, folderPath: string, filePath: string) => {
     return getGitDiff(folderPath, filePath);
+  });
+
+  ipcMain.handle('git-stage', async (_event, folderPath: string, filePath: string) => {
+    try {
+      gitStageFile(folderPath, filePath);
+      return { success: true };
+    } catch (err: unknown) {
+      return { success: false, error: (err as Error).message };
+    }
+  });
+
+  ipcMain.handle('git-unstage', async (_event, folderPath: string, filePath: string) => {
+    try {
+      gitUnstageFile(folderPath, filePath);
+      return { success: true };
+    } catch (err: unknown) {
+      return { success: false, error: (err as Error).message };
+    }
+  });
+
+  ipcMain.handle('git-stage-all', async (_event, folderPath: string) => {
+    try {
+      gitStageAll(folderPath);
+      return { success: true };
+    } catch (err: unknown) {
+      return { success: false, error: (err as Error).message };
+    }
+  });
+
+  ipcMain.handle('git-unstage-all', async (_event, folderPath: string) => {
+    try {
+      gitUnstageAll(folderPath);
+      return { success: true };
+    } catch (err: unknown) {
+      return { success: false, error: (err as Error).message };
+    }
+  });
+
+  ipcMain.handle('git-commit', async (_event, folderPath: string, message: string) => {
+    return gitCommit(folderPath, message);
   });
 
   // ── AI Handlers ──
