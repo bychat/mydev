@@ -27,6 +27,30 @@ button{font-family:inherit;cursor:pointer}
 .status-settings-btn{background:none;border:none;font-size:.85rem;padding:2px 4px;border-radius:3px;cursor:pointer;color:#888;transition:color .12s}
 .status-settings-btn:hover{color:#333;background:rgba(0,0,0,.05)}
 
+/* ── Status Bar — Branch & Sync ─── */
+.sb-branch-wrap{position:relative}
+.sb-branch-btn{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;background:none;border:none;color:#666;font-size:.74rem;font-weight:600;border-radius:4px;cursor:pointer;transition:background .1s,color .1s;font-family:inherit;white-space:nowrap}
+.sb-branch-btn:hover{background:rgba(0,0,0,.06);color:#333}
+.sb-branch-icon{font-size:.85rem}
+.sb-branch-name{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sb-branch-menu{position:absolute;bottom:100%;right:0;margin-bottom:6px;min-width:160px;max-height:240px;overflow-y:auto;background:#fff;border:1px solid #ddd;border-radius:8px;padding:4px;z-index:200;box-shadow:0 6px 24px rgba(0,0,0,.12)}
+.sb-branch-menu-hdr{padding:5px 10px;font-size:.7rem;font-weight:600;color:#999;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid #eee;margin-bottom:2px}
+.sb-branch-menu-item{display:flex;align-items:center;gap:6px;width:100%;padding:5px 10px;background:none;border:none;color:#555;font-size:.78rem;text-align:left;border-radius:5px;cursor:pointer;transition:background .1s;font-family:inherit}
+.sb-branch-menu-item:hover{background:rgba(0,0,0,.05);color:#333}
+.sb-branch-menu-item.active{font-weight:600;color:#333;background:rgba(0,0,0,.04)}
+.sb-check{font-size:.7rem;color:#27ae60}
+
+.sb-sync-counts{display:inline-flex;align-items:center;gap:3px;font-size:.72rem;font-weight:600;color:#888}
+.sb-count{white-space:nowrap}
+
+.sb-action-btn{display:flex;align-items:center;justify-content:center;width:22px;height:22px;background:none;border:none;color:#888;font-size:.82rem;font-weight:700;border-radius:4px;cursor:pointer;transition:background .1s,color .1s}
+.sb-action-btn:hover:not(:disabled){background:rgba(0,0,0,.06);color:#333}
+.sb-action-btn:disabled{opacity:.35;cursor:not-allowed}
+
+.sb-op-msg{font-size:.7rem;font-weight:600;color:#27ae60;padding:2px 6px;border-radius:4px;background:rgba(39,174,96,.06);white-space:nowrap;animation:sb-fade-in .15s ease-out}
+.sb-op-msg.error{color:#c0392b;background:rgba(192,57,43,.06)}
+@keyframes sb-fade-in{from{opacity:0;transform:translateY(2px)}to{opacity:1;transform:translateY(0)}}
+
 /* ── Activity Bar ─── */
 .activity-bar{width:48px;min-width:48px;background:#f0f0f0;border-right:1px solid #e0e0e0;display:flex;flex-direction:column;align-items:center;padding-top:4px;gap:2px}
 .ab-btn{width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:none;border:none;border-radius:6px;font-size:1.2rem;color:#999;position:relative;transition:background .1s,color .1s}

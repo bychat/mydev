@@ -109,6 +109,78 @@ export function gitCommit(folderPath: string, message: string): { success: boole
   }
 }
 
+export interface GitBranchInfo {
+  current: string;
+  branches: string[];
+  ahead: number;
+  behind: number;
+  hasRemote: boolean;
+}
+
+export function gitGetBranchInfo(folderPath: string): GitBranchInfo {
+  const info: GitBranchInfo = { current: '', branches: [], ahead: 0, behind: 0, hasRemote: false };
+  try {
+    info.current = execSync('git rev-parse --abbrev-ref HEAD', { cwd: folderPath, encoding: 'utf-8' }).trim();
+  } catch { return info; }
+
+  try {
+    const out = execSync('git branch --no-color', { cwd: folderPath, encoding: 'utf-8' });
+    info.branches = out.trim().split('\n').map(b => b.replace(/^\*?\s+/, '').trim()).filter(Boolean);
+  } catch { /* ignore */ }
+
+  try {
+    const remote = execSync('git config --get branch.' + info.current + '.remote', { cwd: folderPath, encoding: 'utf-8' }).trim();
+    info.hasRemote = !!remote;
+  } catch { info.hasRemote = false; }
+
+  if (info.hasRemote) {
+    try {
+      const out = execSync('git rev-list --left-right --count HEAD...@{upstream}', { cwd: folderPath, encoding: 'utf-8' }).trim();
+      const [ahead, behind] = out.split(/\s+/).map(Number);
+      info.ahead = ahead || 0;
+      info.behind = behind || 0;
+    } catch { /* no upstream tracking */ }
+  }
+
+  return info;
+}
+
+export function gitListBranches(folderPath: string): string[] {
+  try {
+    const out = execSync('git branch --no-color', { cwd: folderPath, encoding: 'utf-8' });
+    return out.trim().split('\n').map(b => b.replace(/^\*?\s+/, '').trim()).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+export function gitCheckout(folderPath: string, branch: string): { success: boolean; error?: string } {
+  try {
+    execSync(`git checkout "${branch}"`, { cwd: folderPath, encoding: 'utf-8', stdio: 'pipe' });
+    return { success: true };
+  } catch (err: unknown) {
+    return { success: false, error: (err as Error).message };
+  }
+}
+
+export function gitPull(folderPath: string): { success: boolean; output?: string; error?: string } {
+  try {
+    const out = execSync('git pull', { cwd: folderPath, encoding: 'utf-8', stdio: 'pipe' });
+    return { success: true, output: out.trim() };
+  } catch (err: unknown) {
+    return { success: false, error: (err as Error).message };
+  }
+}
+
+export function gitPush(folderPath: string): { success: boolean; output?: string; error?: string } {
+  try {
+    const out = execSync('git push', { cwd: folderPath, encoding: 'utf-8', stdio: 'pipe' });
+    return { success: true, output: out.trim() };
+  } catch (err: unknown) {
+    return { success: false, error: (err as Error).message };
+  }
+}
+
 export function getGitDiff(folderPath: string, filePath: string): { oldContent: string; newContent: string } {
   try {
     const rel = path.relative(folderPath, filePath);

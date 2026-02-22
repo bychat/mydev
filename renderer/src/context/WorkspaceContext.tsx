@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
-import type { TreeEntry, Tab, GitChange, GitFileChange, SidePanel } from '../types';
+import type { TreeEntry, Tab, GitChange, GitFileChange, GitBranchInfo, SidePanel } from '../types';
 
 interface WorkspaceContextValue {
   folderPath: string | null;
@@ -13,6 +13,7 @@ interface WorkspaceContextValue {
   activePanel: SidePanel;
   gitChanges: GitChange[];
   gitSplitChanges: GitFileChange[];
+  gitBranchInfo: GitBranchInfo | null;
   gitIgnoredPaths: string[];
   setActivePanel: (p: SidePanel) => void;
   importFolder: () => Promise<void>;
@@ -28,6 +29,9 @@ interface WorkspaceContextValue {
   stageAll: () => Promise<void>;
   unstageAll: () => Promise<void>;
   gitCommit: (message: string) => Promise<{ success: boolean; error?: string }>;
+  gitPush: () => Promise<{ success: boolean; error?: string }>;
+  gitPull: () => Promise<{ success: boolean; error?: string }>;
+  gitCheckout: (branch: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
@@ -50,6 +54,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [activePanel, setActivePanel] = useState<SidePanel>('explorer');
   const [gitChanges, setGitChanges] = useState<GitChange[]>([]);
   const [gitSplitChanges, setGitSplitChanges] = useState<GitFileChange[]>([]);
+  const [gitBranch, setGitBranch] = useState<GitBranchInfo | null>(null);
   const [gitIgnoredPaths, setGitIgnoredPaths] = useState<string[]>([]);
 
   const refreshGitStatus = useCallback(async () => {
@@ -58,6 +63,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     setGitChanges(changes);
     const split = await window.electronAPI.gitStatusSplit(folderPath);
     setGitSplitChanges(split);
+    const branch = await window.electronAPI.gitBranchInfo(folderPath);
+    setGitBranch(branch);
   }, [folderPath]);
 
   const importFolder = useCallback(async () => {
@@ -164,13 +171,35 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     return result;
   }, [folderPath, refreshGitStatus]);
 
+  const pushChanges = useCallback(async () => {
+    if (!folderPath) return { success: false, error: 'No folder open' };
+    const result = await window.electronAPI.gitPush(folderPath);
+    await refreshGitStatus();
+    return result;
+  }, [folderPath, refreshGitStatus]);
+
+  const pullChanges = useCallback(async () => {
+    if (!folderPath) return { success: false, error: 'No folder open' };
+    const result = await window.electronAPI.gitPull(folderPath);
+    await refreshGitStatus();
+    return result;
+  }, [folderPath, refreshGitStatus]);
+
+  const checkoutBranch = useCallback(async (branch: string) => {
+    if (!folderPath) return { success: false, error: 'No folder open' };
+    const result = await window.electronAPI.gitCheckout(folderPath, branch);
+    await refreshGitStatus();
+    return result;
+  }, [folderPath, refreshGitStatus]);
+
   return (
     <WorkspaceContext.Provider value={{
       folderPath, folderName, tree, hasGit, hasPackageJson, packageName,
-      openTabs, activeTabPath, activePanel, gitChanges, gitSplitChanges, gitIgnoredPaths,
+      openTabs, activeTabPath, activePanel, gitChanges, gitSplitChanges, gitBranchInfo: gitBranch, gitIgnoredPaths,
       setActivePanel, importFolder, openFile, closeTab,
       updateTabContent, setActiveTabPath, saveFile, refreshGitStatus, openDiff,
       stageFile, unstageFile, stageAll, unstageAll, gitCommit: commitChanges,
+      gitPush: pushChanges, gitPull: pullChanges, gitCheckout: checkoutBranch,
     }}>
       {children}
     </WorkspaceContext.Provider>

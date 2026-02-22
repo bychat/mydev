@@ -49,6 +49,20 @@ export interface DiffResult {
   newContent: string;
 }
 
+export interface GitBranchInfo {
+  current: string;
+  branches: string[];
+  ahead: number;
+  behind: number;
+  hasRemote: boolean;
+}
+
+export interface GitOpResult {
+  success: boolean;
+  output?: string;
+  error?: string;
+}
+
 export type SidePanel = 'explorer' | 'search' | 'source-control';
 
 export interface AISettings {
@@ -81,6 +95,11 @@ export interface ElectronAPI {
   gitStageAll: (folderPath: string) => Promise<SaveResult>;
   gitUnstageAll: (folderPath: string) => Promise<SaveResult>;
   gitCommit: (folderPath: string, message: string) => Promise<SaveResult>;
+  gitBranchInfo: (folderPath: string) => Promise<GitBranchInfo>;
+  gitListBranches: (folderPath: string) => Promise<string[]>;
+  gitCheckout: (folderPath: string, branch: string) => Promise<SaveResult>;
+  gitPull: (folderPath: string) => Promise<GitOpResult>;
+  gitPush: (folderPath: string) => Promise<GitOpResult>;
   aiCheckOllama: () => Promise<boolean>;
   aiListModels: (baseUrl: string, apiKey: string) => Promise<string[]>;
   aiChat: (baseUrl: string, apiKey: string, model: string, messages: ChatMessage[]) => Promise<AIChatResult>;

@@ -1,5 +1,5 @@
 import { ipcMain, dialog } from 'electron';
-import { readDirectoryTree, getGitChangedFiles, getGitChangedFilesSplit, getGitDiff, getGitIgnoredPaths, gitStageFile, gitUnstageFile, gitStageAll, gitUnstageAll, gitCommit } from './fileSystem';
+import { readDirectoryTree, getGitChangedFiles, getGitChangedFilesSplit, getGitDiff, getGitIgnoredPaths, gitStageFile, gitUnstageFile, gitStageAll, gitUnstageAll, gitCommit, gitGetBranchInfo, gitListBranches, gitCheckout, gitPull, gitPush } from './fileSystem';
 import { checkOllama, listModels, chatComplete, loadSettings, saveSettings, type AISettings } from './ai';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -94,6 +94,26 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('git-commit', async (_event, folderPath: string, message: string) => {
     return gitCommit(folderPath, message);
+  });
+
+  ipcMain.handle('git-branch-info', async (_event, folderPath: string) => {
+    return gitGetBranchInfo(folderPath);
+  });
+
+  ipcMain.handle('git-list-branches', async (_event, folderPath: string) => {
+    return gitListBranches(folderPath);
+  });
+
+  ipcMain.handle('git-checkout', async (_event, folderPath: string, branch: string) => {
+    return gitCheckout(folderPath, branch);
+  });
+
+  ipcMain.handle('git-pull', async (_event, folderPath: string) => {
+    return gitPull(folderPath);
+  });
+
+  ipcMain.handle('git-push', async (_event, folderPath: string) => {
+    return gitPush(folderPath);
   });
 
   // ── AI Handlers ──
