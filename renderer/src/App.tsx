@@ -1,5 +1,6 @@
 import { WorkspaceProvider, useWorkspace } from './context/WorkspaceContext';
 import StatusBar from './components/StatusBar';
+import ActivityBar from './components/ActivityBar';
 import Sidebar from './components/Sidebar';
 import Editor from './components/Editor';
 import ChatPanel from './components/ChatPanel';
@@ -11,6 +12,7 @@ function AppLayout() {
     <div className="app-layout">
       <StatusBar />
       <div className="app-body">
+        <ActivityBar />
         <Sidebar />
         <main className="main-content">{openTabs.length > 0 ? <Editor /> : <Welcome />}</main>
         <ChatPanel />

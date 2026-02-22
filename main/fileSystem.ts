@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { execSync } from 'child_process';
 
 interface TreeEntry {
   name: string;
@@ -8,7 +9,6 @@ interface TreeEntry {
   children?: TreeEntry[];
 }
 
-const HIDDEN_PREFIXES = ['.'];
 const SKIP_DIRS = ['node_modules', '__pycache__', '.git'];
 
 export function readDirectoryTree(dirPath: string): TreeEntry[] {
@@ -20,7 +20,7 @@ export function readDirectoryTree(dirPath: string): TreeEntry[] {
   }
 
   return entries
-    .filter(e => !HIDDEN_PREFIXES.some(p => e.name.startsWith(p)) && !SKIP_DIRS.includes(e.name))
+    .filter(e => !SKIP_DIRS.includes(e.name))
     .sort((a, b) => {
       if (a.isDirectory() && !b.isDirectory()) return -1;
       if (!a.isDirectory() && b.isDirectory()) return 1;
@@ -33,4 +33,45 @@ export function readDirectoryTree(dirPath: string): TreeEntry[] {
       }
       return { name: entry.name, path: fullPath, type: 'file' as const };
     });
+}
+
+export function getGitChangedFiles(folderPath: string): { file: string; status: string }[] {
+  try {
+    const out = execSync('git status --porcelain', { cwd: folderPath, encoding: 'utf-8' });
+    return out.trim().split('\n').filter(Boolean).map(line => ({
+      status: line.substring(0, 2).trim(),
+      file: line.substring(3),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+export function getGitDiff(folderPath: string, filePath: string): { oldContent: string; newContent: string } {
+  try {
+    const rel = path.relative(folderPath, filePath);
+    let oldContent = '';
+    try {
+      oldContent = execSync(`git show HEAD:${rel}`, { cwd: folderPath, encoding: 'utf-8' });
+    } catch { /* new file */ }
+    let newContent = '';
+    try {
+      newContent = fs.readFileSync(filePath, 'utf-8');
+    } catch { /* deleted file */ }
+    return { oldContent, newContent };
+  } catch {
+    return { oldContent: '', newContent: '' };
+  }
+}
+
+export function getGitIgnoredPaths(folderPath: string): string[] {
+  try {
+    const out = execSync(
+      'git ls-files --others --ignored --exclude-standard --directory',
+      { cwd: folderPath, encoding: 'utf-8' }
+    );
+    return out.trim().split('\n').filter(Boolean).map(f => path.join(folderPath, f.replace(/\/$/, '')));
+  } catch {
+    return [];
+  }
 }

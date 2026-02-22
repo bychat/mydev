@@ -3,15 +3,20 @@ import { useWorkspace } from '../context/WorkspaceContext';
 import { getFileIcon } from '../utils/fileIcons';
 import type { TreeEntry } from '../types';
 
+function isIgnored(itemPath: string, ignoredPaths: string[]): boolean {
+  return ignoredPaths.some(p => itemPath === p || itemPath.startsWith(p + '/'));
+}
+
 function FileTreeItem({ item, depth }: { item: TreeEntry; depth: number }) {
-  const { openFile, activeTabPath } = useWorkspace();
+  const { openFile, activeTabPath, gitIgnoredPaths } = useWorkspace();
   const [expanded, setExpanded] = useState(false);
   const pad = { paddingLeft: `${12 + depth * 16}px` };
+  const ignored = isIgnored(item.path, gitIgnoredPaths);
 
   if (item.type === 'folder') {
     return (
       <>
-        <div className="tree-item folder" style={pad} onClick={() => setExpanded(p => !p)}>
+        <div className={`tree-item folder${ignored ? ' ignored' : ''}`} style={pad} onClick={() => setExpanded(p => !p)}>
           <span className="tree-arrow">{expanded ? '▼' : '▶'}</span>
           <span className="tree-icon">{expanded ? '📂' : '📁'}</span>
           <span className="tree-label">{item.name}</span>
@@ -23,7 +28,7 @@ function FileTreeItem({ item, depth }: { item: TreeEntry; depth: number }) {
 
   return (
     <div
-      className={`tree-item file${activeTabPath === item.path ? ' active' : ''}`}
+      className={`tree-item file${activeTabPath === item.path ? ' active' : ''}${ignored ? ' ignored' : ''}`}
       style={pad}
       onClick={() => openFile(item.name, item.path)}
     >

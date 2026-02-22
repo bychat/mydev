@@ -1,5 +1,5 @@
 import { ipcMain, dialog } from 'electron';
-import { readDirectoryTree } from './fileSystem';
+import { readDirectoryTree, getGitChangedFiles, getGitDiff, getGitIgnoredPaths } from './fileSystem';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -21,7 +21,9 @@ export function registerIpcHandlers(): void {
       } catch { /* ignore */ }
     }
 
-    return { folderPath, tree, hasGit, hasPackageJson, packageName };
+    const gitIgnoredPaths = hasGit ? getGitIgnoredPaths(folderPath) : [];
+
+    return { folderPath, tree, hasGit, hasPackageJson, packageName, gitIgnoredPaths };
   });
 
   ipcMain.handle('read-file', async (_event, filePath: string) => {
@@ -39,5 +41,13 @@ export function registerIpcHandlers(): void {
     } catch (err: unknown) {
       return { success: false, error: (err as Error).message };
     }
+  });
+
+  ipcMain.handle('git-status', async (_event, folderPath: string) => {
+    return getGitChangedFiles(folderPath);
+  });
+
+  ipcMain.handle('git-diff', async (_event, folderPath: string, filePath: string) => {
+    return getGitDiff(folderPath, filePath);
   });
 }

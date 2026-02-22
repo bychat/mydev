@@ -20,6 +20,14 @@ button{font-family:inherit;cursor:pointer}
 .badge svg{width:13px;height:13px;flex-shrink:0}
 .status-path{font-size:.72rem;color:#5c5c78;font-family:'SF Mono','Fira Code',monospace;max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
+/* ── Activity Bar ─── */
+.activity-bar{width:48px;min-width:48px;background:#11111b;border-right:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;align-items:center;padding-top:4px;gap:2px}
+.ab-btn{width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:none;border:none;border-radius:6px;font-size:1.2rem;color:#606078;position:relative;transition:background .1s,color .1s}
+.ab-btn:hover{background:rgba(255,255,255,.06);color:#a0a0c0}
+.ab-btn.active{color:#e0e0e0;background:rgba(124,140,248,.15)}
+.ab-btn.active::before{content:'';position:absolute;left:0;top:8px;bottom:8px;width:2px;background:#7c8cf8;border-radius:1px}
+.ab-badge{position:absolute;top:4px;right:4px;min-width:16px;height:16px;display:flex;align-items:center;justify-content:center;background:#7c8cf8;color:#fff;font-size:.6rem;font-weight:700;border-radius:8px;padding:0 4px}
+
 /* ── Sidebar ─── */
 .sidebar{width:260px;min-width:260px;background:#181825;border-right:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;overflow:hidden}
 .sidebar-hdr{padding:.7rem 1rem .45rem;border-bottom:1px solid rgba(255,255,255,.06)}
@@ -34,11 +42,26 @@ button{font-family:inherit;cursor:pointer}
 .tree-item{display:flex;align-items:center;gap:3px;padding:3px 10px;cursor:pointer;user-select:none;white-space:nowrap;transition:background .1s}
 .tree-item:hover{background:rgba(255,255,255,.04)}
 .tree-item.active{background:rgba(124,140,248,.16)}
+.tree-item.ignored{opacity:.4}
 .tree-arrow{font-size:.5rem;width:14px;text-align:center;color:#606078;flex-shrink:0}
 .tree-spacer{width:14px;flex-shrink:0}
 .tree-icon{font-size:.8rem;flex-shrink:0;width:18px;text-align:center}
 .tree-label{font-size:.78rem;color:#bbb;overflow:hidden;text-overflow:ellipsis}
 .tree-item.folder .tree-label{font-weight:600;color:#d0d0e8}
+
+/* ── Search Panel ─── */
+.search-input{width:100%;padding:.45rem .7rem;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:6px;color:#e0e0e0;font-family:inherit;font-size:.8rem;outline:none;transition:border-color .15s}
+.search-input:focus{border-color:rgba(124,140,248,.4)}
+.search-input::placeholder{color:#4c4c64}
+.search-path{margin-left:auto;font-size:.68rem;color:#4c4c64;font-family:'SF Mono','Fira Code',monospace}
+
+/* ── Source Control ─── */
+.sc-panel{display:flex;flex-direction:column;flex:1;overflow:hidden}
+.sc-actions{padding:.5rem .7rem}
+.sc-empty{padding:2rem 1rem;text-align:center;color:#606078;font-size:.82rem}
+.sc-section-hdr{padding:.4rem .7rem;font-size:.72rem;font-weight:600;color:#a0a0c0;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid rgba(255,255,255,.04)}
+.sc-file{flex:1}
+.sc-status{font-size:.72rem;font-weight:700;margin-left:auto;padding:0 6px}
 
 /* ── Editor Tabs ─── */
 .editor-container{display:flex;flex-direction:column;flex:1;overflow:hidden}
@@ -55,11 +78,23 @@ button{font-family:inherit;cursor:pointer}
 .editor-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
 .saved{font-size:.68rem;color:#50fa7b;font-weight:600}
 .modified{font-size:.68rem;color:#f1fa8c;font-weight:600}
+.readonly-badge{font-size:.68rem;color:#7c8cf8;font-weight:600}
 .btn-save{display:flex;align-items:center;gap:4px;padding:2px 10px;background:rgba(124,140,248,.12);color:#9ca8ff;border:1px solid rgba(124,140,248,.2);border-radius:5px;font-size:.7rem;font-weight:600;transition:background .12s}
 .btn-save:hover{background:rgba(124,140,248,.25)}
 .editor-body{flex:1;display:flex;position:relative;overflow:hidden}
 .line-numbers{width:48px;min-width:48px;padding:.7rem 8px .7rem 0;text-align:right;font-family:'SF Mono','Fira Code',monospace;font-size:.76rem;line-height:1.65;color:#333348;background:#16161e;border-right:1px solid rgba(255,255,255,.04);overflow:hidden;user-select:none;white-space:pre}
 .code-area{flex:1;padding:.7rem 1rem;background:#1e1e2e;color:#cdd6f4;border:none;outline:none;resize:none;font-family:'SF Mono','Fira Code',monospace;font-size:.8rem;line-height:1.65;tab-size:2;white-space:pre;overflow:auto}
+
+/* ── Diff Viewer ─── */
+.diff-viewer{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.diff-header{display:flex;align-items:center;justify-content:space-between;padding:6px 12px;background:#181825;border-bottom:1px solid rgba(255,255,255,.06);font-size:.78rem;font-weight:600;color:#a0a0c0}
+.diff-stats{font-size:.74rem;font-weight:700}
+.diff-body{flex:1;overflow:auto;margin:0;padding:0;font-family:'SF Mono','Fira Code',monospace;font-size:.78rem;line-height:1.7;background:#1e1e2e}
+.diff-line{padding:0 12px;white-space:pre}
+.diff-line.add{background:rgba(80,250,123,.08);color:#50fa7b}
+.diff-line.remove{background:rgba(224,85,85,.08);color:#e05555;text-decoration:line-through}
+.diff-line.same{color:#606078}
+.diff-sign{display:inline-block;width:18px;text-align:center;color:inherit;user-select:none}
 
 /* ── Chat Panel ─── */
 .chat-panel{width:320px;min-width:320px;background:#1a1a2e;border-left:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;overflow:hidden}
