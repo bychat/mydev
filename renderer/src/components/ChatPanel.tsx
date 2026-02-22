@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback, type ChangeEvent, type KeyboardEvent, type DragEvent } from 'react';
 import type { AISettings, ChatMessage } from '../types';
 import SettingsModal from './SettingsModal';
+import { useWorkspace } from '../context/WorkspaceContext';
 
 type ChatMode = 'Agent' | 'Chat' | 'Edit';
 
@@ -27,6 +28,7 @@ function fileIcon(name: string) {
 }
 
 export default function ChatPanel() {
+  const { openTabs, activeTabPath } = useWorkspace();
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [history, setHistory] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -43,6 +45,29 @@ export default function ChatPanel() {
   const endRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const inputBoxRef = useRef<HTMLDivElement>(null);
+
+  // ── Suggested files from open editor tabs ──
+  const suggestedFiles = openTabs
+    .filter(t => !t.path.startsWith('diff:') && !attachedFiles.some(a => a.path === t.path))
+    .map(t => ({ name: t.name, path: t.path }));
+
+  // Highlight the active file at the top of suggestions
+  const sortedSuggestions = [...suggestedFiles].sort((a, b) => {
+    if (a.path === activeTabPath) return -1;
+    if (b.path === activeTabPath) return 1;
+    return 0;
+  });
+
+  const addSuggestedFile = useCallback(async (name: string, path: string) => {
+    if (attachedFiles.some(a => a.path === path)) return;
+    try {
+      const result = await window.electronAPI.readFile(path);
+      setAttachedFiles(prev => [...prev, { name, path, content: result.success ? result.content : undefined }]);
+    } catch {
+      setAttachedFiles(prev => [...prev, { name, path }]);
+    }
+    textareaRef.current?.focus();
+  }, [attachedFiles]);
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => endRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
@@ -254,12 +279,26 @@ export default function ChatPanel() {
           </div>
         )}
 
-        {/* Add Context + Textarea */}
+        {/* Add Context + Suggestions */}
         <div className="composer-top">
           <button className="composer-add-ctx" onClick={handleAddContext} title="Add Context...">
             <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M11.5 1a.5.5 0 0 1 .5.5V4h2.5a.5.5 0 0 1 0 1H12v2.5a.5.5 0 0 1-1 0V5H8.5a.5.5 0 0 1 0-1H11V1.5a.5.5 0 0 1 .5-.5z"/><path d="M2 3.5A1.5 1.5 0 0 1 3.5 2H8v1H3.5a.5.5 0 0 0-.5.5v9a.5.5 0 0 0 .5.5h9a.5.5 0 0 0 .5-.5V8h1v4.5A1.5 1.5 0 0 1 12.5 14h-9A1.5 1.5 0 0 1 2 12.5v-9z"/></svg>
             Add Context…
           </button>
+          {sortedSuggestions.length > 0 && (
+            <div className="composer-suggestions">
+              {sortedSuggestions.map(f => (
+                <button
+                  key={f.path}
+                  className={`composer-suggestion-chip ${f.path === activeTabPath ? 'active-file' : ''}`}
+                  onClick={() => addSuggestedFile(f.name, f.path)}
+                  title={`Add ${f.name} as context`}
+                >
+                  {fileIcon(f.name)} {f.name}
+                </button>
+              ))}
+            </div>
+          )}
           <input type="file" ref={fileInputRef} onChange={handleFilePick} multiple hidden />
         </div>
 

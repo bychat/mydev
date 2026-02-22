@@ -167,7 +167,16 @@ ${payload}`;
 
   return (
     <div className="sc-panel">
-      <div className="sidebar-hdr"><h2>🔀 Source Control</h2></div>
+      <div className="sidebar-hdr">
+        <h2>🔀 Source Control</h2>
+        <button
+          className="sc-refresh-icon"
+          onClick={refreshGitStatus}
+          title="Refresh"
+        >
+          <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M13.987 6.2A6 6 0 0 0 2.68 4.81L1.5 3.63v4.37h4.37L4.31 6.44a4.5 4.5 0 0 1 8.48 1.06l1.197-1.3zM2.013 9.8A6 6 0 0 0 13.32 11.19l1.18 1.18V8h-4.37l1.56 1.56a4.5 4.5 0 0 1-8.48-1.06L2.013 9.8z"/></svg>
+        </button>
+      </div>
 
       {/* Commit area */}
       <div className="sc-commit-area">
@@ -180,13 +189,15 @@ ${payload}`;
             onKeyDown={handleKeyDown}
             rows={commitMsg.includes('\n') ? 3 : 1}
           />
+        </div>
+        <div className="sc-generate-card">
           <button
-            className="sc-generate-btn"
+            className="sc-generate-btn-card"
             disabled={generating || allChanges.length === 0}
             onClick={handleGenerateCommitMsg}
             title="Generate commit message with AI"
           >
-            {generating ? '⏳' : '✨'}
+            {generating ? '⏳ Generating…' : '✨ Generate with AI'}
           </button>
         </div>
         <button
@@ -198,10 +209,6 @@ ${payload}`;
           {committing ? '⏳ Committing…' : '✓ Commit'}
         </button>
         {error && <div className="sc-commit-error">{error}</div>}
-      </div>
-
-      <div className="sc-actions">
-        <button className="btn-import" onClick={refreshGitStatus}>🔄 Refresh</button>
       </div>
 
       {staged.length === 0 && unstaged.length === 0 ? (

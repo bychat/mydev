@@ -61,7 +61,7 @@ button{font-family:inherit;cursor:pointer}
 
 /* ── Sidebar ─── */
 .sidebar{width:260px;min-width:260px;background:#f7f7f7;border-right:1px solid #e0e0e0;display:flex;flex-direction:column;overflow:hidden}
-.sidebar-hdr{padding:.7rem 1rem .45rem;border-bottom:1px solid #e8e8e8}
+.sidebar-hdr{display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem .45rem;border-bottom:1px solid #e8e8e8}
 .sidebar-hdr h2{font-size:.78rem;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.08em}
 .sidebar-actions{padding:.5rem .7rem}
 .btn-import{width:100%;display:flex;align-items:center;justify-content:center;gap:.4rem;padding:.45rem .8rem;background:rgba(0,0,0,.03);color:#555;border:1px dashed #ccc;border-radius:6px;font-size:.8rem;font-weight:600;transition:background .15s}
@@ -88,8 +88,13 @@ button{font-family:inherit;cursor:pointer}
 
 /* ── Source Control ─── */
 .sc-panel{display:flex;flex-direction:column;flex:1;overflow:hidden}
-.sc-actions{padding:.4rem .7rem}
 .sc-empty{padding:2rem 1rem;text-align:center;color:#aaa;font-size:.82rem}
+
+/* Refresh icon in header */
+.sc-refresh-icon{display:flex;align-items:center;justify-content:center;width:24px;height:24px;background:none;border:none;color:#bbb;border-radius:4px;cursor:pointer;transition:background .12s,color .12s;flex-shrink:0}
+.sc-refresh-icon:hover{background:rgba(0,0,0,.06);color:#555}
+.sc-refresh-icon:active{transform:scale(.9)}
+
 .sc-section-hdr{display:flex;align-items:center;gap:4px;padding:.4rem .7rem;font-size:.72rem;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid #eee;user-select:none}
 .sc-section-clickable{cursor:pointer;transition:background .1s}
 .sc-section-clickable:hover{background:rgba(0,0,0,.03)}
@@ -107,12 +112,16 @@ button{font-family:inherit;cursor:pointer}
 /* ── Commit area ─── */
 .sc-commit-area{padding:.6rem .7rem;border-bottom:1px solid #e8e8e8;display:flex;flex-direction:column;gap:6px}
 .sc-commit-input-wrap{position:relative;display:flex;align-items:stretch}
-.sc-commit-input{flex:1;padding:.45rem .7rem;padding-right:32px;background:#fff;border:1px solid #ddd;border-radius:6px;color:#333;font-family:inherit;font-size:.8rem;outline:none;resize:vertical;min-height:32px;max-height:120px;line-height:1.4;transition:border-color .15s}
+.sc-commit-input{flex:1;padding:.45rem .7rem;background:#fff;border:1px solid #ddd;border-radius:6px;color:#333;font-family:inherit;font-size:.8rem;outline:none;resize:vertical;min-height:32px;max-height:120px;line-height:1.4;transition:border-color .15s}
 .sc-commit-input:focus{border-color:#999}
 .sc-commit-input::placeholder{color:#bbb}
-.sc-generate-btn{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:.9rem;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:4px;cursor:pointer;color:#bbb;transition:background .12s,color .12s}
-.sc-generate-btn:hover:not(:disabled){background:rgba(0,0,0,.06);color:#e5c07b}
-.sc-generate-btn:disabled{opacity:.35;cursor:not-allowed}
+
+/* Generate AI commit message – card style */
+.sc-generate-card{display:flex;align-items:center;padding:5px 8px;background:#eee;border:1px solid #ddd;border-radius:8px}
+.sc-generate-btn-card{display:flex;align-items:center;gap:5px;width:100%;padding:4px 10px;background:#fff;border:1px solid #d8d8d8;border-radius:6px;color:#666;font-family:inherit;font-size:.76rem;font-weight:600;cursor:pointer;transition:background .12s,color .12s,border-color .12s,box-shadow .12s}
+.sc-generate-btn-card:hover:not(:disabled){background:#f9f9f9;color:#333;border-color:#bbb;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.sc-generate-btn-card:active:not(:disabled){transform:scale(.98)}
+.sc-generate-btn-card:disabled{opacity:.35;cursor:not-allowed}
 .sc-commit-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:.4rem;padding:.4rem .8rem;background:#333;color:#fff;border:none;border-radius:6px;font-size:.8rem;font-weight:600;cursor:pointer;transition:background .12s,transform .1s}
 .sc-commit-btn:hover:not(:disabled){background:#444;transform:scale(1.01)}
 .sc-commit-btn:active:not(:disabled){transform:scale(.98)}
@@ -180,10 +189,17 @@ button{font-family:inherit;cursor:pointer}
 .file-chip-remove:hover{color:#c0392b;background:rgba(0,0,0,.06)}
 
 /* Add context row */
-.composer-top{display:flex;align-items:center;padding:6px 10px 2px}
-.composer-add-ctx{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;background:none;border:1px solid #ddd;border-radius:5px;color:#999;font-size:.74rem;font-weight:500;transition:all .12s}
+.composer-top{display:flex;align-items:center;padding:6px 10px 2px;gap:6px;flex-wrap:wrap}
+.composer-add-ctx{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;background:none;border:1px solid #ddd;border-radius:5px;color:#999;font-size:.74rem;font-weight:500;transition:all .12s;flex-shrink:0}
 .composer-add-ctx:hover{background:rgba(0,0,0,.03);color:#555;border-color:#bbb}
 .composer-add-ctx svg{flex-shrink:0}
+
+/* File suggestions */
+.composer-suggestions{display:flex;align-items:center;gap:4px;flex-wrap:wrap;overflow:hidden}
+.composer-suggestion-chip{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;background:none;border:1px dashed #ccc;border-radius:5px;color:#aaa;font-size:.72rem;font-weight:500;white-space:nowrap;cursor:pointer;transition:all .15s;max-width:140px;overflow:hidden;text-overflow:ellipsis}
+.composer-suggestion-chip:hover{border-style:solid;border-color:#999;color:#555;background:rgba(0,0,0,.03)}
+.composer-suggestion-chip.active-file{border-color:#aaa;color:#777;background:rgba(0,0,0,.02)}
+.composer-suggestion-chip.active-file:hover{border-style:solid;border-color:#888;color:#444;background:rgba(0,0,0,.05)}
 
 /* Textarea */
 .composer-textarea{width:100%;background:transparent;border:none;padding:6px 10px;color:#333;font-family:inherit;font-size:.82rem;line-height:1.5;resize:none;outline:none;max-height:150px;min-height:24px}
