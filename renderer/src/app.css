@@ -1,0 +1,93 @@
+/* ── Reset & Base ─── */
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#1e1e2e;color:#e0e0e0;height:100vh;overflow:hidden}
+button{font-family:inherit;cursor:pointer}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
+
+/* ── Layout ─── */
+.app-layout{display:flex;flex-direction:column;height:100vh}
+.app-body{display:flex;flex:1;overflow:hidden}
+.main-content{flex:1;overflow:hidden;display:flex;flex-direction:column;background:#1e1e2e}
+
+/* ── Status Bar ─── */
+.status-bar{display:flex;align-items:center;justify-content:space-between;height:32px;padding:0 12px 0 80px;background:#11111b;border-bottom:1px solid rgba(255,255,255,.06);font-size:.78rem;-webkit-app-region:drag;user-select:none}
+.status-left{display:flex;align-items:center;gap:10px;-webkit-app-region:no-drag}
+.app-name{font-weight:700;color:#7c8cf8;font-size:.8rem}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:4px;font-size:.72rem;font-weight:600}
+.badge.git{background:rgba(243,139,62,.15);color:#f38b3e}
+.badge.npm{background:rgba(203,56,55,.15);color:#e05555}
+.badge svg{width:13px;height:13px;flex-shrink:0}
+.status-path{font-size:.72rem;color:#5c5c78;font-family:'SF Mono','Fira Code',monospace;max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ── Sidebar ─── */
+.sidebar{width:260px;min-width:260px;background:#181825;border-right:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;overflow:hidden}
+.sidebar-hdr{padding:.7rem 1rem .45rem;border-bottom:1px solid rgba(255,255,255,.06)}
+.sidebar-hdr h2{font-size:.78rem;font-weight:600;color:#a0a0c0;text-transform:uppercase;letter-spacing:.08em}
+.sidebar-actions{padding:.5rem .7rem}
+.btn-import{width:100%;display:flex;align-items:center;justify-content:center;gap:.4rem;padding:.45rem .8rem;background:rgba(124,140,248,.1);color:#9ca8ff;border:1px dashed rgba(124,140,248,.3);border-radius:6px;font-size:.8rem;font-weight:600;transition:background .15s}
+.btn-import:hover{background:rgba(124,140,248,.2);border-color:rgba(124,140,248,.5)}
+.folder-name{padding:.4rem .7rem;font-size:.76rem;font-weight:700;color:#7c8cf8;background:rgba(124,140,248,.06);border-bottom:1px solid rgba(255,255,255,.06);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file-tree{flex:1;overflow-y:auto;overflow-x:hidden;padding:.2rem 0}
+
+/* ── Tree Items ─── */
+.tree-item{display:flex;align-items:center;gap:3px;padding:3px 10px;cursor:pointer;user-select:none;white-space:nowrap;transition:background .1s}
+.tree-item:hover{background:rgba(255,255,255,.04)}
+.tree-item.active{background:rgba(124,140,248,.16)}
+.tree-arrow{font-size:.5rem;width:14px;text-align:center;color:#606078;flex-shrink:0}
+.tree-spacer{width:14px;flex-shrink:0}
+.tree-icon{font-size:.8rem;flex-shrink:0;width:18px;text-align:center}
+.tree-label{font-size:.78rem;color:#bbb;overflow:hidden;text-overflow:ellipsis}
+.tree-item.folder .tree-label{font-weight:600;color:#d0d0e8}
+
+/* ── Editor Tabs ─── */
+.editor-container{display:flex;flex-direction:column;flex:1;overflow:hidden}
+.editor-tabs{display:flex;align-items:stretch;background:#11111b;border-bottom:1px solid rgba(255,255,255,.06);overflow-x:auto;min-height:34px}
+.tab{display:flex;align-items:center;gap:6px;padding:0 14px;height:34px;font-size:.76rem;color:#606078;cursor:pointer;border-right:1px solid rgba(255,255,255,.04);white-space:nowrap;user-select:none;transition:background .1s,color .1s}
+.tab:hover{background:rgba(255,255,255,.04);color:#a0a0c0}
+.tab.active{background:#1e1e2e;color:#e0e0e0;border-bottom:2px solid #7c8cf8}
+.tab-close{font-size:1rem;line-height:1;color:#4c4c64;cursor:pointer;border-radius:3px;width:16px;height:16px;display:flex;align-items:center;justify-content:center}
+.tab-close:hover{background:rgba(255,255,255,.1);color:#e05555}
+
+/* ── Editor ─── */
+.editor-toolbar{display:flex;align-items:center;justify-content:space-between;padding:3px 12px;background:#181825;border-bottom:1px solid rgba(255,255,255,.06);min-height:28px}
+.editor-path{font-size:.7rem;color:#4c4c64;font-family:'SF Mono','Fira Code',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.editor-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.saved{font-size:.68rem;color:#50fa7b;font-weight:600}
+.modified{font-size:.68rem;color:#f1fa8c;font-weight:600}
+.btn-save{display:flex;align-items:center;gap:4px;padding:2px 10px;background:rgba(124,140,248,.12);color:#9ca8ff;border:1px solid rgba(124,140,248,.2);border-radius:5px;font-size:.7rem;font-weight:600;transition:background .12s}
+.btn-save:hover{background:rgba(124,140,248,.25)}
+.editor-body{flex:1;display:flex;position:relative;overflow:hidden}
+.line-numbers{width:48px;min-width:48px;padding:.7rem 8px .7rem 0;text-align:right;font-family:'SF Mono','Fira Code',monospace;font-size:.76rem;line-height:1.65;color:#333348;background:#16161e;border-right:1px solid rgba(255,255,255,.04);overflow:hidden;user-select:none;white-space:pre}
+.code-area{flex:1;padding:.7rem 1rem;background:#1e1e2e;color:#cdd6f4;border:none;outline:none;resize:none;font-family:'SF Mono','Fira Code',monospace;font-size:.8rem;line-height:1.65;tab-size:2;white-space:pre;overflow:auto}
+
+/* ── Chat Panel ─── */
+.chat-panel{width:320px;min-width:320px;background:#1a1a2e;border-left:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;overflow:hidden}
+.chat-hdr{padding:.6rem 1rem;border-bottom:1px solid rgba(255,255,255,.06)}
+.chat-hdr h2{font-size:.78rem;font-weight:600;color:#a0a0c0;text-transform:uppercase;letter-spacing:.08em}
+.chat-messages{flex:1;overflow-y:auto;padding:.7rem;display:flex;flex-direction:column;gap:.5rem}
+.chat-welcome{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem 1rem;gap:.5rem;flex:1}
+.chat-icon{font-size:1.8rem}
+.chat-welcome p{font-size:.82rem;color:#606078;line-height:1.5}
+.chat-msg{display:flex}
+.chat-msg.user{justify-content:flex-end}
+.chat-msg.bot{justify-content:flex-start}
+.bubble{max-width:85%;padding:.5rem .8rem;border-radius:12px;font-size:.8rem;line-height:1.5;word-break:break-word}
+.chat-msg.user .bubble{background:linear-gradient(135deg,#6c63ff,#7c8cf8);color:#fff;border-bottom-right-radius:4px}
+.chat-msg.bot .bubble{background:rgba(255,255,255,.07);color:#c8c8e0;border-bottom-left-radius:4px}
+.chat-input-area{display:flex;align-items:flex-end;gap:6px;padding:.5rem .7rem;border-top:1px solid rgba(255,255,255,.06);background:#151526}
+.chat-input{flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:.5rem .7rem;color:#e0e0e0;font-family:inherit;font-size:.8rem;line-height:1.4;resize:none;outline:none;max-height:120px;transition:border-color .15s}
+.chat-input::placeholder{color:#4c4c64}
+.chat-input:focus{border-color:rgba(124,140,248,.4)}
+.chat-send{display:flex;align-items:center;justify-content:center;width:32px;height:32px;background:linear-gradient(135deg,#6c63ff,#7c8cf8);border:none;border-radius:8px;color:#fff;flex-shrink:0;transition:transform .12s,box-shadow .12s}
+.chat-send:hover{transform:scale(1.05);box-shadow:0 2px 12px rgba(108,99,255,.35)}
+.chat-send:active{transform:scale(.97)}
+
+/* ── Welcome ─── */
+.welcome{flex:1;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0f0c29,#302b63,#24243e)}
+.welcome-card{text-align:center;padding:3rem 2.5rem;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:16px;backdrop-filter:blur(12px)}
+.welcome-card h1{font-size:2rem;font-weight:700;color:#fff;margin-bottom:.5rem}
+.welcome-card p{font-size:.95rem;color:#808098;margin-bottom:1.5rem;line-height:1.5}
+.btn-primary{display:inline-flex;align-items:center;gap:.5rem;padding:.65rem 1.5rem;background:linear-gradient(135deg,#6c63ff,#7c8cf8);color:#fff;border:none;border-radius:8px;font-size:.92rem;font-weight:600;transition:transform .15s,box-shadow .15s}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 18px rgba(108,99,255,.4)}
+.btn-primary:active{transform:translateY(0)}

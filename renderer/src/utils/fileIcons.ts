@@ -1,4 +1,4 @@
-const FILE_ICONS = {
+const FILE_ICONS: Record<string, string> = {
   js: '📜', ts: '🔷', jsx: '⚛️', tsx: '⚛️',
   html: '🌐', css: '🎨', scss: '🎨', less: '🎨',
   json: '📋', md: '📝', txt: '📄',
@@ -9,7 +9,7 @@ const FILE_ICONS = {
   lock: '🔒',
 };
 
-export function getFileIcon(filename) {
-  const ext = filename.split('.').pop().toLowerCase();
-  return FILE_ICONS[ext] || '📄';
+export function getFileIcon(filename: string): string {
+  const ext = filename.split('.').pop()?.toLowerCase() ?? '';
+  return FILE_ICONS[ext] ?? '📄';
 }
