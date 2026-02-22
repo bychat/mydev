@@ -82,10 +82,13 @@ button{font-family:inherit;cursor:pointer}
 
 /* ── Commit area ─── */
 .sc-commit-area{padding:.6rem .7rem;border-bottom:1px solid #e8e8e8;display:flex;flex-direction:column;gap:6px}
-.sc-commit-input-wrap{position:relative}
-.sc-commit-input{width:100%;padding:.45rem .7rem;background:#fff;border:1px solid #ddd;border-radius:6px;color:#333;font-family:inherit;font-size:.8rem;outline:none;resize:vertical;min-height:32px;max-height:120px;line-height:1.4;transition:border-color .15s}
+.sc-commit-input-wrap{position:relative;display:flex;align-items:stretch}
+.sc-commit-input{flex:1;padding:.45rem .7rem;padding-right:32px;background:#fff;border:1px solid #ddd;border-radius:6px;color:#333;font-family:inherit;font-size:.8rem;outline:none;resize:vertical;min-height:32px;max-height:120px;line-height:1.4;transition:border-color .15s}
 .sc-commit-input:focus{border-color:#999}
 .sc-commit-input::placeholder{color:#bbb}
+.sc-generate-btn{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:.9rem;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:4px;cursor:pointer;color:#bbb;transition:background .12s,color .12s}
+.sc-generate-btn:hover:not(:disabled){background:rgba(0,0,0,.06);color:#e5c07b}
+.sc-generate-btn:disabled{opacity:.35;cursor:not-allowed}
 .sc-commit-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:.4rem;padding:.4rem .8rem;background:#333;color:#fff;border:none;border-radius:6px;font-size:.8rem;font-weight:600;cursor:pointer;transition:background .12s,transform .1s}
 .sc-commit-btn:hover:not(:disabled){background:#444;transform:scale(1.01)}
 .sc-commit-btn:active:not(:disabled){transform:scale(.98)}
