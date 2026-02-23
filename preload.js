@@ -1,6 +1,8 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
+  // Window management
+  newWindow: () => ipcRenderer.invoke('new-window'),
   selectFolder: () => ipcRenderer.invoke('select-folder'),
   openFolder: (folderPath) => ipcRenderer.invoke('open-folder', folderPath),
   readFile: (filePath) => ipcRenderer.invoke('read-file', filePath),
@@ -38,6 +40,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   aiChatAbort: () => ipcRenderer.invoke('ai-chat-abort'),
   aiLoadSettings: () => ipcRenderer.invoke('ai-load-settings'),
   aiSaveSettings: (settings) => ipcRenderer.invoke('ai-save-settings', settings),
+  // Prompt Settings
+  promptsLoad: () => ipcRenderer.invoke('prompts-load'),
+  promptsSave: (prompts) => ipcRenderer.invoke('prompts-save', prompts),
+  promptsReset: () => ipcRenderer.invoke('prompts-reset'),
   // Debug
   debugOpen: () => ipcRenderer.invoke('debug-open'),
   debugClear: () => ipcRenderer.invoke('debug-clear'),

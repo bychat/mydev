@@ -1,6 +1,7 @@
-import { ipcMain, dialog, type BrowserWindow } from 'electron';
+import { ipcMain, dialog, BrowserWindow, type BrowserWindow as BW } from 'electron';
 import { readDirectoryTree, getGitChangedFiles, getGitChangedFilesSplit, getGitDiff, getGitIgnoredPaths, gitStageFile, gitUnstageFile, gitStageAll, gitUnstageAll, gitDiscardFile, gitCommit, gitGetBranchInfo, gitListBranches, gitCheckout, gitCreateBranch, gitPull, gitPush } from './fileSystem';
 import { checkOllama, listModels, chatComplete, chatCompleteStream, loadSettings, saveSettings, type AISettings } from './ai';
+import { loadPrompts, savePrompts, resetPrompts, type PromptSettings } from './prompts';
 import { logRequest, logResult, logStreamingProgress, registerDebugIpc } from './debugWindow';
 import {
   loadAppHistory,
@@ -23,10 +24,40 @@ import {
 import * as path from 'path';
 import * as fs from 'fs';
 
+// Check if we should use dev server or built files
+const rendererDistPath = path.join(__dirname, '..', '..', 'renderer', 'dist', 'index.html');
+const useDevServer = process.env.VITE_DEV_SERVER === 'true' || 
+  (!require('electron').app.isPackaged && !fs.existsSync(rendererDistPath));
+
 /** Active AI chat AbortController — allows the renderer to cancel an in-flight request */
 let activeChatController: AbortController | null = null;
 
-export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void {
+export function registerIpcHandlers(getWindow: () => BW | null): void {
+  // New Window handler
+  ipcMain.handle('new-window', async () => {
+    const newWin = new BrowserWindow({
+      width: 1280,
+      height: 800,
+      minWidth: 900,
+      minHeight: 600,
+      titleBarStyle: 'hiddenInset',
+      trafficLightPosition: { x: 12, y: 10 },
+      webPreferences: {
+        preload: path.join(__dirname, '..', '..', 'preload.js'),
+        contextIsolation: true,
+        nodeIntegration: false,
+      },
+    });
+
+    if (useDevServer) {
+      newWin.loadURL('http://localhost:5173');
+    } else {
+      newWin.loadFile(path.join(__dirname, '..', '..', 'renderer', 'dist', 'index.html'));
+    }
+
+    return true;
+  });
+
   ipcMain.handle('select-folder', async () => {
     const result = await dialog.showOpenDialog({ properties: ['openDirectory'], title: 'Import a Project' });
     if (result.canceled) return null;
@@ -322,6 +353,21 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
   ipcMain.handle('ai-save-settings', async (_event, settings: AISettings) => {
     saveSettings(settings);
     return { success: true };
+  });
+
+  // ── Prompt Settings ──
+
+  ipcMain.handle('prompts-load', async () => {
+    return loadPrompts();
+  });
+
+  ipcMain.handle('prompts-save', async (_event, prompts: PromptSettings) => {
+    savePrompts(prompts);
+    return { success: true };
+  });
+
+  ipcMain.handle('prompts-reset', async () => {
+    return resetPrompts();
   });
 
   // ── Chat History ──

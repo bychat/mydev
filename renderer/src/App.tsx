@@ -123,7 +123,10 @@ function AppLayout() {
     <div className="app-layout">
       <StatusBar />
       <div className="app-body">
-        <ActivityBar />
+        <ActivityBar 
+          onToggleTerminal={toggleTerminal} 
+          terminalVisible={terminalVisible} 
+        />
 
         {/* ── Sidebar (collapsible + resizable) ── */}
         {sidebarCollapsed ? (

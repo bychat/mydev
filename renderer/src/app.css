@@ -84,8 +84,10 @@ button{font-family:inherit;cursor:pointer}
 .explorer-git-op-msg.error{color:#c0392b;background:rgba(192,57,43,.06)}
 
 /* ── Activity Bar ─── */
-.activity-bar{width:48px;min-width:48px;background:#f0f0f0;border-right:1px solid #e0e0e0;display:flex;flex-direction:column;align-items:center;padding-top:4px;gap:2px}
-.ab-btn{width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:none;border:none;border-radius:6px;font-size:1.2rem;color:#999;position:relative;transition:background .1s,color .1s}
+.activity-bar{width:48px;min-width:48px;background:#f0f0f0;border-right:1px solid #e0e0e0;display:flex;flex-direction:column;align-items:center;padding:4px 0;height:100%}
+.ab-main{display:flex;flex-direction:column;align-items:center;gap:2px;flex:1}
+.ab-footer{display:flex;flex-direction:column;align-items:center;gap:2px;padding-bottom:4px;border-top:1px solid #e0e0e0;margin-top:auto;padding-top:8px}
+.ab-btn{width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:none;border:none;border-radius:6px;font-size:1.2rem;color:#999;position:relative;transition:background .1s,color .1s;cursor:pointer}
 .ab-btn:hover{background:rgba(0,0,0,.05);color:#555}
 .ab-btn.active{color:#333;background:rgba(0,0,0,.07)}
 .ab-btn.active::before{content:'';position:absolute;left:0;top:8px;bottom:8px;width:2px;background:#555;border-radius:1px}
@@ -101,6 +103,11 @@ button{font-family:inherit;cursor:pointer}
 .btn-import:hover{background:rgba(0,0,0,.06);border-color:#aaa}
 .folder-name{padding:.4rem .7rem;font-size:.76rem;font-weight:700;color:#333;background:rgba(0,0,0,.03);border-bottom:1px solid #e8e8e8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .file-tree{flex:1;overflow-y:auto;overflow-x:hidden;padding:.2rem 0}
+
+/* Sidebar Footer */
+.sidebar-footer{padding:.5rem .7rem;border-top:1px solid #e8e8e8;margin-top:auto;flex-shrink:0}
+.btn-prompt-settings{width:100%;display:flex;align-items:center;justify-content:center;gap:.4rem;padding:.4rem .7rem;background:none;color:#666;border:1px solid #ddd;border-radius:6px;font-size:.76rem;font-weight:600;cursor:pointer;transition:all .15s}
+.btn-prompt-settings:hover{background:rgba(0,0,0,.04);border-color:#bbb;color:#333}
 
 /* ── Tree Items ─── */
 .tree-item{display:flex;align-items:center;gap:3px;padding:3px 10px;cursor:pointer;user-select:none;white-space:nowrap;transition:background .1s}
@@ -564,3 +571,35 @@ button{font-family:inherit;cursor:pointer}
 .chat-history-toggle{display:flex;align-items:center;justify-content:center;width:28px;height:28px;background:none;border:none;color:#888;border-radius:4px;transition:background .1s,color .1s;cursor:pointer}
 .chat-history-toggle:hover{background:rgba(0,0,0,.06);color:#555}
 .chat-history-toggle.active{background:rgba(37,99,235,.1);color:#2563eb}
+
+/* ── Prompt Settings Modal ─── */
+.prompt-settings-modal{width:700px;max-width:90vw;height:600px;max-height:85vh;background:#fff;border:1px solid #ddd;border-radius:12px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.15)}
+.prompt-settings-header{display:flex;align-items:center;justify-content:space-between;padding:.8rem 1.2rem;border-bottom:1px solid #eee;flex-shrink:0}
+.prompt-settings-header h2{font-size:.95rem;font-weight:600;color:#333;margin:0}
+.modal-close-btn{background:none;border:none;color:#bbb;font-size:1.2rem;line-height:1;padding:4px 8px;border-radius:4px;cursor:pointer}
+.modal-close-btn:hover{background:rgba(0,0,0,.05);color:#c0392b}
+
+.prompt-settings-content{flex:1;display:flex;overflow:hidden}
+.prompt-tabs{width:180px;flex-shrink:0;border-right:1px solid #eee;padding:.6rem 0;overflow-y:auto;background:#fafafa}
+.prompt-tab{width:100%;padding:.55rem .9rem;background:none;border:none;text-align:left;font-size:.78rem;font-weight:500;color:#666;cursor:pointer;transition:background .1s,color .1s;border-left:3px solid transparent}
+.prompt-tab:hover{background:rgba(0,0,0,.03);color:#333}
+.prompt-tab.active{background:#fff;color:#333;font-weight:600;border-left-color:#2563eb}
+
+.prompt-editor{flex:1;display:flex;flex-direction:column;padding:1rem;overflow:hidden}
+.prompt-description{font-size:.76rem;color:#888;margin-bottom:.6rem;line-height:1.5}
+.prompt-textarea{flex:1;width:100%;padding:.7rem;background:#fafafa;border:1px solid #ddd;border-radius:8px;color:#333;font-family:'SF Mono','Fira Code',monospace;font-size:.78rem;line-height:1.6;outline:none;resize:none;transition:border-color .15s}
+.prompt-textarea:focus{border-color:#999;background:#fff}
+.prompt-textarea::placeholder{color:#bbb}
+.prompt-loading{flex:1;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:.85rem}
+
+.prompt-settings-footer{display:flex;align-items:center;justify-content:space-between;padding:.7rem 1.2rem;border-top:1px solid #eee;flex-shrink:0;background:#fafafa}
+.prompt-footer-right{display:flex;align-items:center;gap:10px}
+.prompt-unsaved{font-size:.72rem;color:#e67e22;font-weight:500}
+.prompt-reset-btn{padding:.4rem .8rem;background:none;border:1px solid #ddd;border-radius:6px;color:#888;font-size:.76rem;font-weight:600;cursor:pointer;transition:all .12s}
+.prompt-reset-btn:hover{border-color:#c0392b;color:#c0392b;background:rgba(192,57,43,.04)}
+.prompt-reset-btn:disabled{opacity:.4;cursor:not-allowed}
+.prompt-cancel-btn{padding:.4rem .9rem;background:#f5f5f5;border:1px solid #ddd;border-radius:6px;color:#666;font-size:.78rem;font-weight:600;cursor:pointer;transition:background .12s}
+.prompt-cancel-btn:hover{background:#eee}
+.prompt-save-btn{padding:.4rem 1rem;background:#333;border:none;border-radius:6px;color:#fff;font-size:.78rem;font-weight:600;cursor:pointer;transition:background .12s}
+.prompt-save-btn:hover:not(:disabled){background:#444}
+.prompt-save-btn:disabled{opacity:.4;cursor:not-allowed}
