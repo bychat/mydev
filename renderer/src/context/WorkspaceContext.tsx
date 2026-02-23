@@ -19,6 +19,9 @@ interface WorkspaceContextValue {
   importFolder: () => Promise<void>;
   openFile: (name: string, filePath: string, readOnly?: boolean) => Promise<void>;
   closeTab: (filePath: string) => void;
+  closeOtherTabs: (filePath: string) => void;
+  closeAllTabs: () => void;
+  closeTabsToTheRight: (filePath: string) => void;
   updateTabContent: (filePath: string, content: string) => void;
   setActiveTabPath: (path: string | null) => void;
   saveFile: (filePath: string) => Promise<void>;
@@ -129,6 +132,31 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     });
   }, [activeTabPath]);
 
+  const closeOtherTabs = useCallback((filePath: string) => {
+    setOpenTabs(prev => {
+      const kept = prev.filter(t => t.path === filePath);
+      setActiveTabPath(kept.length > 0 ? kept[0].path : null);
+      return kept;
+    });
+  }, []);
+
+  const closeAllTabs = useCallback(() => {
+    setOpenTabs([]);
+    setActiveTabPath(null);
+  }, []);
+
+  const closeTabsToTheRight = useCallback((filePath: string) => {
+    setOpenTabs(prev => {
+      const idx = prev.findIndex(t => t.path === filePath);
+      if (idx === -1) return prev;
+      const kept = prev.slice(0, idx + 1);
+      if (activeTabPath && !kept.some(t => t.path === activeTabPath)) {
+        setActiveTabPath(kept[kept.length - 1]?.path ?? null);
+      }
+      return kept;
+    });
+  }, [activeTabPath]);
+
   const updateTabContent = useCallback((filePath: string, content: string) => {
     setOpenTabs(prev => prev.map(t => (t.path === filePath ? { ...t, content, modified: true } : t)));
   }, []);
@@ -196,7 +224,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     <WorkspaceContext.Provider value={{
       folderPath, folderName, tree, hasGit, hasPackageJson, packageName,
       openTabs, activeTabPath, activePanel, gitChanges, gitSplitChanges, gitBranchInfo: gitBranch, gitIgnoredPaths,
-      setActivePanel, importFolder, openFile, closeTab,
+      setActivePanel, importFolder, openFile, closeTab, closeOtherTabs, closeAllTabs, closeTabsToTheRight,
       updateTabContent, setActiveTabPath, saveFile, refreshGitStatus, openDiff,
       stageFile, unstageFile, stageAll, unstageAll, gitCommit: commitChanges,
       gitPush: pushChanges, gitPull: pullChanges, gitCheckout: checkoutBranch,

@@ -83,6 +83,23 @@ export interface AIChatResult {
   error?: string;
 }
 
+/** A single planned file action from the check agent */
+export interface FileActionPlan {
+  file: string;          // relative path
+  action: 'create' | 'update' | 'delete';
+  description: string;   // what changes to make
+}
+
+/** Progress state for a file action */
+export type FileActionStatus = 'pending' | 'reading' | 'updating' | 'done' | 'error';
+
+export interface FileActionProgress {
+  plan: FileActionPlan;
+  status: FileActionStatus;
+  diff?: { before: string; after: string };
+  error?: string;
+}
+
 export interface ElectronAPI {
   selectFolder: () => Promise<FolderResult | null>;
   readFile: (filePath: string) => Promise<FileResult>;
@@ -103,9 +120,15 @@ export interface ElectronAPI {
   aiCheckOllama: () => Promise<boolean>;
   aiListModels: (baseUrl: string, apiKey: string) => Promise<string[]>;
   aiChat: (baseUrl: string, apiKey: string, model: string, messages: ChatMessage[]) => Promise<AIChatResult>;
+  aiChatStream: (baseUrl: string, apiKey: string, model: string, messages: ChatMessage[]) => Promise<AIChatResult>;
+  onAiChatChunk: (cb: (chunk: string) => void) => () => void;
+  onAiChatChunkDone: (cb: () => void) => () => void;
   aiChatAbort: () => Promise<{ success: boolean }>;
   aiLoadSettings: () => Promise<AISettings>;
   aiSaveSettings: (settings: AISettings) => Promise<{ success: boolean }>;
+  // Debug
+  debugOpen: () => Promise<{ success: boolean }>;
+  debugClear: () => Promise<{ success: boolean }>;
   // Terminal
   terminalCreate: (cwd: string) => Promise<{ id: string; shell: string }>;
   terminalInput: (id: string, data: string) => void;

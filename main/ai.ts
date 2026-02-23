@@ -69,3 +69,33 @@ export async function chatComplete(
   );
   return response.choices[0]?.message?.content ?? '';
 }
+
+/**
+ * Streaming chat completion — yields chunks as they arrive.
+ * onChunk is called with each text delta.
+ * Returns the full assembled response.
+ */
+export async function chatCompleteStream(
+  baseUrl: string,
+  apiKey: string,
+  model: string,
+  messages: { role: 'user' | 'assistant' | 'system'; content: string }[],
+  onChunk: (chunk: string) => void,
+  signal?: AbortSignal,
+): Promise<string> {
+  const client = new OpenAI({ baseURL: baseUrl, apiKey });
+  const stream = await client.chat.completions.create(
+    { model, messages, stream: true },
+    { signal },
+  );
+
+  let full = '';
+  for await (const part of stream) {
+    const delta = part.choices[0]?.delta?.content;
+    if (delta) {
+      full += delta;
+      onChunk(delta);
+    }
+  }
+  return full;
+}

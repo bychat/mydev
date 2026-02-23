@@ -1,13 +1,14 @@
-import { ipcMain, dialog } from 'electron';
+import { ipcMain, dialog, type BrowserWindow } from 'electron';
 import { readDirectoryTree, getGitChangedFiles, getGitChangedFilesSplit, getGitDiff, getGitIgnoredPaths, gitStageFile, gitUnstageFile, gitStageAll, gitUnstageAll, gitCommit, gitGetBranchInfo, gitListBranches, gitCheckout, gitPull, gitPush } from './fileSystem';
-import { checkOllama, listModels, chatComplete, loadSettings, saveSettings, type AISettings } from './ai';
+import { checkOllama, listModels, chatComplete, chatCompleteStream, loadSettings, saveSettings, type AISettings } from './ai';
+import { logRequest, logResult, registerDebugIpc } from './debugWindow';
 import * as path from 'path';
 import * as fs from 'fs';
 
 /** Active AI chat AbortController — allows the renderer to cancel an in-flight request */
 let activeChatController: AbortController | null = null;
 
-export function registerIpcHandlers(): void {
+export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void {
   ipcMain.handle('select-folder', async () => {
     const result = await dialog.showOpenDialog({ properties: ['openDirectory'], title: 'Import a Project' });
     if (result.canceled) return null;
@@ -132,14 +133,67 @@ export function registerIpcHandlers(): void {
     // Create an AbortController so the renderer can cancel the request
     const controller = new AbortController();
     activeChatController = controller;
+
+    // Log request to debug window
+    const debugId = logRequest(baseUrl, model, messages);
+    const startTime = Date.now();
+
     try {
       const reply = await chatComplete(baseUrl, apiKey, model, messages, controller.signal);
+      logResult(debugId, 'success', reply, undefined, Date.now() - startTime);
       return { success: true, reply };
     } catch (err: unknown) {
       if (controller.signal.aborted) {
+        logResult(debugId, 'aborted', undefined, 'Aborted by user', Date.now() - startTime);
         return { success: false, error: 'aborted' };
       }
-      return { success: false, error: (err as Error).message };
+      const errMsg = (err as Error).message;
+      logResult(debugId, 'error', undefined, errMsg, Date.now() - startTime);
+      return { success: false, error: errMsg };
+    } finally {
+      if (activeChatController === controller) activeChatController = null;
+    }
+  });
+
+  // ── Streaming AI Chat ──
+  ipcMain.handle('ai-chat-stream', async (_event, baseUrl: string, apiKey: string, model: string, messages: { role: 'user' | 'assistant' | 'system'; content: string }[]) => {
+    const controller = new AbortController();
+    activeChatController = controller;
+
+    const debugId = logRequest(baseUrl, model, messages);
+    const startTime = Date.now();
+    const win = getWindow();
+
+    try {
+      const fullReply = await chatCompleteStream(
+        baseUrl, apiKey, model, messages,
+        (chunk: string) => {
+          // Send each chunk to the renderer as an event
+          if (win && !win.isDestroyed()) {
+            win.webContents.send('ai-chat-chunk', chunk);
+          }
+        },
+        controller.signal,
+      );
+
+      // Signal stream end
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('ai-chat-chunk-done');
+      }
+
+      logResult(debugId, 'success', fullReply, undefined, Date.now() - startTime);
+      return { success: true, reply: fullReply };
+    } catch (err: unknown) {
+      if (controller.signal.aborted) {
+        if (win && !win.isDestroyed()) {
+          win.webContents.send('ai-chat-chunk-done');
+        }
+        logResult(debugId, 'aborted', undefined, 'Aborted by user', Date.now() - startTime);
+        return { success: false, error: 'aborted' };
+      }
+      const errMsg = (err as Error).message;
+      logResult(debugId, 'error', undefined, errMsg, Date.now() - startTime);
+      return { success: false, error: errMsg };
     } finally {
       if (activeChatController === controller) activeChatController = null;
     }
@@ -161,4 +215,7 @@ export function registerIpcHandlers(): void {
     saveSettings(settings);
     return { success: true };
   });
+
+  // ── Debug Window ──
+  registerDebugIpc();
 }

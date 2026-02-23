@@ -67,7 +67,7 @@ function buildMenu(): void {
 
 app.whenReady().then(() => {
   createWindow();
-  registerIpcHandlers();
+  registerIpcHandlers(() => mainWindow);
   registerTerminalHandlers(() => mainWindow);
   buildMenu();
   app.on('activate', () => {

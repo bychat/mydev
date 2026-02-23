@@ -23,6 +23,7 @@
     "files": [
       "dist-main/**/*",
       "preload.js",
+      "debug-window.html",
       "renderer/dist/**/*"
     ],
     "mac": {

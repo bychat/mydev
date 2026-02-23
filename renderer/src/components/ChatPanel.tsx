@@ -1,10 +1,18 @@
 import { useState, useRef, useEffect, useCallback, useMemo, type ChangeEvent, type KeyboardEvent, type DragEvent } from 'react';
-import type { AISettings, ChatMessage } from '../types';
+import type { AISettings, ChatMessage, FileActionPlan, FileActionProgress, FileActionStatus } from '../types';
 import SettingsModal from './SettingsModal';
 import Markdown, { flattenTree } from './Markdown';
 import { useWorkspace } from '../context/WorkspaceContext';
 
 type ChatMode = 'Agent' | 'Chat' | 'Edit';
+
+/** findLastIndex polyfill for ES2020 targets */
+function findLastIdx<T>(arr: T[], predicate: (item: T) => boolean): number {
+  for (let i = arr.length - 1; i >= 0; i--) {
+    if (predicate(arr[i])) return i;
+  }
+  return -1;
+}
 
 interface AttachedFile {
   name: string;
@@ -14,8 +22,13 @@ interface AttachedFile {
 
 interface DisplayMessage {
   text: string;
-  sender: 'user' | 'bot';
+  sender: 'user' | 'bot' | 'system';
   files?: AttachedFile[];
+  isResearchStatus?: boolean;
+  /** Follow-up agent progress tracking */
+  isAgentProgress?: boolean;
+  agentActions?: FileActionProgress[];
+  verifyAttempt?: number;
 }
 
 function fileIcon(name: string) {
@@ -28,8 +41,161 @@ function fileIcon(name: string) {
   return map[ext] ?? '📄';
 }
 
-export default function ChatPanel() {
-  const { openTabs, activeTabPath, tree, folderPath, openFile, setActivePanel } = useWorkspace();
+/** Strip markdown fences from AI output */
+function stripMarkdownFences(text: string): string {
+  let s = text.trim();
+  // Remove opening fence (``` or ```lang)
+  if (s.startsWith('```')) {
+    const firstNewline = s.indexOf('\n');
+    if (firstNewline !== -1) s = s.slice(firstNewline + 1);
+  }
+  // Remove closing fence
+  if (s.endsWith('```')) {
+    const lastNewline = s.lastIndexOf('\n', s.length - 4);
+    if (lastNewline !== -1) s = s.slice(0, lastNewline);
+    else s = s.slice(0, -3);
+  }
+  return s;
+}
+
+/** Parse SEARCH/REPLACE blocks from AI response */
+function parseSearchReplaceBlocks(text: string): { search: string; replace: string }[] {
+  const blocks: { search: string; replace: string }[] = [];
+  // Strip outer markdown fences if present
+  let cleaned = text.trim();
+  if (cleaned.startsWith('```')) cleaned = stripMarkdownFences(cleaned);
+
+  const regex = /<<<<<<< SEARCH\n([\s\S]*?)\n=======\n([\s\S]*?)\n>>>>>>> REPLACE/g;
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(cleaned)) !== null) {
+    blocks.push({ search: match[1], replace: match[2] });
+  }
+  return blocks;
+}
+
+/** Apply SEARCH/REPLACE blocks to file content */
+function applySearchReplaceBlocks(content: string, blocks: { search: string; replace: string }[]): string {
+  let result = content;
+  for (const block of blocks) {
+    const idx = result.indexOf(block.search);
+    if (idx !== -1) {
+      result = result.slice(0, idx) + block.replace + result.slice(idx + block.search.length);
+    } else {
+      // Fuzzy fallback — try trimmed matching line by line
+      const searchLines = block.search.split('\n').map(l => l.trimEnd());
+      const resultLines = result.split('\n');
+      let startIdx = -1;
+      for (let i = 0; i <= resultLines.length - searchLines.length; i++) {
+        let found = true;
+        for (let j = 0; j < searchLines.length; j++) {
+          if (resultLines[i + j].trimEnd() !== searchLines[j]) {
+            found = false;
+            break;
+          }
+        }
+        if (found) {
+          startIdx = i;
+          break;
+        }
+      }
+      if (startIdx !== -1) {
+        const before = resultLines.slice(0, startIdx);
+        const after = resultLines.slice(startIdx + searchLines.length);
+        result = [...before, block.replace, ...after].join('\n');
+      }
+      // If still no match, skip this block silently
+    }
+  }
+  return result;
+}
+
+/** Compact diff display — shows a simple unified diff between before/after */
+function computeSimpleDiff(before: string, after: string): { added: string[]; removed: string[] } {
+  const beforeLines = before.split('\n');
+  const afterLines = after.split('\n');
+  const beforeSet = new Set(beforeLines);
+  const afterSet = new Set(afterLines);
+  const removed = beforeLines.filter(l => !afterSet.has(l)).slice(0, 12);
+  const added = afterLines.filter(l => !beforeSet.has(l)).slice(0, 12);
+  return { added, removed };
+}
+
+/** Single file action progress row with collapsible diff */
+function AgentActionRow({ action, onFileClick }: { action: FileActionProgress; onFileClick: (f: string) => void }) {
+  const [expanded, setExpanded] = useState(false);
+
+  const statusIcon = () => {
+    switch (action.status) {
+      case 'pending': return '⏳';
+      case 'reading': return '📖';
+      case 'updating': return '✏️';
+      case 'done': return '✅';
+      case 'error': return '❌';
+      default: return '⏳';
+    }
+  };
+
+  const statusLabel = () => {
+    switch (action.status) {
+      case 'pending': return 'Pending';
+      case 'reading': return 'Reading…';
+      case 'updating': return 'Updating…';
+      case 'done': return 'Done';
+      case 'error': return 'Error';
+      default: return '';
+    }
+  };
+
+  const hasDiff = action.status === 'done' && action.diff;
+  const diff = hasDiff ? computeSimpleDiff(action.diff!.before, action.diff!.after) : null;
+
+  return (
+    <div className={`agent-action-row status-${action.status}`}>
+      <div className="agent-action-header" onClick={() => hasDiff && setExpanded(!expanded)}>
+        <span className="agent-action-icon">{statusIcon()}</span>
+        <span
+          className="agent-action-file"
+          onClick={(e) => { e.stopPropagation(); onFileClick(action.plan.file); }}
+          title={`Open ${action.plan.file}`}
+        >
+          {fileIcon(action.plan.file)} {action.plan.file}
+        </span>
+        <span className="agent-action-badge">{action.plan.action}</span>
+        <span className="agent-action-status">{statusLabel()}</span>
+        {(action.status === 'reading' || action.status === 'updating') && (
+          <span className="agent-spinner" />
+        )}
+        {hasDiff && (
+          <span className="agent-action-toggle">{expanded ? '▾' : '▸'}</span>
+        )}
+      </div>
+      {action.error && (
+        <div className="agent-action-error">{action.error}</div>
+      )}
+      {expanded && diff && (
+        <div className="agent-diff">
+          {diff.removed.map((line, k) => (
+            <div key={`r${k}`} className="diff-removed">- {line}</div>
+          ))}
+          {diff.added.map((line, k) => (
+            <div key={`a${k}`} className="diff-added">+ {line}</div>
+          ))}
+          {((action.diff!.before.split('\n').length > 12) || (action.diff!.after.split('\n').length > 12)) && (
+            <div className="diff-truncated">… (diff truncated)</div>
+          )}
+        </div>
+      )}
+      <div className="agent-action-desc">{action.plan.description}</div>
+    </div>
+  );
+}
+
+interface ChatPanelProps {
+  onCollapse?: () => void;
+}
+
+export default function ChatPanel({ onCollapse }: ChatPanelProps) {
+  const { openTabs, activeTabPath, tree, folderPath, openFile, setActivePanel, gitIgnoredPaths } = useWorkspace();
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [history, setHistory] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -139,6 +305,397 @@ export default function ChatPanel() {
     setAttachedFiles(prev => prev.filter(f => f.path !== path));
   };
 
+  // ── Build the system message with workspace context (sent only once, on first chat) ──
+  const buildSystemContext = useCallback((): ChatMessage => {
+    // Filter out gitignored files from the workspace file list
+    const fileList = Array.from(workspaceFiles)
+      .filter(rel => {
+        if (!folderPath || gitIgnoredPaths.length === 0) return true;
+        const abs = `${folderPath}/${rel}`;
+        return !gitIgnoredPaths.some(ip => abs === ip || abs.startsWith(ip + '/'));
+      })
+      .sort();
+    const lines = [
+      `You are an expert coding assistant inside the "mydev.bychat.io" desktop IDE.`,
+      ``,
+      `## Workspace`,
+      `- **Directory**: ${folderPath ?? 'No project open'}`,
+      `- **Files** (${fileList.length} total):`,
+      ...fileList.map(f => `  - ${f}`),
+      ``,
+      `Use this workspace context to give precise, file-aware answers. When referencing files, use the exact relative paths listed above.`,
+    ];
+    return { role: 'system', content: lines.join('\n') };
+  }, [folderPath, workspaceFiles, gitIgnoredPaths]);
+
+  // ── Build the research agent prompt that picks relevant files ──
+  const buildResearchPrompt = useCallback((userQuestion: string): ChatMessage[] => {
+    const fileList = Array.from(workspaceFiles)
+      .filter(rel => {
+        if (!folderPath || gitIgnoredPaths.length === 0) return true;
+        const abs = `${folderPath}/${rel}`;
+        return !gitIgnoredPaths.some(ip => abs === ip || abs.startsWith(ip + '/'));
+      })
+      .sort();
+
+    const system: ChatMessage = {
+      role: 'system',
+      content: [
+        `You are a code research agent. Your job is to decide which files from the workspace are most relevant to the user's question.`,
+        ``,
+        `## Workspace: ${folderPath ?? 'unknown'}`,
+        `## Files (${fileList.length} total):`,
+        ...fileList.map(f => `- ${f}`),
+        ``,
+        `## Instructions`,
+        `Based on the user's question below, choose between 4 and 9 files that are most relevant to answering it.`,
+        `Return ONLY a valid JSON array of relative file paths. No explanation, no markdown fences, just the JSON array.`,
+        `Example: ["src/index.ts", "package.json", "README.md", "src/utils/helper.ts"]`,
+      ].join('\n'),
+    };
+
+    const user: ChatMessage = {
+      role: 'user',
+      content: userQuestion,
+    };
+
+    return [system, user];
+  }, [folderPath, workspaceFiles, gitIgnoredPaths]);
+
+  // ── Parse the research agent response into file paths ──
+  const parseResearchResponse = useCallback((raw: string): string[] => {
+    try {
+      // Try to extract a JSON array — the model might wrap it in markdown fences
+      const cleaned = raw.replace(/```json?\s*/gi, '').replace(/```/g, '').trim();
+      const parsed = JSON.parse(cleaned);
+      if (Array.isArray(parsed) && parsed.every((x: unknown) => typeof x === 'string')) {
+        // Validate against workspace files
+        const valid = (parsed as string[]).filter(f => workspaceFiles.has(f));
+        return valid.slice(0, 9);
+      }
+    } catch { /* fallback */ }
+    return [];
+  }, [workspaceFiles]);
+
+  // ── Read multiple files and return as AttachedFile[] ──
+  const readFilesForContext = useCallback(async (relativePaths: string[]): Promise<AttachedFile[]> => {
+    if (!folderPath) return [];
+    const results: AttachedFile[] = [];
+    for (const rel of relativePaths) {
+      const fullPath = `${folderPath}/${rel}`;
+      const name = rel.split('/').pop() ?? rel;
+      try {
+        const result = await window.electronAPI.readFile(fullPath);
+        if (result.success && result.content) {
+          results.push({ name: rel, path: fullPath, content: result.content });
+        }
+      } catch { /* skip unreadable files */ }
+    }
+    return results;
+  }, [folderPath]);
+
+  // ── Check Agent: detect whether the user wants file changes ──
+  const buildCheckAgentPrompt = useCallback((userMessage: string, chatHistory: ChatMessage[]): ChatMessage[] => {
+    const system: ChatMessage = {
+      role: 'system',
+      content: [
+        `You are a triage agent inside a coding IDE. Your ONLY job is to decide whether the user's latest message requires creating, modifying, or deleting files in the workspace.`,
+        ``,
+        `Reply with ONLY a valid JSON object — no markdown fences, no explanation:`,
+        `{ "needsFileChanges": true | false }`,
+        ``,
+        `Examples that need file changes: "add a dark mode toggle", "fix the bug in auth.ts", "create a new component", "refactor the utils", "update the README".`,
+        `Examples that do NOT need file changes: "explain how X works", "what does this function do", "summarize the project", "how do I run this".`,
+      ].join('\n'),
+    };
+    // Include just the last few exchanges for context (save tokens)
+    const recent = chatHistory.slice(-6);
+    return [system, ...recent, { role: 'user', content: userMessage }];
+  }, []);
+
+  const parseCheckAgentResponse = useCallback((raw: string): boolean => {
+    try {
+      const cleaned = raw.replace(/```json?\s*/gi, '').replace(/```/g, '').trim();
+      const parsed = JSON.parse(cleaned);
+      return !!parsed.needsFileChanges;
+    } catch {
+      // Fallback heuristics
+      const lower = raw.toLowerCase();
+      return lower.includes('"needsfilechanges": true') || lower.includes('"needsfilechanges":true');
+    }
+  }, []);
+
+  // ── File Action Planner: ask AI which files to create/update/delete ──
+  const buildActionPlanPrompt = useCallback((userMessage: string, chatHistory: ChatMessage[]): ChatMessage[] => {
+    const fileList = Array.from(workspaceFiles)
+      .filter(rel => {
+        if (!folderPath || gitIgnoredPaths.length === 0) return true;
+        const abs = `${folderPath}/${rel}`;
+        return !gitIgnoredPaths.some(ip => abs === ip || abs.startsWith(ip + '/'));
+      })
+      .sort();
+
+    const system: ChatMessage = {
+      role: 'system',
+      content: [
+        `You are a code planning agent. The user wants to make changes to their codebase.`,
+        ``,
+        `## Workspace files (${fileList.length}):`,
+        ...fileList.map(f => `- ${f}`),
+        ``,
+        `## Instructions`,
+        `Based on the conversation and the user's latest request, determine which files need to be created, updated, or deleted.`,
+        `Return ONLY a valid JSON array of action objects. No explanation, no markdown fences.`,
+        `Each object: { "file": "<relative path>", "action": "create"|"update"|"delete", "description": "<brief description of what to change>" }`,
+        ``,
+        `Example: [{"file":"src/utils/auth.ts","action":"update","description":"Add password validation function"},{"file":"src/components/Login.tsx","action":"create","description":"Create login form component"}]`,
+        ``,
+        `Keep the list focused — only include files that truly need changes. Max 10 files.`,
+      ].join('\n'),
+    };
+    const recent = chatHistory.slice(-6);
+    return [system, ...recent, { role: 'user', content: userMessage }];
+  }, [workspaceFiles, folderPath, gitIgnoredPaths]);
+
+  const parseActionPlanResponse = useCallback((raw: string): FileActionPlan[] => {
+    try {
+      const cleaned = raw.replace(/```json?\s*/gi, '').replace(/```/g, '').trim();
+      const parsed = JSON.parse(cleaned);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .filter((x: any) => x.file && x.action && x.description)
+          .map((x: any) => ({
+            file: x.file as string,
+            action: (x.action === 'create' || x.action === 'delete') ? x.action : 'update' as const,
+            description: x.description as string,
+          }))
+          .slice(0, 10);
+      }
+    } catch { /* fallback */ }
+    return [];
+  }, []);
+
+  // ── Build the prompt for applying a single file change ──
+  const buildFileChangePrompt = useCallback((
+    plan: FileActionPlan,
+    currentContent: string | null,
+    userRequest: string,
+    chatHistory: ChatMessage[],
+  ): ChatMessage[] => {
+    const system: ChatMessage = {
+      role: 'system',
+      content: plan.action === 'delete'
+        ? `You are a code editor. Respond with exactly: __DELETE_FILE__`
+        : plan.action === 'create'
+          ? [
+              `You are a code editor. Create the file "${plan.file}".`,
+              `Task: ${plan.description}`,
+              ``,
+              `Return ONLY the file content. No markdown fences, no explanation.`,
+            ].join('\n')
+          : [
+              `You are a precise code editor. You must apply targeted changes to the file using SEARCH/REPLACE blocks.`,
+              ``,
+              `## Task: ${plan.description}`,
+              `## File: ${plan.file}`,
+              ``,
+              `## Current file content:`,
+              '```',
+              currentContent ?? '',
+              '```',
+              ``,
+              `## Instructions`,
+              `Return ONLY one or more SEARCH/REPLACE blocks. Each block looks like:`,
+              ``,
+              `<<<<<<< SEARCH`,
+              `exact lines from the current file to find`,
+              `=======`,
+              `replacement lines`,
+              `>>>>>>> REPLACE`,
+              ``,
+              `Rules:`,
+              `- The SEARCH section must match the current file EXACTLY (including whitespace).`,
+              `- Include 2-3 lines of unchanged context around each change for precision.`,
+              `- Use multiple blocks for multiple changes.`,
+              `- Do NOT return the whole file. Only return SEARCH/REPLACE blocks.`,
+              `- No markdown fences around the blocks, no explanation text.`,
+            ].join('\n'),
+    };
+    const lastAssistant = chatHistory.filter(m => m.role === 'assistant').slice(-1);
+    return [system, ...lastAssistant, { role: 'user', content: userRequest }];
+  }, []);
+
+  // ── Build verification prompt ──
+  const buildVerifyPrompt = useCallback((
+    userRequest: string,
+    changedFiles: { file: string; action: string; diff?: { before: string; after: string } }[],
+  ): ChatMessage[] => {
+    const summary = changedFiles.map(f => {
+      if (f.action === 'delete') return `- **DELETED** ${f.file}`;
+      if (f.action === 'create') return `- **CREATED** ${f.file}`;
+      if (f.diff) {
+        // Compute a compact diff representation
+        const beforeLines = f.diff.before.split('\n');
+        const afterLines = f.diff.after.split('\n');
+        const added = afterLines.length - beforeLines.length;
+        return `- **UPDATED** ${f.file} (${added >= 0 ? '+' : ''}${added} lines net)`;
+      }
+      return `- **UPDATED** ${f.file}`;
+    }).join('\n');
+
+    const system: ChatMessage = {
+      role: 'system',
+      content: [
+        `You are a verification agent. The following file changes were just applied to fulfill the user's request.`,
+        ``,
+        `## User's request:`,
+        `${userRequest}`,
+        ``,
+        `## Changes made:`,
+        summary,
+        ``,
+        `## Instructions`,
+        `Evaluate whether these changes fully satisfy the user's request.`,
+        `Reply with ONLY a valid JSON object:`,
+        `{ "satisfied": true | false, "reason": "<brief explanation>", "missingChanges": [] }`,
+        ``,
+        `If not satisfied, list the missing changes as objects: { "file": "path", "action": "create|update|delete", "description": "what's missing" }`,
+      ].join('\n'),
+    };
+    return [system, { role: 'user', content: userRequest }];
+  }, []);
+
+  const parseVerifyResponse = useCallback((raw: string): { satisfied: boolean; reason: string; missingChanges: FileActionPlan[] } => {
+    try {
+      const cleaned = raw.replace(/```json?\s*/gi, '').replace(/```/g, '').trim();
+      const parsed = JSON.parse(cleaned);
+      return {
+        satisfied: !!parsed.satisfied,
+        reason: parsed.reason ?? '',
+        missingChanges: Array.isArray(parsed.missingChanges)
+          ? parsed.missingChanges.map((x: any) => ({ file: x.file, action: x.action ?? 'update', description: x.description ?? '' }))
+          : [],
+      };
+    } catch {
+      return { satisfied: true, reason: 'Unable to parse verification response', missingChanges: [] };
+    }
+  }, []);
+
+  // ── Execute file actions (read, apply, write) with progress updates ──
+  const executeFileActions = useCallback(async (
+    actions: FileActionPlan[],
+    userRequest: string,
+    chatHistory: ChatMessage[],
+    model: string,
+    baseUrl: string,
+    apiKey: string,
+    statusMsgIndex: number,
+  ): Promise<FileActionProgress[]> => {
+    const progressList: FileActionProgress[] = actions.map(a => ({
+      plan: a,
+      status: 'pending' as FileActionStatus,
+    }));
+
+    // Helper to update the progress message
+    const updateProgress = (statusText: string, list: FileActionProgress[]) => {
+      setMessages(prev => {
+        const updated = [...prev];
+        if (statusMsgIndex < updated.length) {
+          updated[statusMsgIndex] = {
+            text: statusText,
+            sender: 'system',
+            isAgentProgress: true,
+            agentActions: [...list],
+          };
+        }
+        return updated;
+      });
+      scrollToBottom();
+    };
+
+    for (let i = 0; i < actions.length; i++) {
+      const plan = actions[i];
+      const fullPath = folderPath ? `${folderPath}/${plan.file}` : plan.file;
+
+      // 1. Reading phase
+      progressList[i] = { ...progressList[i], status: 'reading' };
+      updateProgress(`🔧 Applying changes (${i + 1}/${actions.length})…`, progressList);
+
+      let currentContent: string | null = null;
+      if (plan.action !== 'create') {
+        try {
+          const result = await window.electronAPI.readFile(fullPath);
+          if (result.success) currentContent = result.content ?? null;
+        } catch { /* file might not exist */ }
+      }
+
+      // 2. Updating phase — ask AI for the new content
+      progressList[i] = { ...progressList[i], status: 'updating' };
+      updateProgress(`🔧 Applying changes (${i + 1}/${actions.length})…`, progressList);
+
+      if (plan.action === 'delete') {
+        // For delete — no AI call needed, just mark it
+        progressList[i] = {
+          ...progressList[i],
+          status: 'done',
+          diff: { before: currentContent ?? '', after: '(deleted)' },
+        };
+        // Note: We don't actually delete files for safety — user can do it manually
+        updateProgress(`🔧 Applying changes (${i + 1}/${actions.length})…`, progressList);
+        continue;
+      }
+
+      try {
+        const changeMessages = buildFileChangePrompt(plan, currentContent, userRequest, chatHistory);
+        const changeResult = await window.electronAPI.aiChat(baseUrl, apiKey, model, changeMessages);
+
+        if (changeResult.success && changeResult.reply) {
+          let newContent: string;
+
+          if (plan.action === 'create') {
+            // For new files — strip markdown fences if present
+            newContent = stripMarkdownFences(changeResult.reply);
+          } else {
+            // For updates — parse SEARCH/REPLACE blocks and apply them
+            const blocks = parseSearchReplaceBlocks(changeResult.reply);
+            if (blocks.length > 0 && currentContent !== null) {
+              newContent = applySearchReplaceBlocks(currentContent, blocks);
+            } else {
+              // Fallback: model returned raw content instead of blocks
+              newContent = stripMarkdownFences(changeResult.reply);
+            }
+          }
+
+          // Write the file
+          await window.electronAPI.saveFile(fullPath, newContent);
+
+          progressList[i] = {
+            ...progressList[i],
+            status: 'done',
+            diff: { before: currentContent ?? '', after: newContent },
+          };
+        } else {
+          progressList[i] = {
+            ...progressList[i],
+            status: 'error',
+            error: changeResult.error ?? 'AI failed to generate changes',
+          };
+        }
+      } catch (err: unknown) {
+        progressList[i] = {
+          ...progressList[i],
+          status: 'error',
+          error: (err as Error).message,
+        };
+      }
+
+      updateProgress(`🔧 Applying changes (${i + 1}/${actions.length})…`, progressList);
+    }
+
+    return progressList;
+  }, [folderPath, scrollToBottom, buildFileChangePrompt]);
+
+
   // ── Send ──
   const sendMessage = useCallback(async () => {
     const text = input.trim();
@@ -152,42 +709,359 @@ export default function ChatPanel() {
     setAttachedFiles([]);
     scrollToBottom();
 
-    // Build context from attached files
+    const isFirstMessage = history.length === 0;
+    setLoading(true);
+
+    let researchedFiles: AttachedFile[] = [];
+
+    // ── Step 1: Research Agent (first message only) ──
+    if (isFirstMessage && folderPath && workspaceFiles.size > 0) {
+      // Show research status
+      setMessages(prev => [...prev, {
+        text: '🔍 Researching your codebase…',
+        sender: 'system',
+        isResearchStatus: true,
+      }]);
+      scrollToBottom();
+
+      try {
+        const researchMessages = buildResearchPrompt(text);
+        const researchResult = await window.electronAPI.aiChat(
+          settings.baseUrl, settings.apiKey, model, researchMessages
+        );
+
+        if (researchResult.success && researchResult.reply) {
+          const chosenFiles = parseResearchResponse(researchResult.reply);
+
+          if (chosenFiles.length > 0) {
+            // Update status → reading files
+            setMessages(prev => {
+              const updated = [...prev];
+              const statusIdx = findLastIdx(updated, m => !!m.isResearchStatus);
+              if (statusIdx >= 0) {
+                updated[statusIdx] = {
+                  text: `📂 Reading ${chosenFiles.length} relevant file${chosenFiles.length > 1 ? 's' : ''}…`,
+                  sender: 'system',
+                  isResearchStatus: true,
+                };
+              }
+              return updated;
+            });
+            scrollToBottom();
+
+            researchedFiles = await readFilesForContext(chosenFiles);
+
+            // Replace status with the researched files display
+            setMessages(prev => {
+              const updated = [...prev];
+              const statusIdx = findLastIdx(updated, m => !!m.isResearchStatus);
+              if (statusIdx >= 0) {
+                updated[statusIdx] = {
+                  text: `📎 Added ${researchedFiles.length} file${researchedFiles.length > 1 ? 's' : ''} as context`,
+                  sender: 'system',
+                  files: researchedFiles,
+                  isResearchStatus: false,
+                };
+              }
+              return updated;
+            });
+            scrollToBottom();
+          } else {
+            // No files chosen — remove status
+            setMessages(prev => prev.filter(m => !m.isResearchStatus));
+          }
+        } else {
+          // Research failed — remove status, continue without context
+          setMessages(prev => prev.filter(m => !m.isResearchStatus));
+        }
+      } catch {
+        // Research failed — remove status, continue without context
+        setMessages(prev => prev.filter(m => !m.isResearchStatus));
+      }
+    }
+
+    // ── Step 2: Build the actual chat messages ──
+    // Merge user-attached files + research-agent files
+    const allContextFiles = [...currentFiles, ...researchedFiles];
+
     let contextPrefix = '';
-    if (currentFiles.length > 0) {
-      contextPrefix = currentFiles
+    if (allContextFiles.length > 0) {
+      contextPrefix = allContextFiles
         .filter(f => f.content)
-        .map(f => `--- File: ${f.name} ---\n${f.content}`)
+        .map(f => {
+          // Use relative path to save tokens — strip folderPath prefix
+          const relPath = folderPath && f.path.startsWith(folderPath)
+            ? f.path.slice(folderPath.length + 1)
+            : f.name;
+          return `--- File: ${relPath} ---\n${f.content}`;
+        })
         .join('\n\n') + '\n\n';
     }
 
     const userContent = contextPrefix + text;
-    const newHistory: ChatMessage[] = [...history, { role: 'user', content: userContent }];
+
+    const newHistory: ChatMessage[] = isFirstMessage
+      ? [buildSystemContext(), { role: 'user', content: userContent }]
+      : [...history, { role: 'user', content: userContent }];
+
     setHistory(newHistory);
-    setLoading(true);
+
+    // ── Step 2.5: Follow-up Check Agent (Agent mode, non-first message) ──
+    const isFollowUp = !isFirstMessage && mode === 'Agent' && folderPath && workspaceFiles.size > 0;
+    let needsFileChanges = false;
+
+    if (isFollowUp) {
+      // Show check agent status
+      setMessages(prev => [...prev, {
+        text: '🧠 Analyzing your request…',
+        sender: 'system',
+        isResearchStatus: true,
+      }]);
+      scrollToBottom();
+
+      try {
+        const checkMessages = buildCheckAgentPrompt(text, newHistory);
+        const checkResult = await window.electronAPI.aiChat(
+          settings.baseUrl, settings.apiKey, model, checkMessages
+        );
+
+        if (checkResult.success && checkResult.reply) {
+          needsFileChanges = parseCheckAgentResponse(checkResult.reply);
+        }
+      } catch { /* proceed without file changes */ }
+
+      // Remove status
+      setMessages(prev => prev.filter(m => !m.isResearchStatus));
+    }
+
+    // ── Step 2.6: File Action Agent (if changes needed) ──
+    if (needsFileChanges) {
+      // Phase A: Plan what files to change
+      setMessages(prev => {
+        const next = [...prev, {
+          text: '📋 Planning file changes…',
+          sender: 'system' as const,
+          isAgentProgress: true,
+          agentActions: [],
+        }];
+        return next;
+      });
+      scrollToBottom();
+
+      // Compute the progress index from the current messages length
+      // We need to await a tick so the state update has applied
+      await new Promise(r => setTimeout(r, 0));
+      // The progress message is always the last system message we just pushed
+      const progressMsgIdx = await new Promise<number>(resolve => {
+        setMessages(prev => {
+          resolve(prev.length - 1);
+          return prev;
+        });
+      });
+
+      let actionPlan: FileActionPlan[] = [];
+      try {
+        const planMessages = buildActionPlanPrompt(text, newHistory);
+        const planResult = await window.electronAPI.aiChat(
+          settings.baseUrl, settings.apiKey, model, planMessages
+        );
+
+        if (planResult.success && planResult.reply) {
+          actionPlan = parseActionPlanResponse(planResult.reply);
+        }
+      } catch { /* no plan */ }
+
+      if (actionPlan.length > 0) {
+        // Phase B: Execute each action with progress
+        let completedProgress: FileActionProgress[] = [];
+        let attempt = 0;
+        const MAX_ATTEMPTS = 3;
+        let currentPlan = actionPlan;
+
+        while (attempt < MAX_ATTEMPTS && currentPlan.length > 0) {
+          attempt++;
+
+          completedProgress = await executeFileActions(
+            currentPlan, text, newHistory, model,
+            settings.baseUrl, settings.apiKey, progressMsgIdx,
+          );
+
+          // Phase C: Verify changes
+          setMessages(prev => {
+            const updated = [...prev];
+            if (progressMsgIdx < updated.length) {
+              updated[progressMsgIdx] = {
+                text: `✅ Verifying changes… (attempt ${attempt}/${MAX_ATTEMPTS})`,
+                sender: 'system',
+                isAgentProgress: true,
+                agentActions: completedProgress,
+                verifyAttempt: attempt,
+              };
+            }
+            return updated;
+          });
+          scrollToBottom();
+
+          const changedForVerify = completedProgress
+            .filter(p => p.status === 'done')
+            .map(p => ({
+              file: p.plan.file,
+              action: p.plan.action,
+              diff: p.diff,
+            }));
+
+          if (changedForVerify.length === 0) break; // nothing to verify
+
+          try {
+            const verifyMessages = buildVerifyPrompt(text, changedForVerify);
+            const verifyResult = await window.electronAPI.aiChat(
+              settings.baseUrl, settings.apiKey, model, verifyMessages
+            );
+
+            if (verifyResult.success && verifyResult.reply) {
+              const verification = parseVerifyResponse(verifyResult.reply);
+
+              if (verification.satisfied || verification.missingChanges.length === 0) {
+                // All done!
+                break;
+              }
+
+              // Need more changes — loop again with missing changes
+              currentPlan = verification.missingChanges;
+            } else {
+              break; // can't verify, stop
+            }
+          } catch {
+            break; // verification failed, stop
+          }
+        }
+
+        // Finalize the progress message
+        const successCount = completedProgress.filter(p => p.status === 'done').length;
+        const errorCount = completedProgress.filter(p => p.status === 'error').length;
+        setMessages(prev => {
+          const updated = [...prev];
+          if (progressMsgIdx < updated.length) {
+            updated[progressMsgIdx] = {
+              text: `✅ Applied ${successCount} file change${successCount !== 1 ? 's' : ''}${errorCount > 0 ? ` (${errorCount} error${errorCount !== 1 ? 's' : ''})` : ''}`,
+              sender: 'system',
+              isAgentProgress: true,
+              agentActions: completedProgress,
+            };
+          }
+          return updated;
+        });
+        scrollToBottom();
+
+        // Add a summary of what was done to the chat history so the AI knows
+        const changeSummary = completedProgress
+          .filter(p => p.status === 'done')
+          .map(p => `- ${p.plan.action.toUpperCase()} ${p.plan.file}: ${p.plan.description}`)
+          .join('\n');
+
+        if (changeSummary) {
+          setHistory(prev => [...prev, {
+            role: 'assistant',
+            content: `I've made the following file changes:\n${changeSummary}`,
+          }]);
+        }
+      } else {
+        // No action plan — remove progress and fall through to regular chat
+        setMessages(prev => prev.filter(m => !m.isAgentProgress));
+      }
+    }
+
+    // ── Step 3: Get the real answer (streamed) ──
+    // Add an empty bot message that we'll update chunk by chunk
+    setMessages(prev => [...prev, { text: '', sender: 'bot' }]);
+    scrollToBottom();
+
+    // If we just did file changes, build a fresh history with the summary
+    // so the streaming response can reference what was done
+    const streamHistory = needsFileChanges
+      ? [...newHistory, ...history.slice(newHistory.length).filter(m => m.role === 'assistant')]
+      : newHistory;
+
+    // Accumulate streamed text in a ref-like variable
+    let streamedText = '';
+
+    // Listen for streaming chunks
+    const cleanupChunk = window.electronAPI.onAiChatChunk((chunk: string) => {
+      streamedText += chunk;
+      const currentText = streamedText; // capture for closure
+      setMessages(prev => {
+        const updated = [...prev];
+        updated[updated.length - 1] = { text: currentText, sender: 'bot' };
+        return updated;
+      });
+      scrollToBottom();
+    });
 
     try {
-      const result = await window.electronAPI.aiChat(settings.baseUrl, settings.apiKey, model, newHistory);
+      const result = await window.electronAPI.aiChatStream(settings.baseUrl, settings.apiKey, model, newHistory);
+      cleanupChunk();
+
       if (result.success && result.reply) {
-        setMessages(prev => [...prev, { text: result.reply!, sender: 'bot' }]);
+        // Ensure final state matches the full reply
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[updated.length - 1] = { text: result.reply!, sender: 'bot' };
+          return updated;
+        });
         setHistory(prev => [...prev, { role: 'assistant', content: result.reply! }]);
       } else if (result.error === 'aborted') {
-        setMessages(prev => [...prev, { text: '⏹ Response stopped.', sender: 'bot' }]);
+        if (streamedText) {
+          // Keep whatever was streamed, add a note
+          setMessages(prev => {
+            const updated = [...prev];
+            updated[updated.length - 1] = { text: streamedText + '\n\n⏹ *Response stopped.*', sender: 'bot' };
+            return updated;
+          });
+          setHistory(prev => [...prev, { role: 'assistant', content: streamedText }]);
+        } else {
+          setMessages(prev => {
+            const updated = [...prev];
+            updated[updated.length - 1] = { text: '⏹ Response stopped.', sender: 'bot' };
+            return updated;
+          });
+        }
       } else {
-        setMessages(prev => [...prev, { text: `⚠️ ${result.error ?? 'Unknown error'}`, sender: 'bot' }]);
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[updated.length - 1] = { text: `⚠️ ${result.error ?? 'Unknown error'}`, sender: 'bot' };
+          return updated;
+        });
       }
     } catch (err: unknown) {
+      cleanupChunk();
       const msg = (err as Error).message;
       if (msg?.includes('abort')) {
-        setMessages(prev => [...prev, { text: '⏹ Response stopped.', sender: 'bot' }]);
+        if (streamedText) {
+          setMessages(prev => {
+            const updated = [...prev];
+            updated[updated.length - 1] = { text: streamedText + '\n\n⏹ *Response stopped.*', sender: 'bot' };
+            return updated;
+          });
+          setHistory(prev => [...prev, { role: 'assistant', content: streamedText }]);
+        } else {
+          setMessages(prev => {
+            const updated = [...prev];
+            updated[updated.length - 1] = { text: '⏹ Response stopped.', sender: 'bot' };
+            return updated;
+          });
+        }
       } else {
-        setMessages(prev => [...prev, { text: `⚠️ ${msg}`, sender: 'bot' }]);
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[updated.length - 1] = { text: `⚠️ ${msg}`, sender: 'bot' };
+          return updated;
+        });
       }
     } finally {
       setLoading(false);
       scrollToBottom();
     }
-  }, [input, loading, settings, selectedModel, history, attachedFiles, scrollToBottom]);
+  }, [input, loading, settings, selectedModel, history, attachedFiles, scrollToBottom, buildSystemContext, buildResearchPrompt, parseResearchResponse, readFilesForContext, folderPath, workspaceFiles, mode, buildCheckAgentPrompt, parseCheckAgentResponse, buildActionPlanPrompt, parseActionPlanResponse, executeFileActions, buildVerifyPrompt, parseVerifyResponse]);
 
   // ── Stop running request ──
   const stopMessage = useCallback(async () => {
@@ -237,10 +1111,16 @@ export default function ChatPanel() {
       <div className="chat-hdr">
         <h2>💬 Chat</h2>
         <div className="chat-hdr-actions">
+          <button className="chat-hdr-btn" onClick={() => window.electronAPI.debugOpen()} title="Session Debug — view all prompts sent to the AI">🐛</button>
           {messages.length > 0 && (
             <button className="chat-hdr-btn" onClick={clearChat} title="Clear chat">🗑</button>
           )}
           <button className="chat-hdr-btn" onClick={() => setSettingsOpen(true)} title="AI Settings">⚙️</button>
+          {onCollapse && (
+            <button className="panel-collapse-btn" onClick={onCollapse} title="Collapse chat">
+              <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor"><path d="M6 3.5a.5.5 0 0 1 .82-.38l4 3.5a.5.5 0 0 1 0 .76l-4 3.5A.5.5 0 0 1 6 10.5v-7z"/></svg>
+            </button>
+          )}
         </div>
       </div>
 
@@ -269,6 +1149,21 @@ export default function ChatPanel() {
                     ))}
                   </div>
                 )}
+                {/* Agent progress panel */}
+                {msg.isAgentProgress && msg.agentActions && msg.agentActions.length > 0 && (
+                  <div className="agent-progress">
+                    {msg.agentActions.map((action, j) => (
+                      <AgentActionRow
+                        key={`${action.plan.file}-${j}`}
+                        action={action}
+                        onFileClick={handleMdFileClick}
+                      />
+                    ))}
+                    {msg.verifyAttempt && (
+                      <div className="agent-verify-badge">🔄 Verification attempt {msg.verifyAttempt}/3</div>
+                    )}
+                  </div>
+                )}
                 {msg.sender === 'bot' ? (
                   <div className="md-content">
                     <Markdown workspaceFiles={workspaceFiles} onFileClick={handleMdFileClick}>
@@ -276,13 +1171,13 @@ export default function ChatPanel() {
                     </Markdown>
                   </div>
                 ) : (
-                  msg.text
+                  !msg.isAgentProgress && msg.text
                 )}
               </div>
             </div>
           ))
         )}
-        {loading && (
+        {loading && (messages.length === 0 || messages[messages.length - 1].sender !== 'bot') && (
           <div className="chat-msg bot">
             <div className="bubble chat-typing">
               <span className="typing-dot" /><span className="typing-dot" /><span className="typing-dot" />

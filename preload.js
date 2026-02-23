@@ -20,9 +20,23 @@ contextBridge.exposeInMainWorld('electronAPI', {
   aiCheckOllama: () => ipcRenderer.invoke('ai-check-ollama'),
   aiListModels: (baseUrl, apiKey) => ipcRenderer.invoke('ai-list-models', baseUrl, apiKey),
   aiChat: (baseUrl, apiKey, model, messages) => ipcRenderer.invoke('ai-chat', baseUrl, apiKey, model, messages),
+  aiChatStream: (baseUrl, apiKey, model, messages) => ipcRenderer.invoke('ai-chat-stream', baseUrl, apiKey, model, messages),
+  onAiChatChunk: (cb) => {
+    const listener = (_event, chunk) => cb(chunk);
+    ipcRenderer.on('ai-chat-chunk', listener);
+    return () => ipcRenderer.removeListener('ai-chat-chunk', listener);
+  },
+  onAiChatChunkDone: (cb) => {
+    const listener = () => cb();
+    ipcRenderer.on('ai-chat-chunk-done', listener);
+    return () => ipcRenderer.removeListener('ai-chat-chunk-done', listener);
+  },
   aiChatAbort: () => ipcRenderer.invoke('ai-chat-abort'),
   aiLoadSettings: () => ipcRenderer.invoke('ai-load-settings'),
   aiSaveSettings: (settings) => ipcRenderer.invoke('ai-save-settings', settings),
+  // Debug
+  debugOpen: () => ipcRenderer.invoke('debug-open'),
+  debugClear: () => ipcRenderer.invoke('debug-clear'),
   // Terminal
   terminalCreate: (cwd) => ipcRenderer.invoke('terminal-create', cwd),
   terminalInput: (id, data) => ipcRenderer.send('terminal-input', id, data),
