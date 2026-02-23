@@ -35,6 +35,7 @@ interface WorkspaceContextValue {
   gitPush: () => Promise<{ success: boolean; error?: string }>;
   gitPull: () => Promise<{ success: boolean; error?: string }>;
   gitCheckout: (branch: string) => Promise<{ success: boolean; error?: string }>;
+  gitCreateBranch: (branchName: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
@@ -220,6 +221,13 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     return result;
   }, [folderPath, refreshGitStatus]);
 
+  const createBranch = useCallback(async (branchName: string) => {
+    if (!folderPath) return { success: false, error: 'No folder open' };
+    const result = await window.electronAPI.gitCreateBranch(folderPath, branchName);
+    await refreshGitStatus();
+    return result;
+  }, [folderPath, refreshGitStatus]);
+
   return (
     <WorkspaceContext.Provider value={{
       folderPath, folderName, tree, hasGit, hasPackageJson, packageName,
@@ -228,6 +236,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       updateTabContent, setActiveTabPath, saveFile, refreshGitStatus, openDiff,
       stageFile, unstageFile, stageAll, unstageAll, gitCommit: commitChanges,
       gitPush: pushChanges, gitPull: pullChanges, gitCheckout: checkoutBranch,
+      gitCreateBranch: createBranch,
     }}>
       {children}
     </WorkspaceContext.Provider>

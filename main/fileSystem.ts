@@ -163,6 +163,15 @@ export function gitCheckout(folderPath: string, branch: string): { success: bool
   }
 }
 
+export function gitCreateBranch(folderPath: string, branch: string): { success: boolean; error?: string } {
+  try {
+    execSync(`git checkout -b "${branch}"`, { cwd: folderPath, encoding: 'utf-8', stdio: 'pipe' });
+    return { success: true };
+  } catch (err: unknown) {
+    return { success: false, error: (err as Error).message };
+  }
+}
+
 export function gitPull(folderPath: string): { success: boolean; output?: string; error?: string } {
   try {
     const out = execSync('git pull', { cwd: folderPath, encoding: 'utf-8', stdio: 'pipe' });

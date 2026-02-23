@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   gitBranchInfo: (folderPath) => ipcRenderer.invoke('git-branch-info', folderPath),
   gitListBranches: (folderPath) => ipcRenderer.invoke('git-list-branches', folderPath),
   gitCheckout: (folderPath, branch) => ipcRenderer.invoke('git-checkout', folderPath, branch),
+  gitCreateBranch: (folderPath, branch) => ipcRenderer.invoke('git-create-branch', folderPath, branch),
   gitPull: (folderPath) => ipcRenderer.invoke('git-pull', folderPath),
   gitPush: (folderPath) => ipcRenderer.invoke('git-push', folderPath),
   aiCheckOllama: () => ipcRenderer.invoke('ai-check-ollama'),

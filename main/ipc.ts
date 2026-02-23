@@ -1,5 +1,5 @@
 import { ipcMain, dialog, type BrowserWindow } from 'electron';
-import { readDirectoryTree, getGitChangedFiles, getGitChangedFilesSplit, getGitDiff, getGitIgnoredPaths, gitStageFile, gitUnstageFile, gitStageAll, gitUnstageAll, gitCommit, gitGetBranchInfo, gitListBranches, gitCheckout, gitPull, gitPush } from './fileSystem';
+import { readDirectoryTree, getGitChangedFiles, getGitChangedFilesSplit, getGitDiff, getGitIgnoredPaths, gitStageFile, gitUnstageFile, gitStageAll, gitUnstageAll, gitCommit, gitGetBranchInfo, gitListBranches, gitCheckout, gitCreateBranch, gitPull, gitPush } from './fileSystem';
 import { checkOllama, listModels, chatComplete, chatCompleteStream, loadSettings, saveSettings, type AISettings } from './ai';
 import { logRequest, logResult, registerDebugIpc } from './debugWindow';
 import * as path from 'path';
@@ -110,6 +110,10 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
 
   ipcMain.handle('git-checkout', async (_event, folderPath: string, branch: string) => {
     return gitCheckout(folderPath, branch);
+  });
+
+  ipcMain.handle('git-create-branch', async (_event, folderPath: string, branch: string) => {
+    return gitCreateBranch(folderPath, branch);
   });
 
   ipcMain.handle('git-pull', async (_event, folderPath: string) => {

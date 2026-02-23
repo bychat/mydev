@@ -115,6 +115,7 @@ export interface ElectronAPI {
   gitBranchInfo: (folderPath: string) => Promise<GitBranchInfo>;
   gitListBranches: (folderPath: string) => Promise<string[]>;
   gitCheckout: (folderPath: string, branch: string) => Promise<SaveResult>;
+  gitCreateBranch: (folderPath: string, branch: string) => Promise<SaveResult>;
   gitPull: (folderPath: string) => Promise<GitOpResult>;
   gitPush: (folderPath: string) => Promise<GitOpResult>;
   aiCheckOllama: () => Promise<boolean>;
