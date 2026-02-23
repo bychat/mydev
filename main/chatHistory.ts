@@ -8,6 +8,8 @@ import { app } from 'electron';
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
+  /** Original display text (for user messages, this is the text without embedded file context) */
+  displayText?: string;
 }
 
 export interface Conversation {

@@ -1,5 +1,6 @@
-import { BrowserWindow, ipcMain } from 'electron';
+import { BrowserWindow, ipcMain, app } from 'electron';
 import * as path from 'path';
+import * as fs from 'fs';
 
 export interface DebugLogEntry {
   id: number;
@@ -14,8 +15,48 @@ export interface DebugLogEntry {
 }
 
 let debugWindow: BrowserWindow | null = null;
-const debugLog: DebugLogEntry[] = [];
+let debugLog: DebugLogEntry[] = [];
 let nextId = 1;
+
+/** Get the path to the debug log file */
+function getDebugLogPath(): string {
+  const userDataPath = app.getPath('userData');
+  return path.join(userDataPath, '_cache', 'debug-log.json');
+}
+
+/** Load persisted debug log from disk */
+function loadDebugLog(): void {
+  try {
+    const logPath = getDebugLogPath();
+    if (fs.existsSync(logPath)) {
+      const data = JSON.parse(fs.readFileSync(logPath, 'utf-8'));
+      debugLog = data.entries || [];
+      nextId = data.nextId || (debugLog.length > 0 ? Math.max(...debugLog.map(e => e.id)) + 1 : 1);
+      console.log('[DebugWindow] Loaded', debugLog.length, 'entries from disk');
+    }
+  } catch (err) {
+    console.error('[DebugWindow] Failed to load debug log:', err);
+    debugLog = [];
+    nextId = 1;
+  }
+}
+
+/** Save debug log to disk */
+function saveDebugLog(): void {
+  try {
+    const logPath = getDebugLogPath();
+    const dir = path.dirname(logPath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(logPath, JSON.stringify({ entries: debugLog, nextId }, null, 2));
+  } catch (err) {
+    console.error('[DebugWindow] Failed to save debug log:', err);
+  }
+}
+
+// Load debug log on module initialization
+loadDebugLog();
 
 /** Open (or focus) the debug window */
 export function openDebugWindow(): void {
@@ -70,6 +111,7 @@ export function logRequest(baseUrl: string, model: string, messages: { role: str
     status: 'pending',
   };
   debugLog.push(entry);
+  saveDebugLog(); // Persist to disk
   console.log('[DebugWindow] Total entries now:', debugLog.length);
 
   // Push to debug window if open
@@ -91,6 +133,7 @@ export function logResult(id: number, status: 'success' | 'error' | 'aborted', r
   entry.response = response;
   entry.error = error;
   entry.durationMs = durationMs;
+  saveDebugLog(); // Persist to disk
 
   if (debugWindow && !debugWindow.isDestroyed()) {
     debugWindow.webContents.send('debug-log-update', { id, status, response, error, durationMs });
@@ -104,6 +147,8 @@ export function logStreamingProgress(id: number, partialResponse: string): void 
   
   // Update the partial response (don't change status yet)
   entry.response = partialResponse;
+  // Note: We don't save on every streaming update for performance
+  // The final result will be saved in logResult
 
   if (debugWindow && !debugWindow.isDestroyed()) {
     debugWindow.webContents.send('debug-log-streaming', { id, partialResponse });
@@ -113,6 +158,8 @@ export function logStreamingProgress(id: number, partialResponse: string): void 
 /** Clear all debug entries */
 export function clearDebugLog(): void {
   debugLog.length = 0;
+  nextId = 1;
+  saveDebugLog(); // Persist the cleared state
   if (debugWindow && !debugWindow.isDestroyed()) {
     debugWindow.webContents.send('debug-log-init', []);
   }

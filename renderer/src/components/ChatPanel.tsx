@@ -240,7 +240,8 @@ export default function ChatPanel({ onCollapse }: ChatPanelProps) {
             const displayMsgs: DisplayMessage[] = conv.messages
               .filter(m => m.role !== 'system')
               .map(m => ({
-                text: m.content,
+                // For user messages, use displayText if available (original user input without file context)
+                text: m.role === 'user' && m.displayText ? m.displayText : m.content,
                 sender: m.role === 'user' ? 'user' : 'bot',
               }));
             setMessages(displayMsgs);
@@ -312,7 +313,8 @@ export default function ChatPanel({ onCollapse }: ChatPanelProps) {
         const displayMsgs: DisplayMessage[] = conv.messages
           .filter(m => m.role !== 'system')
           .map(m => ({
-            text: m.content,
+            // For user messages, use displayText if available (original user input without file context)
+            text: m.role === 'user' && m.displayText ? m.displayText : m.content,
             sender: m.role === 'user' ? 'user' : 'bot',
           }));
         setMessages(displayMsgs);
@@ -992,8 +994,8 @@ export default function ChatPanel({ onCollapse }: ChatPanelProps) {
     const userContent = contextPrefix + text;
 
     const newHistory: ChatMessage[] = isFirstMessage
-      ? [buildSystemContext(), { role: 'user', content: userContent }]
-      : [...history, { role: 'user', content: userContent }];
+      ? [buildSystemContext(), { role: 'user', content: userContent, displayText: text }]
+      : [...history, { role: 'user', content: userContent, displayText: text }];
 
     setHistory(newHistory);
 

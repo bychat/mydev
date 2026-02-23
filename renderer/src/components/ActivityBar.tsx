@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useWorkspace } from '../context/WorkspaceContext';
 import type { SidePanel } from '../types';
 import PromptSettingsModal from './PromptSettingsModal';
@@ -61,6 +61,26 @@ interface ActivityBarProps {
 export default function ActivityBar({ onToggleTerminal, terminalVisible }: ActivityBarProps) {
   const { activePanel, setActivePanel, hasGit, npmProjects, gitSplitChanges } = useWorkspace();
   const [promptSettingsOpen, setPromptSettingsOpen] = useState(false);
+
+  // Listen for menu-triggered open prompts
+  useEffect(() => {
+    const cleanup = window.electronAPI.onOpenPrompts(() => {
+      setPromptSettingsOpen(true);
+    });
+    return cleanup;
+  }, []);
+
+  // Listen for menu-triggered open debug
+  useEffect(() => {
+    const cleanup = window.electronAPI.onOpenDebug(async () => {
+      try {
+        await window.electronAPI.debugOpen();
+      } catch (err) {
+        console.error('Failed to open debug window:', err);
+      }
+    });
+    return cleanup;
+  }, []);
 
   const handleNewWindow = async () => {
     try {

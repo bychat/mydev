@@ -45,12 +45,41 @@ function buildMenu(): void {
       label: 'File',
       submenu: [
         {
+          label: 'New Window',
+          accelerator: 'CmdOrCtrl+Shift+N',
+          click: () => {
+            createWindow();
+          },
+        },
+        { type: 'separator' },
+        {
           label: 'Terminal',
           accelerator: 'CmdOrCtrl+`',
           click: () => {
-            if (mainWindow && !mainWindow.isDestroyed()) {
-              mainWindow.webContents.send('toggle-terminal');
+            const focusedWindow = BrowserWindow.getFocusedWindow();
+            if (focusedWindow && !focusedWindow.isDestroyed()) {
+              focusedWindow.webContents.send('toggle-terminal');
             }
+          },
+        },
+        {
+          label: 'Agent Prompts',
+          accelerator: 'CmdOrCtrl+Shift+P',
+          click: () => {
+            const focusedWindow = BrowserWindow.getFocusedWindow();
+            if (focusedWindow && !focusedWindow.isDestroyed()) {
+              focusedWindow.webContents.send('open-prompts');
+            }
+          },
+        },
+        {
+          label: 'AI Debug',
+          accelerator: 'CmdOrCtrl+Shift+D',
+          click: () => {
+            // Open debug window (it's a separate window, not a renderer event)
+            import('./debugWindow').then(({ openDebugWindow }) => {
+              openDebugWindow();
+            });
           },
         },
         { type: 'separator' },

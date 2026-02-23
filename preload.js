@@ -67,6 +67,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('toggle-terminal', listener);
     return () => ipcRenderer.removeListener('toggle-terminal', listener);
   },
+  onOpenPrompts: (cb) => {
+    const listener = () => cb();
+    ipcRenderer.on('open-prompts', listener);
+    return () => ipcRenderer.removeListener('open-prompts', listener);
+  },
+  onOpenDebug: (cb) => {
+    const listener = () => cb();
+    ipcRenderer.on('open-debug', listener);
+    return () => ipcRenderer.removeListener('open-debug', listener);
+  },
   // Chat History
   historyLoad: () => ipcRenderer.invoke('history-load'),
   historyGetRecentWorkspaces: (limit) => ipcRenderer.invoke('history-get-recent-workspaces', limit),

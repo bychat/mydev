@@ -82,6 +82,8 @@ export interface AISettings {
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
+  /** Original display text (for user messages, this is the text without embedded file context) */
+  displayText?: string;
 }
 
 export interface AIChatResult {
@@ -251,6 +253,8 @@ export interface ElectronAPI {
   onTerminalData: (cb: (id: string, data: string) => void) => () => void;
   onTerminalExit: (cb: (id: string) => void) => () => void;
   onToggleTerminal: (cb: () => void) => () => void;
+  onOpenPrompts: (cb: () => void) => () => void;
+  onOpenDebug: (cb: () => void) => () => void;
   // Chat History
   historyLoad: () => Promise<AppHistory>;
   historyGetRecentWorkspaces: (limit?: number) => Promise<WorkspaceHistory[]>;
