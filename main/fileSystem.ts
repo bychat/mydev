@@ -59,20 +59,28 @@ export function getGitChangedFilesSplit(folderPath: string): GitFileChange[] {
     console.log('[getGitChangedFilesSplit] Raw git status output:');
     console.log(JSON.stringify(out)); // Show exact string with escapes
     const result: GitFileChange[] = [];
-    for (const line of out.trim().split('\n').filter(Boolean)) {
+    // Split by newlines and also handle \r\n for Windows
+    // IMPORTANT: Don't use trim() on the full output as it removes leading spaces from the first line
+    // which are significant in porcelain format (space = not staged)
+    const lines = out.replace(/\r/g, '').split('\n').filter(line => line.length > 0);
+    console.log(`[getGitChangedFilesSplit] Number of lines: ${lines.length}`);
+    for (const line of lines) {
       // git status --porcelain format: XY filename
       // X = index status (staged), Y = working tree status (unstaged)
       // Position 0: X, Position 1: Y, Position 2: space, Position 3+: filename
       // But we need to be robust - check for malformed lines
       if (line.length < 4) {
-        console.log(`[getGitChangedFilesSplit] Skipping malformed line: "${line}"`);
+        console.log(`[getGitChangedFilesSplit] Skipping short line (len=${line.length}): "${line}"`);
         continue;
       }
+      
+      // Log character codes for debugging
+      console.log(`[getGitChangedFilesSplit] Line chars: [${line.charCodeAt(0)}, ${line.charCodeAt(1)}, ${line.charCodeAt(2)}] = "${line.substring(0,3)}" | rest: "${line.substring(3)}"`);
       
       // Check if line has the expected format (char, char, space, filename)
       // If position 2 is not a space, this might be malformed output from another git command
       if (line[2] !== ' ') {
-        console.log(`[getGitChangedFilesSplit] Skipping non-porcelain line (pos2='${line[2]}'): "${line}"`);
+        console.log(`[getGitChangedFilesSplit] Skipping non-porcelain line (pos2='${line[2]}' code=${line.charCodeAt(2)}): "${line}"`);
         continue;
       }
       
@@ -123,10 +131,22 @@ export function gitStageAll(folderPath: string): void {
 
 export function gitUnstageAll(folderPath: string): void {
   console.log('[gitUnstageAll] Unstaging all files in:', folderPath);
-  // Use --quiet to suppress output and prevent stdout pollution
-  // Also redirect stderr to prevent any interference
-  execSync('git reset HEAD --quiet', { cwd: folderPath, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
-  console.log('[gitUnstageAll] Done');
+  try {
+    // First, check if we have any commits (HEAD exists)
+    try {
+      execSync('git rev-parse HEAD', { cwd: folderPath, stdio: ['pipe', 'pipe', 'pipe'] });
+      // HEAD exists, use git reset
+      execSync('git reset HEAD --quiet', { cwd: folderPath, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
+    } catch {
+      // No commits yet, use git rm --cached for all staged files
+      execSync('git rm --cached -r . --quiet 2>/dev/null || true', { cwd: folderPath, encoding: 'utf-8', shell: '/bin/bash' });
+    }
+    // Wait a tiny bit for git index to be fully written
+    execSync('sleep 0.05', { cwd: folderPath });
+    console.log('[gitUnstageAll] Done');
+  } catch (err) {
+    console.error('[gitUnstageAll] Error:', err);
+  }
 }
 
 export function gitDiscardFile(folderPath: string, filePath: string): { success: boolean; error?: string } {

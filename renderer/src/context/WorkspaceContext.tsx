@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
 import type { TreeEntry, Tab, GitChange, GitFileChange, GitBranchInfo, SidePanel, NpmProject } from '../types';
 
 interface WorkspaceContextValue {
@@ -65,17 +65,30 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [gitBranch, setGitBranch] = useState<GitBranchInfo | null>(null);
   const [gitIgnoredPaths, setGitIgnoredPaths] = useState<string[]>([]);
   const [npmProjects, setNpmProjects] = useState<NpmProject[]>([]);
+  
+  // Lock to prevent concurrent git operations
+  const gitLockRef = useRef(false);
 
   const refreshGitStatus = useCallback(async () => {
     if (!folderPath) return;
+    // Prevent concurrent refreshes
+    if (gitLockRef.current) {
+      console.log('[WorkspaceContext] refreshGitStatus skipped (locked)');
+      return;
+    }
+    gitLockRef.current = true;
     console.log('[WorkspaceContext] refreshGitStatus called');
-    const changes = await window.electronAPI.gitStatus(folderPath);
-    setGitChanges(changes);
-    const split = await window.electronAPI.gitStatusSplit(folderPath);
-    console.log('[WorkspaceContext] gitStatusSplit returned:', JSON.stringify(split, null, 2));
-    setGitSplitChanges(split);
-    const branch = await window.electronAPI.gitBranchInfo(folderPath);
-    setGitBranch(branch);
+    try {
+      const changes = await window.electronAPI.gitStatus(folderPath);
+      setGitChanges(changes);
+      const split = await window.electronAPI.gitStatusSplit(folderPath);
+      console.log('[WorkspaceContext] gitStatusSplit returned:', JSON.stringify(split, null, 2));
+      setGitSplitChanges(split);
+      const branch = await window.electronAPI.gitBranchInfo(folderPath);
+      setGitBranch(branch);
+    } finally {
+      gitLockRef.current = false;
+    }
   }, [folderPath]);
 
   const importFolder = useCallback(async () => {
@@ -223,18 +236,21 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   const stageFile = useCallback(async (filePath: string) => {
     if (!folderPath) return;
+    console.log('[WorkspaceContext] stageFile called:', filePath);
     await window.electronAPI.gitStage(folderPath, filePath);
     await refreshGitStatus();
   }, [folderPath, refreshGitStatus]);
 
   const unstageFile = useCallback(async (filePath: string) => {
     if (!folderPath) return;
+    console.log('[WorkspaceContext] unstageFile called:', filePath);
     await window.electronAPI.gitUnstage(folderPath, filePath);
     await refreshGitStatus();
   }, [folderPath, refreshGitStatus]);
 
   const stageAll = useCallback(async () => {
     if (!folderPath) return;
+    console.log('[WorkspaceContext] stageAll called');
     await window.electronAPI.gitStageAll(folderPath);
     await refreshGitStatus();
   }, [folderPath, refreshGitStatus]);

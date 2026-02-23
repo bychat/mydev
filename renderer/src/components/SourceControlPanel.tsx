@@ -65,7 +65,8 @@ export default function SourceControlPanel() {
   const [showCreateBranch, setShowCreateBranch] = useState(false);
   const [newBranchName, setNewBranchName] = useState('');
 
-  useEffect(() => { refreshGitStatus(); }, [refreshGitStatus]);
+  // Only refresh on initial mount, not on every refreshGitStatus reference change
+  useEffect(() => { refreshGitStatus(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const staged = useMemo(() => {
     const result = gitSplitChanges.filter(c => c.staged);
@@ -218,15 +219,13 @@ ${payload}`;
             onKeyDown={handleKeyDown}
             rows={commitMsg.includes('\n') ? 3 : 1}
           />
-        </div>
-        <div className="sc-generate-card">
           <button
-            className="sc-generate-btn-card"
+            className="sc-generate-btn-inline"
             disabled={generating || allChanges.length === 0}
             onClick={handleGenerateCommitMsg}
             title="Generate commit message with AI"
           >
-            {generating ? '⏳ Generating…' : '✨ Generate with AI'}
+            {generating ? '⏳' : '✨'}
           </button>
         </div>
         <button

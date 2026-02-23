@@ -146,17 +146,16 @@ button{font-family:inherit;cursor:pointer}
 
 /* ── Commit area ─── */
 .sc-commit-area{padding:.6rem .7rem;border-bottom:1px solid #e8e8e8;display:flex;flex-direction:column;gap:6px}
-.sc-commit-input-wrap{position:relative;display:flex;align-items:stretch}
-.sc-commit-input{flex:1;padding:.45rem .7rem;background:#fff;border:1px solid #ddd;border-radius:6px;color:#333;font-family:inherit;font-size:.8rem;outline:none;resize:vertical;min-height:32px;max-height:120px;line-height:1.4;transition:border-color .15s}
+.sc-commit-input-wrap{position:relative;display:flex;align-items:flex-start}
+.sc-commit-input{flex:1;padding:.45rem 2.2rem .45rem .7rem;background:#fff;border:1px solid #ddd;border-radius:6px;color:#333;font-family:inherit;font-size:.8rem;outline:none;resize:vertical;min-height:32px;max-height:120px;line-height:1.4;transition:border-color .15s}
 .sc-commit-input:focus{border-color:#999}
 .sc-commit-input::placeholder{color:#bbb}
 
-/* Generate AI commit message – card style */
-.sc-generate-card{display:flex;align-items:center;padding:5px 8px;background:#eee;border:1px solid #ddd;border-radius:8px}
-.sc-generate-btn-card{display:flex;align-items:center;gap:5px;width:100%;padding:4px 10px;background:#fff;border:1px solid #d8d8d8;border-radius:6px;color:#666;font-family:inherit;font-size:.76rem;font-weight:600;cursor:pointer;transition:background .12s,color .12s,border-color .12s,box-shadow .12s}
-.sc-generate-btn-card:hover:not(:disabled){background:#f9f9f9;color:#333;border-color:#bbb;box-shadow:0 1px 4px rgba(0,0,0,.06)}
-.sc-generate-btn-card:active:not(:disabled){transform:scale(.98)}
-.sc-generate-btn-card:disabled{opacity:.35;cursor:not-allowed}
+/* Generate AI commit message – inline button inside input */
+.sc-generate-btn-inline{position:absolute;right:6px;top:6px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;background:#f5f5f5;border:1px solid #ddd;border-radius:4px;color:#888;font-size:.75rem;cursor:pointer;transition:background .12s,color .12s,border-color .12s}
+.sc-generate-btn-inline:hover:not(:disabled){background:#eee;color:#333;border-color:#bbb}
+.sc-generate-btn-inline:active:not(:disabled){transform:scale(.92)}
+.sc-generate-btn-inline:disabled{opacity:.35;cursor:not-allowed}
 .sc-commit-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:.4rem;padding:.4rem .8rem;background:#333;color:#fff;border:none;border-radius:6px;font-size:.8rem;font-weight:600;cursor:pointer;transition:background .12s,transform .1s}
 .sc-commit-btn:hover:not(:disabled){background:#444;transform:scale(1.01)}
 .sc-commit-btn:active:not(:disabled){transform:scale(.98)}
