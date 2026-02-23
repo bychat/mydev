@@ -9,11 +9,16 @@ interface TerminalTab {
   shell: string;
   terminal: Terminal;
   fitAddon: FitAddon;
+  label?: string;
 }
 
 interface Props {
   visible: boolean;
   onClose: () => void;
+}
+
+interface RunCommandEvent extends CustomEvent {
+  detail: { cwd: string; command: string; label?: string };
 }
 
 export default function TerminalPanel({ visible, onClose }: Props) {
@@ -23,9 +28,7 @@ export default function TerminalPanel({ visible, onClose }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const cleanupRefs = useRef<Map<string, () => void>>(new Map());
 
-  const createTerminal = useCallback(async () => {
-    if (!folderPath) return;
-    const cwd = folderPath;
+  const createTerminalWithCommand = useCallback(async (cwd: string, command?: string, label?: string) => {
     const { id, shell } = await window.electronAPI.terminalCreate(cwd);
 
     const terminal = new Terminal({
@@ -84,10 +87,35 @@ export default function TerminalPanel({ visible, onClose }: Props) {
       terminal.dispose();
     });
 
-    const newTab: TerminalTab = { id, shell, terminal, fitAddon };
+    const newTab: TerminalTab = { id, shell, terminal, fitAddon, label };
     setTabs(prev => [...prev, newTab]);
     setActiveId(id);
-  }, [folderPath]);
+
+    // Send command after a short delay to let terminal initialize
+    if (command) {
+      setTimeout(() => {
+        window.electronAPI.terminalInput(id, command + '\n');
+      }, 100);
+    }
+
+    return id;
+  }, []);
+
+  const createTerminal = useCallback(async () => {
+    if (!folderPath) return;
+    return createTerminalWithCommand(folderPath);
+  }, [folderPath, createTerminalWithCommand]);
+
+  // Listen for run-command events from other components
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const event = e as RunCommandEvent;
+      const { cwd, command, label } = event.detail;
+      createTerminalWithCommand(cwd, command, label);
+    };
+    window.addEventListener('run-terminal-command', handler);
+    return () => window.removeEventListener('run-terminal-command', handler);
+  }, [createTerminalWithCommand]);
 
   // Mount active terminal into DOM
   useEffect(() => {
@@ -156,7 +184,7 @@ export default function TerminalPanel({ visible, onClose }: Props) {
               onClick={() => setActiveId(t.id)}
             >
               <span className="terminal-tab-icon">⬛</span>
-              {t.shell}
+              {t.label || t.shell}
               <span className="terminal-tab-close" onClick={e => { e.stopPropagation(); killTab(t.id); }}>×</span>
             </button>
           ))}

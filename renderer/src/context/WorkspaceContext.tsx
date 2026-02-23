@@ -238,11 +238,15 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const runNpmScript = useCallback((projectPath: string, scriptName: string) => {
     // Dispatch event to show terminal
     window.dispatchEvent(new CustomEvent('show-terminal'));
-    // Open terminal in the project directory and run the script
-    window.electronAPI.terminalCreate(projectPath).then(({ id }) => {
-      // Send the npm command
-      window.electronAPI.terminalInput(id, `npm run ${scriptName}\n`);
-    });
+    // Dispatch event to run command in terminal panel
+    const projectName = projectPath.split('/').pop() || projectPath;
+    window.dispatchEvent(new CustomEvent('run-terminal-command', {
+      detail: {
+        cwd: projectPath,
+        command: `npm run ${scriptName}`,
+        label: `${projectName}: ${scriptName}`,
+      },
+    }));
   }, []);
 
   return (
