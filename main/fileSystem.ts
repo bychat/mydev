@@ -55,27 +55,50 @@ export function getGitChangedFiles(folderPath: string): { file: string; status: 
 
 export function getGitChangedFilesSplit(folderPath: string): GitFileChange[] {
   try {
-    const out = execSync('git status --porcelain', { cwd: folderPath, encoding: 'utf-8' });
+    const out = execSync('git status --porcelain', { cwd: folderPath, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
+    console.log('[getGitChangedFilesSplit] Raw git status output:');
+    console.log(JSON.stringify(out)); // Show exact string with escapes
     const result: GitFileChange[] = [];
     for (const line of out.trim().split('\n').filter(Boolean)) {
+      // git status --porcelain format: XY filename
+      // X = index status (staged), Y = working tree status (unstaged)
+      // Position 0: X, Position 1: Y, Position 2: space, Position 3+: filename
+      // But we need to be robust - check for malformed lines
+      if (line.length < 4) {
+        console.log(`[getGitChangedFilesSplit] Skipping malformed line: "${line}"`);
+        continue;
+      }
+      
+      // Check if line has the expected format (char, char, space, filename)
+      // If position 2 is not a space, this might be malformed output from another git command
+      if (line[2] !== ' ') {
+        console.log(`[getGitChangedFilesSplit] Skipping non-porcelain line (pos2='${line[2]}'): "${line}"`);
+        continue;
+      }
+      
       const indexStatus = line[0];   // staged column
       const wtStatus = line[1];      // working tree column
       const file = line.substring(3);
+      console.log(`[getGitChangedFilesSplit] Line: "${line}" | indexStatus: "${indexStatus}" | wtStatus: "${wtStatus}" | file: "${file}"`);
 
       // Staged change (index column has a letter, not space or ?)
       if (indexStatus !== ' ' && indexStatus !== '?') {
+        console.log(`[getGitChangedFilesSplit] Adding staged: ${file} (status: ${indexStatus})`);
         result.push({ file, status: indexStatus, staged: true });
       }
       // Unstaged / working tree change
       if (wtStatus !== ' ' && wtStatus !== undefined) {
         // Untracked files show as '??' — only add once as unstaged
         if (indexStatus === '?') {
+          console.log(`[getGitChangedFilesSplit] Adding untracked: ${file}`);
           result.push({ file, status: '??', staged: false });
         } else {
+          console.log(`[getGitChangedFilesSplit] Adding unstaged: ${file} (status: ${wtStatus})`);
           result.push({ file, status: wtStatus, staged: false });
         }
       }
     }
+    console.log('[getGitChangedFilesSplit] Final result:', JSON.stringify(result, null, 2));
     return result;
   } catch {
     return [];
@@ -93,11 +116,38 @@ export function gitUnstageFile(folderPath: string, filePath: string): void {
 }
 
 export function gitStageAll(folderPath: string): void {
+  console.log('[gitStageAll] Staging all files in:', folderPath);
   execSync('git add -A', { cwd: folderPath });
+  console.log('[gitStageAll] Done');
 }
 
 export function gitUnstageAll(folderPath: string): void {
-  execSync('git reset HEAD', { cwd: folderPath });
+  console.log('[gitUnstageAll] Unstaging all files in:', folderPath);
+  // Use --quiet to suppress output and prevent stdout pollution
+  // Also redirect stderr to prevent any interference
+  execSync('git reset HEAD --quiet', { cwd: folderPath, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
+  console.log('[gitUnstageAll] Done');
+}
+
+export function gitDiscardFile(folderPath: string, filePath: string): { success: boolean; error?: string } {
+  const rel = path.relative(folderPath, filePath.startsWith('/') ? filePath : path.join(folderPath, filePath));
+  try {
+    // Check if file is untracked
+    const status = execSync(`git status --porcelain -- "${rel}"`, { cwd: folderPath, encoding: 'utf-8' }).trim();
+    if (status.startsWith('??')) {
+      // Untracked file - just delete it
+      const fullPath = path.join(folderPath, rel);
+      if (fs.existsSync(fullPath)) {
+        fs.unlinkSync(fullPath);
+      }
+    } else {
+      // Tracked file - checkout from HEAD
+      execSync(`git checkout HEAD -- "${rel}"`, { cwd: folderPath });
+    }
+    return { success: true };
+  } catch (err: unknown) {
+    return { success: false, error: (err as Error).message };
+  }
 }
 
 export function gitCommit(folderPath: string, message: string): { success: boolean; error?: string } {

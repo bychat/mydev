@@ -144,6 +144,7 @@ export interface ElectronAPI {
   gitUnstage: (folderPath: string, filePath: string) => Promise<SaveResult>;
   gitStageAll: (folderPath: string) => Promise<SaveResult>;
   gitUnstageAll: (folderPath: string) => Promise<SaveResult>;
+  gitDiscard: (folderPath: string, filePath: string) => Promise<SaveResult>;
   gitCommit: (folderPath: string, message: string) => Promise<SaveResult>;
   gitBranchInfo: (folderPath: string) => Promise<GitBranchInfo>;
   gitListBranches: (folderPath: string) => Promise<string[]>;

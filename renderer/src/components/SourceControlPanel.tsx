@@ -52,7 +52,8 @@ function buildUnifiedDiff(oldContent: string, newContent: string): string {
 export default function SourceControlPanel() {
   const {
     gitSplitChanges, folderPath, refreshGitStatus, openDiff,
-    stageFile, unstageFile, stageAll, unstageAll, gitCommit,
+    stageFile, unstageFile, stageAll, unstageAll, discardFile, gitCommit,
+    gitCreateBranch, gitBranchInfo,
   } = useWorkspace();
 
   const [commitMsg, setCommitMsg] = useState('');
@@ -61,11 +62,23 @@ export default function SourceControlPanel() {
   const [error, setError] = useState<string | null>(null);
   const [stagedCollapsed, setStagedCollapsed] = useState(false);
   const [unstagedCollapsed, setUnstagedCollapsed] = useState(false);
+  const [showCreateBranch, setShowCreateBranch] = useState(false);
+  const [newBranchName, setNewBranchName] = useState('');
 
   useEffect(() => { refreshGitStatus(); }, [refreshGitStatus]);
 
-  const staged = useMemo(() => gitSplitChanges.filter(c => c.staged), [gitSplitChanges]);
-  const unstaged = useMemo(() => gitSplitChanges.filter(c => !c.staged), [gitSplitChanges]);
+  const staged = useMemo(() => {
+    const result = gitSplitChanges.filter(c => c.staged);
+    console.log('[SourceControl] Staged files:', result.map(c => ({ file: c.file, status: c.status })));
+    return result;
+  }, [gitSplitChanges]);
+
+  const unstaged = useMemo(() => {
+    const result = gitSplitChanges.filter(c => !c.staged);
+    console.log('[SourceControl] Unstaged files:', result.map(c => ({ file: c.file, status: c.status })));
+    return result;
+  }, [gitSplitChanges]);
+
   const allChanges = useMemo(() => {
     // Deduplicate by file name (a file can appear in both staged + unstaged)
     const map = new Map<string, { file: string; status: string }>();
@@ -74,6 +87,22 @@ export default function SourceControlPanel() {
     }
     return [...map.values()];
   }, [gitSplitChanges]);
+
+  const handleDiscard = async (filePath: string) => {
+    if (!confirm(`Discard changes to "${filePath.split('/').pop()}"? This cannot be undone.`)) return;
+    await discardFile(filePath);
+  };
+
+  const handleCreateBranch = async () => {
+    if (!newBranchName.trim()) return;
+    const result = await gitCreateBranch(newBranchName.trim());
+    if (result.success) {
+      setNewBranchName('');
+      setShowCreateBranch(false);
+    } else {
+      setError(result.error ?? 'Failed to create branch');
+    }
+  };
 
   const handleCommit = async () => {
     if (!commitMsg.trim() || staged.length === 0) return;
@@ -265,6 +294,11 @@ ${payload}`;
                 <span className="tree-label sc-file">{c.file}</span>
                 <span className="sc-status" style={{ color: s.color }}>{s.label}</span>
                 <button
+                  className="sc-item-action sc-item-discard"
+                  onClick={e => { e.stopPropagation(); handleDiscard(c.file); }}
+                  title="Discard Changes"
+                >↩</button>
+                <button
                   className="sc-item-action"
                   onClick={e => { e.stopPropagation(); stageFile(c.file); }}
                   title="Stage"
@@ -274,6 +308,32 @@ ${payload}`;
           })}
         </div>
       )}
+
+      {/* Create Branch Section */}
+      <div className="sc-branch-section">
+        {showCreateBranch ? (
+          <div className="sc-create-branch-form">
+            <input
+              type="text"
+              className="sc-branch-input"
+              placeholder="New branch name..."
+              value={newBranchName}
+              onChange={e => setNewBranchName(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') handleCreateBranch();
+                if (e.key === 'Escape') { setShowCreateBranch(false); setNewBranchName(''); }
+              }}
+              autoFocus
+            />
+            <button className="sc-branch-confirm" onClick={handleCreateBranch} title="Create Branch">✓</button>
+            <button className="sc-branch-cancel" onClick={() => { setShowCreateBranch(false); setNewBranchName(''); }} title="Cancel">✕</button>
+          </div>
+        ) : (
+          <button className="sc-create-branch-btn" onClick={() => setShowCreateBranch(true)}>
+            + Create Branch {gitBranchInfo?.current ? `from ${gitBranchInfo.current}` : ''}
+          </button>
+        )}
+      </div>
     </div>
   );
 }

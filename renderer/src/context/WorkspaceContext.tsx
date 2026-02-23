@@ -32,6 +32,7 @@ interface WorkspaceContextValue {
   unstageFile: (filePath: string) => Promise<void>;
   stageAll: () => Promise<void>;
   unstageAll: () => Promise<void>;
+  discardFile: (filePath: string) => Promise<void>;
   gitCommit: (message: string) => Promise<{ success: boolean; error?: string }>;
   gitPush: () => Promise<{ success: boolean; error?: string }>;
   gitPull: () => Promise<{ success: boolean; error?: string }>;
@@ -67,9 +68,11 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   const refreshGitStatus = useCallback(async () => {
     if (!folderPath) return;
+    console.log('[WorkspaceContext] refreshGitStatus called');
     const changes = await window.electronAPI.gitStatus(folderPath);
     setGitChanges(changes);
     const split = await window.electronAPI.gitStatusSplit(folderPath);
+    console.log('[WorkspaceContext] gitStatusSplit returned:', JSON.stringify(split, null, 2));
     setGitSplitChanges(split);
     const branch = await window.electronAPI.gitBranchInfo(folderPath);
     setGitBranch(branch);
@@ -238,7 +241,16 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   const unstageAll = useCallback(async () => {
     if (!folderPath) return;
+    console.log('[WorkspaceContext] unstageAll called');
     await window.electronAPI.gitUnstageAll(folderPath);
+    console.log('[WorkspaceContext] unstageAll completed, refreshing status...');
+    await refreshGitStatus();
+    console.log('[WorkspaceContext] unstageAll refresh done');
+  }, [folderPath, refreshGitStatus]);
+
+  const discardFile = useCallback(async (filePath: string) => {
+    if (!folderPath) return;
+    await window.electronAPI.gitDiscard(folderPath, filePath);
     await refreshGitStatus();
   }, [folderPath, refreshGitStatus]);
 
@@ -297,7 +309,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       openTabs, activeTabPath, activePanel, gitChanges, gitSplitChanges, gitBranchInfo: gitBranch, gitIgnoredPaths,
       setActivePanel, importFolder, closeWorkspace, openFile, closeTab, closeOtherTabs, closeAllTabs, closeTabsToTheRight,
       updateTabContent, setActiveTabPath, saveFile, refreshGitStatus, openDiff,
-      stageFile, unstageFile, stageAll, unstageAll, gitCommit: commitChanges,
+      stageFile, unstageFile, stageAll, unstageAll, discardFile, gitCommit: commitChanges,
       gitPush: pushChanges, gitPull: pullChanges, gitCheckout: checkoutBranch,
       gitCreateBranch: createBranch,
       npmProjects, runNpmScript,

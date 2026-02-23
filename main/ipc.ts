@@ -1,5 +1,5 @@
 import { ipcMain, dialog, type BrowserWindow } from 'electron';
-import { readDirectoryTree, getGitChangedFiles, getGitChangedFilesSplit, getGitDiff, getGitIgnoredPaths, gitStageFile, gitUnstageFile, gitStageAll, gitUnstageAll, gitCommit, gitGetBranchInfo, gitListBranches, gitCheckout, gitCreateBranch, gitPull, gitPush } from './fileSystem';
+import { readDirectoryTree, getGitChangedFiles, getGitChangedFilesSplit, getGitDiff, getGitIgnoredPaths, gitStageFile, gitUnstageFile, gitStageAll, gitUnstageAll, gitDiscardFile, gitCommit, gitGetBranchInfo, gitListBranches, gitCheckout, gitCreateBranch, gitPull, gitPush } from './fileSystem';
 import { checkOllama, listModels, chatComplete, chatCompleteStream, loadSettings, saveSettings, type AISettings } from './ai';
 import { logRequest, logResult, logStreamingProgress, registerDebugIpc } from './debugWindow';
 import {
@@ -135,6 +135,10 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
     } catch (err: unknown) {
       return { success: false, error: (err as Error).message };
     }
+  });
+
+  ipcMain.handle('git-discard', async (_event, folderPath: string, filePath: string) => {
+    return gitDiscardFile(folderPath, filePath);
   });
 
   ipcMain.handle('git-commit', async (_event, folderPath: string, message: string) => {

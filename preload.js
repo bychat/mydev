@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   gitUnstage: (folderPath, filePath) => ipcRenderer.invoke('git-unstage', folderPath, filePath),
   gitStageAll: (folderPath) => ipcRenderer.invoke('git-stage-all', folderPath),
   gitUnstageAll: (folderPath) => ipcRenderer.invoke('git-unstage-all', folderPath),
+  gitDiscard: (folderPath, filePath) => ipcRenderer.invoke('git-discard', folderPath, filePath),
   gitCommit: (folderPath, message) => ipcRenderer.invoke('git-commit', folderPath, message),
   gitBranchInfo: (folderPath) => ipcRenderer.invoke('git-branch-info', folderPath),
   gitListBranches: (folderPath) => ipcRenderer.invoke('git-list-branches', folderPath),

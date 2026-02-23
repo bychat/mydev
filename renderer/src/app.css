@@ -141,6 +141,8 @@ button{font-family:inherit;cursor:pointer}
 .sc-item:hover .sc-item-action{opacity:1}
 .sc-item-action{background:none;border:none;color:#999;font-size:.85rem;font-weight:700;width:20px;height:20px;display:flex;align-items:center;justify-content:center;border-radius:4px;cursor:pointer;transition:background .1s,color .1s;flex-shrink:0}
 .sc-item-action:hover{background:rgba(0,0,0,.07);color:#333}
+.sc-item-discard{color:#c0392b}
+.sc-item-discard:hover{background:rgba(192,57,43,.08);color:#a02020}
 
 /* ── Commit area ─── */
 .sc-commit-area{padding:.6rem .7rem;border-bottom:1px solid #e8e8e8;display:flex;flex-direction:column;gap:6px}
@@ -160,6 +162,18 @@ button{font-family:inherit;cursor:pointer}
 .sc-commit-btn:active:not(:disabled){transform:scale(.98)}
 .sc-commit-btn:disabled{opacity:.35;cursor:not-allowed}
 .sc-commit-error{font-size:.74rem;color:#c0392b;padding:2px 4px;background:rgba(192,57,43,.06);border-radius:4px}
+
+/* ── Create Branch Section ─── */
+.sc-branch-section{padding:.5rem .7rem;border-top:1px solid #e8e8e8;margin-top:auto}
+.sc-create-branch-btn{width:100%;padding:.4rem .6rem;background:none;border:1px dashed #ccc;border-radius:6px;color:#666;font-size:.76rem;font-weight:600;cursor:pointer;transition:background .12s,color .12s,border-color .12s}
+.sc-create-branch-btn:hover{background:rgba(0,0,0,.03);color:#333;border-color:#aaa}
+.sc-create-branch-form{display:flex;align-items:center;gap:4px}
+.sc-branch-input{flex:1;min-width:0;padding:.35rem .6rem;border:1px solid #ccc;border-radius:5px;font-size:.78rem;font-family:inherit;outline:none;transition:border-color .15s}
+.sc-branch-input:focus{border-color:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,.12)}
+.sc-branch-confirm{width:26px;height:26px;display:flex;align-items:center;justify-content:center;background:#2563eb;color:#fff;border:none;border-radius:5px;font-size:.78rem;font-weight:700;cursor:pointer;transition:background .15s}
+.sc-branch-confirm:hover{background:#1d4ed8}
+.sc-branch-cancel{width:26px;height:26px;display:flex;align-items:center;justify-content:center;background:#eee;color:#666;border:none;border-radius:5px;font-size:.78rem;font-weight:700;cursor:pointer;transition:background .15s}
+.sc-branch-cancel:hover{background:#ddd;color:#333}
 
 /* ── NPM Panel ─── */
 .npm-panel{display:flex;flex-direction:column;flex:1;overflow:hidden}

@@ -12,6 +12,8 @@ const useDevServer = process.env.VITE_DEV_SERVER === 'true' ||
 
 let mainWindow: BrowserWindow | null = null;
 
+
+
 function createWindow(): void {
   mainWindow = new BrowserWindow({
     width: 1280,
