@@ -59,7 +59,7 @@ interface ActivityBarProps {
 }
 
 export default function ActivityBar({ onToggleTerminal, terminalVisible }: ActivityBarProps) {
-  const { activePanel, setActivePanel, hasGit, npmProjects, gitChanges } = useWorkspace();
+  const { activePanel, setActivePanel, hasGit, npmProjects, gitSplitChanges } = useWorkspace();
   const [promptSettingsOpen, setPromptSettingsOpen] = useState(false);
 
   const handleNewWindow = async () => {
@@ -101,8 +101,8 @@ export default function ActivityBar({ onToggleTerminal, terminalVisible }: Activ
               title={p.label}
             >
               {getIconElement(p.icon)}
-              {p.id === 'source-control' && gitChanges.length > 0 && (
-                <span className="ab-badge">{gitChanges.length}</span>
+              {p.id === 'source-control' && gitSplitChanges.length > 0 && (
+                <span className="ab-badge">{gitSplitChanges.length}</span>
               )}
               {p.id === 'npm' && npmProjects.length > 0 && (
                 <span className="ab-badge">{npmProjects.length}</span>
