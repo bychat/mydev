@@ -19,10 +19,16 @@ let nextId = 1;
 
 /** Open (or focus) the debug window */
 export function openDebugWindow(): void {
+  console.log('[DebugWindow] openDebugWindow called');
+  
   if (debugWindow && !debugWindow.isDestroyed()) {
+    console.log('[DebugWindow] Focusing existing window');
     debugWindow.focus();
     return;
   }
+
+  const htmlPath = path.join(__dirname, '..', '..', 'debug-window.html');
+  console.log('[DebugWindow] Creating new window, loading:', htmlPath);
 
   debugWindow = new BrowserWindow({
     width: 900,
@@ -36,17 +42,25 @@ export function openDebugWindow(): void {
     },
   });
 
-  debugWindow.loadFile(path.join(__dirname, '..', '..', 'debug-window.html'));
-  debugWindow.on('closed', () => { debugWindow = null; });
+  debugWindow.loadFile(htmlPath);
+  debugWindow.webContents.openDevTools(); // Auto-open devtools for debugging
+  
+  debugWindow.on('closed', () => { 
+    console.log('[DebugWindow] Window closed');
+    debugWindow = null; 
+  });
 
   // Once the window is ready, send the full log history
   debugWindow.webContents.on('did-finish-load', () => {
+    console.log('[DebugWindow] did-finish-load, sending', debugLog.length, 'entries');
     debugWindow?.webContents.send('debug-log-init', debugLog);
   });
 }
 
 /** Record a new outgoing AI request. Returns the entry id for updating later. */
 export function logRequest(baseUrl: string, model: string, messages: { role: string; content: string }[]): number {
+  console.log('[DebugWindow] logRequest called, model:', model, 'messages:', messages.length);
+  
   const entry: DebugLogEntry = {
     id: nextId++,
     timestamp: new Date().toISOString(),
@@ -56,10 +70,14 @@ export function logRequest(baseUrl: string, model: string, messages: { role: str
     status: 'pending',
   };
   debugLog.push(entry);
+  console.log('[DebugWindow] Total entries now:', debugLog.length);
 
   // Push to debug window if open
   if (debugWindow && !debugWindow.isDestroyed()) {
+    console.log('[DebugWindow] Sending debug-log-entry to window');
     debugWindow.webContents.send('debug-log-entry', entry);
+  } else {
+    console.log('[DebugWindow] Window not open, entry stored for later');
   }
 
   return entry.id;
@@ -76,6 +94,19 @@ export function logResult(id: number, status: 'success' | 'error' | 'aborted', r
 
   if (debugWindow && !debugWindow.isDestroyed()) {
     debugWindow.webContents.send('debug-log-update', { id, status, response, error, durationMs });
+  }
+}
+
+/** Update an entry with streaming progress (partial response) */
+export function logStreamingProgress(id: number, partialResponse: string): void {
+  const entry = debugLog.find(e => e.id === id);
+  if (!entry) return;
+  
+  // Update the partial response (don't change status yet)
+  entry.response = partialResponse;
+
+  if (debugWindow && !debugWindow.isDestroyed()) {
+    debugWindow.webContents.send('debug-log-streaming', { id, partialResponse });
   }
 }
 

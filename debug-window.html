@@ -94,9 +94,15 @@
   }
   .entry:hover { border-color: #45475a; }
   .entry.status-pending { border-left: 3px solid #f9e2af; }
+  .entry.status-pending.streaming { border-left: 3px solid #89b4fa; animation: pulse 1.5s infinite; }
   .entry.status-success { border-left: 3px solid #a6e3a1; }
   .entry.status-error   { border-left: 3px solid #f38ba8; }
   .entry.status-aborted { border-left: 3px solid #fab387; }
+  
+  @keyframes pulse {
+    0%, 100% { border-left-color: #89b4fa; }
+    50% { border-left-color: #cba6f7; }
+  }
 
   .entry-header {
     display: flex;
@@ -358,6 +364,31 @@
   .response-block::-webkit-scrollbar { width: 4px; }
   .response-block::-webkit-scrollbar-thumb { background: #45475a; border-radius: 2px; }
   .response-block.error-text { color: #f38ba8; }
+  .response-block.streaming-response { border: 1px solid #89b4fa44; }
+
+  .streaming-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: #89b4fa22;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    font-size: 12px;
+    color: #89b4fa;
+    font-weight: 500;
+  }
+  .streaming-dot {
+    width: 8px;
+    height: 8px;
+    background: #89b4fa;
+    border-radius: 50%;
+    animation: streaming-pulse 1s infinite;
+  }
+  @keyframes streaming-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
 
   .copy-btn {
     background: #313244;
@@ -423,6 +454,8 @@
 
 <script>
   const { ipcRenderer } = require('electron');
+  
+  console.log('[DebugWindow HTML] Script loaded, ipcRenderer:', !!ipcRenderer);
 
   let entries = [];
   let activeFilter = 'all';
@@ -609,9 +642,30 @@
 
     let responseHtml = '';
     if (entry.status === 'pending') {
-      responseHtml = '<div class="response-block" style="color:#f9e2af;">⏳ Waiting for response…</div>';
+      if (entry.response) {
+        // Streaming in progress - show partial response with indicator
+        const respSegments = parseContent(entry.response);
+        const charCount = entry.response.length;
+        responseHtml = `
+          <div class="streaming-indicator">
+            <span class="streaming-dot"></span>
+            Streaming... (${charCount} chars received)
+          </div>
+          <div class="response-block streaming-response">${renderSegments(respSegments)}</div>
+        `;
+      } else {
+        responseHtml = '<div class="response-block" style="color:#f9e2af;">⏳ Waiting for response…</div>';
+      }
     } else if (entry.status === 'aborted') {
-      responseHtml = '<div class="response-block error-text">⏹ Request was aborted by user</div>';
+      if (entry.response) {
+        const respSegments = parseContent(entry.response);
+        responseHtml = `
+          <div class="response-block error-text">⏹ Request was aborted (partial response below)</div>
+          <div class="response-block">${renderSegments(respSegments)}</div>
+        `;
+      } else {
+        responseHtml = '<div class="response-block error-text">⏹ Request was aborted by user</div>';
+      }
     } else if (entry.status === 'error') {
       responseHtml = `<div class="response-block error-text">❌ ${escapeHtml(entry.error || 'Unknown error')}</div>`;
     } else if (entry.response) {

@@ -1,7 +1,25 @@
 import { ipcMain, dialog, type BrowserWindow } from 'electron';
 import { readDirectoryTree, getGitChangedFiles, getGitChangedFilesSplit, getGitDiff, getGitIgnoredPaths, gitStageFile, gitUnstageFile, gitStageAll, gitUnstageAll, gitCommit, gitGetBranchInfo, gitListBranches, gitCheckout, gitCreateBranch, gitPull, gitPush } from './fileSystem';
 import { checkOllama, listModels, chatComplete, chatCompleteStream, loadSettings, saveSettings, type AISettings } from './ai';
-import { logRequest, logResult, registerDebugIpc } from './debugWindow';
+import { logRequest, logResult, logStreamingProgress, registerDebugIpc } from './debugWindow';
+import {
+  loadAppHistory,
+  saveAppHistory,
+  getOrCreateWorkspace,
+  getRecentWorkspaces,
+  removeWorkspace,
+  createConversation,
+  getConversation,
+  getActiveConversation,
+  updateConversation,
+  deleteConversation,
+  setActiveConversation,
+  renameConversation,
+  type AppHistory,
+  type WorkspaceHistory,
+  type Conversation,
+  type ChatMessage as HistoryChatMessage,
+} from './chatHistory';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -14,6 +32,29 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
     if (result.canceled) return null;
 
     const folderPath = result.filePaths[0];
+    const tree = readDirectoryTree(folderPath);
+    const hasGit = fs.existsSync(path.join(folderPath, '.git'));
+    const hasPackageJson = fs.existsSync(path.join(folderPath, 'package.json'));
+
+    let packageName: string | null = null;
+    if (hasPackageJson) {
+      try {
+        const pkg = JSON.parse(fs.readFileSync(path.join(folderPath, 'package.json'), 'utf-8'));
+        packageName = pkg.name ?? null;
+      } catch { /* ignore */ }
+    }
+
+    const gitIgnoredPaths = hasGit ? getGitIgnoredPaths(folderPath) : [];
+
+    return { folderPath, tree, hasGit, hasPackageJson, packageName, gitIgnoredPaths };
+  });
+
+  // Open a folder by path (for recent workspaces)
+  ipcMain.handle('open-folder', async (_event, folderPath: string) => {
+    if (!fs.existsSync(folderPath)) {
+      return null;
+    }
+
     const tree = readDirectoryTree(folderPath);
     const hasGit = fs.existsSync(path.join(folderPath, '.git'));
     const hasPackageJson = fs.existsSync(path.join(folderPath, 'package.json'));
@@ -219,11 +260,18 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
     const debugId = logRequest(baseUrl, model, messages);
     const startTime = Date.now();
     const win = getWindow();
+    
+    // Track accumulated response for live debug logging
+    let accumulatedResponse = '';
 
     try {
       const fullReply = await chatCompleteStream(
         baseUrl, apiKey, model, messages,
         (chunk: string) => {
+          // Accumulate response and update debug window with progress
+          accumulatedResponse += chunk;
+          logStreamingProgress(debugId, accumulatedResponse);
+          
           // Send each chunk to the renderer as an event
           if (win && !win.isDestroyed()) {
             win.webContents.send('ai-chat-chunk', chunk);
@@ -244,7 +292,7 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
         if (win && !win.isDestroyed()) {
           win.webContents.send('ai-chat-chunk-done');
         }
-        logResult(debugId, 'aborted', undefined, 'Aborted by user', Date.now() - startTime);
+        logResult(debugId, 'aborted', accumulatedResponse || undefined, 'Aborted by user', Date.now() - startTime);
         return { success: false, error: 'aborted' };
       }
       const errMsg = (err as Error).message;
@@ -270,6 +318,112 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
   ipcMain.handle('ai-save-settings', async (_event, settings: AISettings) => {
     saveSettings(settings);
     return { success: true };
+  });
+
+  // ── Chat History ──
+  
+  // Get all history (workspaces + conversations)
+  ipcMain.handle('history-load', async () => {
+    return loadAppHistory();
+  });
+
+  // Get recent workspaces
+  ipcMain.handle('history-get-recent-workspaces', async (_event, limit?: number) => {
+    const history = loadAppHistory();
+    return getRecentWorkspaces(history, limit);
+  });
+
+  // Open/register a workspace (creates if doesn't exist)
+  ipcMain.handle('history-open-workspace', async (_event, folderPath: string) => {
+    const history = loadAppHistory();
+    const workspace = getOrCreateWorkspace(history, folderPath);
+    saveAppHistory(history);
+    return workspace;
+  });
+
+  // Remove a workspace from history
+  ipcMain.handle('history-remove-workspace', async (_event, folderPath: string) => {
+    const history = loadAppHistory();
+    removeWorkspace(history, folderPath);
+    saveAppHistory(history);
+    return { success: true };
+  });
+
+  // Create a new conversation in a workspace
+  ipcMain.handle('history-create-conversation', async (_event, folderPath: string, mode: 'Agent' | 'Chat' | 'Edit') => {
+    const history = loadAppHistory();
+    const workspace = getOrCreateWorkspace(history, folderPath);
+    const conversation = createConversation(workspace, mode);
+    saveAppHistory(history);
+    return conversation;
+  });
+
+  // Get a specific conversation
+  ipcMain.handle('history-get-conversation', async (_event, folderPath: string, conversationId: string) => {
+    const history = loadAppHistory();
+    const workspace = history.workspaces.find(w => w.folderPath === folderPath);
+    if (!workspace) return null;
+    return getConversation(workspace, conversationId);
+  });
+
+  // Get active conversation for a workspace
+  ipcMain.handle('history-get-active-conversation', async (_event, folderPath: string) => {
+    const history = loadAppHistory();
+    const workspace = history.workspaces.find(w => w.folderPath === folderPath);
+    if (!workspace) return null;
+    return getActiveConversation(workspace);
+  });
+
+  // Update a conversation's messages
+  ipcMain.handle('history-update-conversation', async (
+    _event,
+    folderPath: string,
+    conversationId: string,
+    messages: HistoryChatMessage[],
+    mode?: 'Agent' | 'Chat' | 'Edit'
+  ) => {
+    const history = loadAppHistory();
+    const workspace = history.workspaces.find(w => w.folderPath === folderPath);
+    if (!workspace) return null;
+    const conv = updateConversation(workspace, conversationId, messages, mode);
+    saveAppHistory(history);
+    return conv;
+  });
+
+  // Delete a conversation
+  ipcMain.handle('history-delete-conversation', async (_event, folderPath: string, conversationId: string) => {
+    const history = loadAppHistory();
+    const workspace = history.workspaces.find(w => w.folderPath === folderPath);
+    if (!workspace) return { success: false, error: 'Workspace not found' };
+    deleteConversation(workspace, conversationId);
+    saveAppHistory(history);
+    return { success: true };
+  });
+
+  // Set active conversation
+  ipcMain.handle('history-set-active-conversation', async (_event, folderPath: string, conversationId: string) => {
+    const history = loadAppHistory();
+    const workspace = history.workspaces.find(w => w.folderPath === folderPath);
+    if (!workspace) return { success: false, error: 'Workspace not found' };
+    setActiveConversation(workspace, conversationId);
+    saveAppHistory(history);
+    return { success: true };
+  });
+
+  // Rename a conversation
+  ipcMain.handle('history-rename-conversation', async (_event, folderPath: string, conversationId: string, newTitle: string) => {
+    const history = loadAppHistory();
+    const workspace = history.workspaces.find(w => w.folderPath === folderPath);
+    if (!workspace) return { success: false, error: 'Workspace not found' };
+    renameConversation(workspace, conversationId, newTitle);
+    saveAppHistory(history);
+    return { success: true };
+  });
+
+  // Get workspace data (conversations list)
+  ipcMain.handle('history-get-workspace', async (_event, folderPath: string) => {
+    const history = loadAppHistory();
+    return history.workspaces.find(w => w.folderPath === folderPath) ?? null;
   });
 
   // ── Debug Window ──

@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect, useCallback, useMemo, type ChangeEvent, type KeyboardEvent, type DragEvent } from 'react';
-import type { AISettings, ChatMessage, FileActionPlan, FileActionProgress, FileActionStatus } from '../types';
+import type { AISettings, ChatMessage, FileActionPlan, FileActionProgress, FileActionStatus, Conversation, WorkspaceHistory } from '../types';
 import SettingsModal from './SettingsModal';
 import Markdown, { flattenTree } from './Markdown';
 import { useWorkspace } from '../context/WorkspaceContext';
+import ChatHistorySidebar from './ChatHistorySidebar';
 
 type ChatMode = 'Agent' | 'Chat' | 'Edit';
 
@@ -212,6 +213,193 @@ export default function ChatPanel({ onCollapse }: ChatPanelProps) {
   const endRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const inputBoxRef = useRef<HTMLDivElement>(null);
+
+  // ── Chat History State ──
+  const [historySidebarOpen, setHistorySidebarOpen] = useState(false);
+  const [workspaceHistory, setWorkspaceHistory] = useState<WorkspaceHistory | null>(null);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+
+  // Load workspace history when folder changes
+  useEffect(() => {
+    if (!folderPath) {
+      setWorkspaceHistory(null);
+      setActiveConversationId(null);
+      return;
+    }
+    (async () => {
+      try {
+        const ws = await window.electronAPI.historyOpenWorkspace(folderPath);
+        setWorkspaceHistory(ws);
+        // Load active conversation if exists
+        if (ws.activeConversationId) {
+          const conv = await window.electronAPI.historyGetConversation(folderPath, ws.activeConversationId);
+          if (conv) {
+            setActiveConversationId(conv.id);
+            setMode(conv.mode);
+            // Restore messages from conversation
+            const displayMsgs: DisplayMessage[] = conv.messages
+              .filter(m => m.role !== 'system')
+              .map(m => ({
+                text: m.content,
+                sender: m.role === 'user' ? 'user' : 'bot',
+              }));
+            setMessages(displayMsgs);
+            setHistory(conv.messages);
+          }
+        }
+      } catch (err) {
+        console.error('[ChatPanel] Failed to load workspace history:', err);
+      }
+    })();
+  }, [folderPath]);
+
+  // Save conversation whenever history changes
+  const saveConversation = useCallback(async (msgs: ChatMessage[]) => {
+    if (!folderPath || !activeConversationId) return;
+    try {
+      const updated = await window.electronAPI.historyUpdateConversation(
+        folderPath,
+        activeConversationId,
+        msgs,
+        mode
+      );
+      if (updated && workspaceHistory) {
+        // Update local state
+        const idx = workspaceHistory.conversations.findIndex(c => c.id === activeConversationId);
+        if (idx >= 0) {
+          const newConvs = [...workspaceHistory.conversations];
+          newConvs[idx] = updated;
+          setWorkspaceHistory({ ...workspaceHistory, conversations: newConvs });
+        }
+      }
+    } catch (err) {
+      console.error('[ChatPanel] Failed to save conversation:', err);
+    }
+  }, [folderPath, activeConversationId, mode, workspaceHistory]);
+
+  // Create new conversation
+  const handleNewChat = useCallback(async () => {
+    if (!folderPath) return;
+    try {
+      const conv = await window.electronAPI.historyCreateConversation(folderPath, mode);
+      setActiveConversationId(conv.id);
+      setMessages([]);
+      setHistory([]);
+      setAttachedFiles([]);
+      // Update workspace history
+      if (workspaceHistory) {
+        setWorkspaceHistory({
+          ...workspaceHistory,
+          conversations: [conv, ...workspaceHistory.conversations],
+          activeConversationId: conv.id,
+        });
+      }
+    } catch (err) {
+      console.error('[ChatPanel] Failed to create conversation:', err);
+    }
+  }, [folderPath, mode, workspaceHistory]);
+
+  // Select existing conversation
+  const handleSelectConversation = useCallback(async (conversationId: string) => {
+    if (!folderPath) return;
+    try {
+      const conv = await window.electronAPI.historyGetConversation(folderPath, conversationId);
+      if (conv) {
+        await window.electronAPI.historySetActiveConversation(folderPath, conversationId);
+        setActiveConversationId(conv.id);
+        setMode(conv.mode);
+        // Restore messages
+        const displayMsgs: DisplayMessage[] = conv.messages
+          .filter(m => m.role !== 'system')
+          .map(m => ({
+            text: m.content,
+            sender: m.role === 'user' ? 'user' : 'bot',
+          }));
+        setMessages(displayMsgs);
+        setHistory(conv.messages);
+        setAttachedFiles([]);
+      }
+    } catch (err) {
+      console.error('[ChatPanel] Failed to load conversation:', err);
+    }
+  }, [folderPath]);
+
+  // Delete conversation
+  const handleDeleteConversation = useCallback(async (conversationId: string) => {
+    if (!folderPath) return;
+    try {
+      await window.electronAPI.historyDeleteConversation(folderPath, conversationId);
+      if (workspaceHistory) {
+        const newConvs = workspaceHistory.conversations.filter(c => c.id !== conversationId);
+        const newActiveId = conversationId === activeConversationId
+          ? (newConvs[0]?.id ?? null)
+          : activeConversationId;
+        setWorkspaceHistory({
+          ...workspaceHistory,
+          conversations: newConvs,
+          activeConversationId: newActiveId,
+        });
+        if (conversationId === activeConversationId) {
+          if (newActiveId) {
+            handleSelectConversation(newActiveId);
+          } else {
+            setActiveConversationId(null);
+            setMessages([]);
+            setHistory([]);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[ChatPanel] Failed to delete conversation:', err);
+    }
+  }, [folderPath, workspaceHistory, activeConversationId, handleSelectConversation]);
+
+  // Rename conversation
+  const handleRenameConversation = useCallback(async (conversationId: string, newTitle: string) => {
+    if (!folderPath) return;
+    try {
+      await window.electronAPI.historyRenameConversation(folderPath, conversationId, newTitle);
+      if (workspaceHistory) {
+        const newConvs = workspaceHistory.conversations.map(c =>
+          c.id === conversationId ? { ...c, title: newTitle } : c
+        );
+        setWorkspaceHistory({ ...workspaceHistory, conversations: newConvs });
+      }
+    } catch (err) {
+      console.error('[ChatPanel] Failed to rename conversation:', err);
+    }
+  }, [folderPath, workspaceHistory]);
+
+  // Auto-save conversation when history changes (debounced)
+  useEffect(() => {
+    if (!folderPath || !activeConversationId || history.length === 0) return;
+    const timeout = setTimeout(() => {
+      saveConversation(history);
+    }, 500);
+    return () => clearTimeout(timeout);
+  }, [history, folderPath, activeConversationId, saveConversation]);
+
+  // Auto-create conversation when user sends first message
+  const ensureConversation = useCallback(async () => {
+    if (!folderPath) return null;
+    if (activeConversationId) return activeConversationId;
+    // Create new conversation
+    try {
+      const conv = await window.electronAPI.historyCreateConversation(folderPath, mode);
+      setActiveConversationId(conv.id);
+      if (workspaceHistory) {
+        setWorkspaceHistory({
+          ...workspaceHistory,
+          conversations: [conv, ...workspaceHistory.conversations],
+          activeConversationId: conv.id,
+        });
+      }
+      return conv.id;
+    } catch (err) {
+      console.error('[ChatPanel] Failed to create conversation:', err);
+      return null;
+    }
+  }, [folderPath, activeConversationId, mode, workspaceHistory]);
 
   // ── Suggested files from open editor tabs ──
   const suggestedFiles = openTabs
@@ -703,6 +891,9 @@ export default function ChatPanel({ onCollapse }: ChatPanelProps) {
     const model = selectedModel || settings.selectedModel;
     if (!model) { setSettingsOpen(true); return; }
 
+    // Ensure we have an active conversation
+    await ensureConversation();
+
     const currentFiles = [...attachedFiles];
     setMessages(prev => [...prev, { text, sender: 'user', files: currentFiles.length > 0 ? currentFiles : undefined }]);
     setInput('');
@@ -1061,7 +1252,7 @@ export default function ChatPanel({ onCollapse }: ChatPanelProps) {
       setLoading(false);
       scrollToBottom();
     }
-  }, [input, loading, settings, selectedModel, history, attachedFiles, scrollToBottom, buildSystemContext, buildResearchPrompt, parseResearchResponse, readFilesForContext, folderPath, workspaceFiles, mode, buildCheckAgentPrompt, parseCheckAgentResponse, buildActionPlanPrompt, parseActionPlanResponse, executeFileActions, buildVerifyPrompt, parseVerifyResponse]);
+  }, [input, loading, settings, selectedModel, history, attachedFiles, scrollToBottom, buildSystemContext, buildResearchPrompt, parseResearchResponse, readFilesForContext, folderPath, workspaceFiles, mode, buildCheckAgentPrompt, parseCheckAgentResponse, buildActionPlanPrompt, parseActionPlanResponse, executeFileActions, buildVerifyPrompt, parseVerifyResponse, ensureConversation]);
 
   // ── Stop running request ──
   const stopMessage = useCallback(async () => {
@@ -1106,23 +1297,55 @@ export default function ChatPanel({ onCollapse }: ChatPanelProps) {
   };
 
   return (
-    <section className="chat-panel">
-      {/* Header */}
-      <div className="chat-hdr">
-        <h2>💬 Chat</h2>
-        <div className="chat-hdr-actions">
-          <button className="chat-hdr-btn" onClick={() => window.electronAPI.debugOpen()} title="Session Debug — view all prompts sent to the AI">🐛</button>
-          {messages.length > 0 && (
-            <button className="chat-hdr-btn" onClick={clearChat} title="Clear chat">🗑</button>
-          )}
-          <button className="chat-hdr-btn" onClick={() => setSettingsOpen(true)} title="AI Settings">⚙️</button>
-          {onCollapse && (
-            <button className="panel-collapse-btn" onClick={onCollapse} title="Collapse chat">
-              <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor"><path d="M6 3.5a.5.5 0 0 1 .82-.38l4 3.5a.5.5 0 0 1 0 .76l-4 3.5A.5.5 0 0 1 6 10.5v-7z"/></svg>
+    <div className="chat-panel-container">
+      {/* History Sidebar */}
+      {historySidebarOpen && (
+        <ChatHistorySidebar
+          workspace={workspaceHistory}
+          activeConversationId={activeConversationId}
+          onSelectConversation={handleSelectConversation}
+          onNewChat={handleNewChat}
+          onDeleteConversation={handleDeleteConversation}
+          onRenameConversation={handleRenameConversation}
+          onClose={() => setHistorySidebarOpen(false)}
+        />
+      )}
+
+      <section className="chat-panel chat-panel-main">
+        {/* Header */}
+        <div className="chat-hdr">
+          <div className="chat-hdr-left">
+            <button
+              className={`chat-history-toggle ${historySidebarOpen ? 'active' : ''}`}
+              onClick={() => setHistorySidebarOpen(!historySidebarOpen)}
+              title="Chat History"
+            >
+              <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
+                <path d="M8.515 1.019A7 7 0 0 0 8 1V0a8 8 0 0 1 .589.022l-.074.997zm2.004.45a7.003 7.003 0 0 0-.985-.299l.219-.976c.383.086.76.2 1.126.342l-.36.933zm1.37.71a7.01 7.01 0 0 0-.439-.27l.493-.87a8.025 8.025 0 0 1 .979.654l-.615.789a6.996 6.996 0 0 0-.418-.302zm1.834 1.79a6.99 6.99 0 0 0-.653-.796l.724-.69c.27.285.52.59.747.91l-.818.576zm.744 1.352a7.08 7.08 0 0 0-.214-.468l.893-.45a7.976 7.976 0 0 1 .45 1.088l-.95.313a7.023 7.023 0 0 0-.179-.483zm.53 2.507a6.991 6.991 0 0 0-.1-1.025l.985-.17c.067.386.106.778.116 1.17l-1 .025zm-.131 1.538c.033-.17.06-.339.081-.51l.993.123a7.957 7.957 0 0 1-.23 1.155l-.964-.267c.046-.165.086-.332.12-.501zm-.952 2.379c.184-.29.346-.594.486-.908l.914.405c-.16.36-.345.706-.555 1.038l-.845-.535zm-.964 1.205c.122-.122.239-.248.35-.378l.758.653a8.073 8.073 0 0 1-.401.432l-.707-.707z"/>
+                <path d="M8 1a7 7 0 1 0 4.95 11.95l.707.707A8.001 8.001 0 1 1 8 0v1z"/>
+                <path d="M7.5 3a.5.5 0 0 1 .5.5v5.21l3.248 1.856a.5.5 0 0 1-.496.868l-3.5-2A.5.5 0 0 1 7 9V3.5a.5.5 0 0 1 .5-.5z"/>
+              </svg>
             </button>
-          )}
+            <h2>💬 Chat</h2>
+          </div>
+          <div className="chat-hdr-actions">
+            <button className="chat-hdr-btn" onClick={handleNewChat} title="New Chat">
+              <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor">
+                <path d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2z"/>
+              </svg>
+            </button>
+            <button className="chat-hdr-btn" onClick={() => window.electronAPI.debugOpen()} title="Session Debug — view all prompts sent to the AI">🐛</button>
+            {messages.length > 0 && (
+              <button className="chat-hdr-btn" onClick={clearChat} title="Clear chat">🗑</button>
+            )}
+            <button className="chat-hdr-btn" onClick={() => setSettingsOpen(true)} title="AI Settings">⚙️</button>
+            {onCollapse && (
+              <button className="panel-collapse-btn" onClick={onCollapse} title="Collapse chat">
+                <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor"><path d="M6 3.5a.5.5 0 0 1 .82-.38l4 3.5a.5.5 0 0 1 0 .76l-4 3.5A.5.5 0 0 1 6 10.5v-7z"/></svg>
+              </button>
+            )}
+          </div>
         </div>
-      </div>
 
       {/* Messages */}
       <div className="chat-messages">
@@ -1302,5 +1525,6 @@ export default function ChatPanel({ onCollapse }: ChatPanelProps) {
 
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} onSaved={handleSettingsSaved} />
     </section>
+    </div>
   );
 }

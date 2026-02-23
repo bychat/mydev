@@ -2,6 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
   selectFolder: () => ipcRenderer.invoke('select-folder'),
+  openFolder: (folderPath) => ipcRenderer.invoke('open-folder', folderPath),
   readFile: (filePath) => ipcRenderer.invoke('read-file', filePath),
   saveFile: (filePath, content) => ipcRenderer.invoke('save-file', filePath, content),
   gitStatus: (folderPath) => ipcRenderer.invoke('git-status', folderPath),
@@ -59,4 +60,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('toggle-terminal', listener);
     return () => ipcRenderer.removeListener('toggle-terminal', listener);
   },
+  // Chat History
+  historyLoad: () => ipcRenderer.invoke('history-load'),
+  historyGetRecentWorkspaces: (limit) => ipcRenderer.invoke('history-get-recent-workspaces', limit),
+  historyOpenWorkspace: (folderPath) => ipcRenderer.invoke('history-open-workspace', folderPath),
+  historyRemoveWorkspace: (folderPath) => ipcRenderer.invoke('history-remove-workspace', folderPath),
+  historyCreateConversation: (folderPath, mode) => ipcRenderer.invoke('history-create-conversation', folderPath, mode),
+  historyGetConversation: (folderPath, conversationId) => ipcRenderer.invoke('history-get-conversation', folderPath, conversationId),
+  historyGetActiveConversation: (folderPath) => ipcRenderer.invoke('history-get-active-conversation', folderPath),
+  historyUpdateConversation: (folderPath, conversationId, messages, mode) => ipcRenderer.invoke('history-update-conversation', folderPath, conversationId, messages, mode),
+  historyDeleteConversation: (folderPath, conversationId) => ipcRenderer.invoke('history-delete-conversation', folderPath, conversationId),
+  historySetActiveConversation: (folderPath, conversationId) => ipcRenderer.invoke('history-set-active-conversation', folderPath, conversationId),
+  historyRenameConversation: (folderPath, conversationId, newTitle) => ipcRenderer.invoke('history-rename-conversation', folderPath, conversationId, newTitle),
+  historyGetWorkspace: (folderPath) => ipcRenderer.invoke('history-get-workspace', folderPath),
 });

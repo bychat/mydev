@@ -358,12 +358,27 @@ button{font-family:inherit;cursor:pointer}
 
 /* ── Welcome ─── */
 .welcome{flex:1;display:flex;align-items:center;justify-content:center;background:#f5f5f5}
-.welcome-card{text-align:center;padding:3rem 2.5rem;background:#fff;border:1px solid #e0e0e0;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.04)}
+.welcome-card{text-align:center;padding:3rem 2.5rem;background:#fff;border:1px solid #e0e0e0;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.04);max-width:480px;width:100%}
 .welcome-card h1{font-size:1.8rem;font-weight:700;color:#333;margin-bottom:.5rem}
 .welcome-card p{font-size:.92rem;color:#999;margin-bottom:1.5rem;line-height:1.5}
 .btn-primary{display:inline-flex;align-items:center;gap:.5rem;padding:.65rem 1.5rem;background:#333;color:#fff;border:none;border-radius:8px;font-size:.9rem;font-weight:600;transition:transform .15s,box-shadow .15s}
 .btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(0,0,0,.12)}
 .btn-primary:active{transform:translateY(0)}
+
+/* ── Recent Workspaces ─── */
+.recent-workspaces{margin-top:2rem;text-align:left;border-top:1px solid #eee;padding-top:1.5rem}
+.recent-workspaces h3{font-size:.75rem;font-weight:600;color:#999;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.75rem}
+.recent-workspaces-list{display:flex;flex-direction:column;gap:4px}
+.recent-workspace-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;cursor:pointer;transition:background .12s;position:relative}
+.recent-workspace-item:hover{background:rgba(0,0,0,.04)}
+.recent-workspace-icon{font-size:1.2rem;flex-shrink:0}
+.recent-workspace-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.recent-workspace-name{font-size:.85rem;font-weight:600;color:#333;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.recent-workspace-path{font-size:.7rem;color:#aaa;font-family:'SF Mono','Fira Code',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.recent-workspace-meta{font-size:.68rem;color:#bbb}
+.recent-workspace-remove{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:#ccc;font-size:1.1rem;padding:2px 6px;border-radius:4px;cursor:pointer;opacity:0;transition:opacity .12s,color .12s}
+.recent-workspace-item:hover .recent-workspace-remove{opacity:1}
+.recent-workspace-remove:hover{color:#c0392b;background:rgba(192,57,43,.08)}
 
 /* ── Settings Modal ─── */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;z-index:1000;backdrop-filter:blur(3px)}
@@ -404,9 +419,12 @@ button{font-family:inherit;cursor:pointer}
 
 /* ── Chat Header Actions ─── */
 .chat-hdr{display:flex;align-items:center;justify-content:space-between;padding:.6rem 1rem;border-bottom:1px solid #e8e8e8}
+.chat-hdr-left{display:flex;align-items:center;gap:8px}
+.chat-hdr-left h2{font-size:.78rem;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.08em;margin:0}
 .chat-hdr-actions{display:flex;align-items:center;gap:4px}
-.chat-hdr-btn{background:none;border:none;font-size:.9rem;padding:2px 4px;border-radius:4px;cursor:pointer;color:#bbb;transition:color .12s}
+.chat-hdr-btn{background:none;border:none;font-size:.9rem;padding:2px 4px;border-radius:4px;cursor:pointer;color:#bbb;transition:color .12s;display:flex;align-items:center;justify-content:center;width:24px;height:24px}
 .chat-hdr-btn:hover{color:#555;background:rgba(0,0,0,.04)}
+.chat-hdr-btn svg{width:12px;height:12px}
 
 /* ── Typing Animation ─── */
 .chat-typing{display:flex;align-items:center;gap:4px;padding:.5rem .8rem}
@@ -484,6 +502,50 @@ button{font-family:inherit;cursor:pointer}
 
 /* ── Agent Diff ─── */
 .agent-diff{margin:0 8px 4px 8px;padding:4px 6px;background:#1e1e1e;border-radius:5px;overflow-x:auto;font-family:'SF Mono','Fira Code',monospace;font-size:.66rem;line-height:1.5;max-height:180px;overflow-y:auto}
-.diff-removed{color:#f87171;white-space:pre;padding:0 2px}
-.diff-added{color:#4ade80;white-space:pre;padding:0 2px}
-.diff-truncated{color:#666;font-style:italic;padding:2px;text-align:center;font-size:.62rem}
+
+/* ── Chat History Sidebar ─── */
+.chat-history-sidebar{display:flex;flex-direction:column;width:240px;min-width:240px;max-width:240px;height:100%;background:#fafafa;border-right:1px solid #e0e0e0;overflow:hidden;flex-shrink:0}
+
+.chat-history-header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid #e0e0e0;background:#fff}
+.chat-history-title{font-size:.8rem;font-weight:600;color:#333}
+.chat-history-actions{display:flex;align-items:center;gap:4px}
+.chat-history-new-btn,.chat-history-close-btn{display:flex;align-items:center;justify-content:center;width:24px;height:24px;background:none;border:none;color:#888;border-radius:4px;transition:background .1s,color .1s}
+.chat-history-new-btn:hover{background:rgba(37,99,235,.1);color:#2563eb}
+.chat-history-close-btn:hover{background:rgba(0,0,0,.06);color:#555}
+
+.chat-history-list{flex:1;overflow-y:auto;padding:8px 0}
+.chat-history-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 16px;gap:8px;text-align:center}
+.chat-history-empty-icon{font-size:2rem;opacity:.5}
+.chat-history-empty p{font-size:.78rem;color:#888}
+.chat-history-start-btn{margin-top:8px;padding:6px 16px;background:#2563eb;color:#fff;border:none;border-radius:6px;font-size:.75rem;font-weight:600;cursor:pointer;transition:background .15s}
+.chat-history-start-btn:hover{background:#1d4ed8}
+
+.chat-history-group{margin-bottom:8px}
+.chat-history-group-label{padding:6px 12px 4px;font-size:.68rem;font-weight:600;color:#999;text-transform:uppercase;letter-spacing:.04em}
+
+.chat-history-item{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;cursor:pointer;transition:background .1s;gap:8px}
+.chat-history-item:hover{background:rgba(0,0,0,.04)}
+.chat-history-item.active{background:rgba(37,99,235,.08)}
+.chat-history-item-content{display:flex;align-items:center;gap:6px;min-width:0;flex:1}
+.chat-history-item-icon{font-size:.8rem;flex-shrink:0}
+.chat-history-item-title{font-size:.75rem;color:#333;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chat-history-item.active .chat-history-item-title{color:#2563eb;font-weight:600}
+.chat-history-item-time{font-size:.65rem;color:#aaa;flex-shrink:0}
+
+.chat-history-rename-input{flex:1;padding:2px 6px;border:1px solid #2563eb;border-radius:4px;font-size:.75rem;outline:none}
+
+/* Chat History Context Menu */
+.chat-history-context-menu{position:fixed;background:#fff;border:1px solid #ddd;border-radius:8px;padding:4px;z-index:1000;box-shadow:0 4px 16px rgba(0,0,0,.15);min-width:120px}
+.chat-history-context-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:6px 10px;background:none;border:none;color:#555;font-size:.75rem;text-align:left;border-radius:4px;cursor:pointer;transition:background .1s}
+.chat-history-context-menu button:hover{background:rgba(0,0,0,.05)}
+.chat-history-context-menu button.danger{color:#c0392b}
+.chat-history-context-menu button.danger:hover{background:rgba(192,57,43,.08)}
+
+/* ── Chat Panel with History ─── */
+.chat-panel-container{display:flex;height:100%;overflow:hidden}
+.chat-panel-main{flex:1;display:flex;flex-direction:column;min-width:0}
+
+/* History toggle button in chat header */
+.chat-history-toggle{display:flex;align-items:center;justify-content:center;width:28px;height:28px;background:none;border:none;color:#888;border-radius:4px;transition:background .1s,color .1s;cursor:pointer}
+.chat-history-toggle:hover{background:rgba(0,0,0,.06);color:#555}
+.chat-history-toggle.active{background:rgba(37,99,235,.1);color:#2563eb}

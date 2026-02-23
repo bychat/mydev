@@ -107,8 +107,34 @@ export interface FileActionProgress {
   error?: string;
 }
 
+// ── Chat History Types ──
+
+export interface Conversation {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+  messages: ChatMessage[];
+  mode: 'Agent' | 'Chat' | 'Edit';
+}
+
+export interface WorkspaceHistory {
+  folderPath: string;
+  folderName: string;
+  lastOpened: string;
+  conversations: Conversation[];
+  activeConversationId: string | null;
+}
+
+export interface AppHistory {
+  version: number;
+  workspaces: WorkspaceHistory[];
+  lastWorkspacePath: string | null;
+}
+
 export interface ElectronAPI {
   selectFolder: () => Promise<FolderResult | null>;
+  openFolder: (folderPath: string) => Promise<FolderResult | null>;
   readFile: (filePath: string) => Promise<FileResult>;
   saveFile: (filePath: string, content: string) => Promise<SaveResult>;
   gitStatus: (folderPath: string) => Promise<GitChange[]>;
@@ -146,6 +172,19 @@ export interface ElectronAPI {
   onTerminalData: (cb: (id: string, data: string) => void) => () => void;
   onTerminalExit: (cb: (id: string) => void) => () => void;
   onToggleTerminal: (cb: () => void) => () => void;
+  // Chat History
+  historyLoad: () => Promise<AppHistory>;
+  historyGetRecentWorkspaces: (limit?: number) => Promise<WorkspaceHistory[]>;
+  historyOpenWorkspace: (folderPath: string) => Promise<WorkspaceHistory>;
+  historyRemoveWorkspace: (folderPath: string) => Promise<{ success: boolean }>;
+  historyCreateConversation: (folderPath: string, mode: 'Agent' | 'Chat' | 'Edit') => Promise<Conversation>;
+  historyGetConversation: (folderPath: string, conversationId: string) => Promise<Conversation | null>;
+  historyGetActiveConversation: (folderPath: string) => Promise<Conversation | null>;
+  historyUpdateConversation: (folderPath: string, conversationId: string, messages: ChatMessage[], mode?: 'Agent' | 'Chat' | 'Edit') => Promise<Conversation | null>;
+  historyDeleteConversation: (folderPath: string, conversationId: string) => Promise<{ success: boolean; error?: string }>;
+  historySetActiveConversation: (folderPath: string, conversationId: string) => Promise<{ success: boolean; error?: string }>;
+  historyRenameConversation: (folderPath: string, conversationId: string, newTitle: string) => Promise<{ success: boolean; error?: string }>;
+  historyGetWorkspace: (folderPath: string) => Promise<WorkspaceHistory | null>;
 }
 
 declare global {

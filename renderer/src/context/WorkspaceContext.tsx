@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import type { TreeEntry, Tab, GitChange, GitFileChange, GitBranchInfo, SidePanel, NpmProject } from '../types';
 
 interface WorkspaceContextValue {
@@ -77,6 +77,11 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const importFolder = useCallback(async () => {
     const result = await window.electronAPI.selectFolder();
     if (!result) return;
+    await loadWorkspaceResult(result);
+  }, []);
+
+  // Helper to load a workspace from a FolderResult
+  const loadWorkspaceResult = useCallback(async (result: { folderPath: string; tree: TreeEntry[]; hasGit: boolean; hasPackageJson: boolean; packageName: string | null; gitIgnoredPaths: string[] }) => {
     setFolderPath(result.folderPath);
     setFolderName(result.folderPath.split('/').pop() ?? result.folderPath.split('\\').pop() ?? '');
     setTree(result.tree);
@@ -105,6 +110,25 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       }
     }
   }, []);
+
+  // Open workspace by path (for recent workspaces)
+  const openWorkspaceByPath = useCallback(async (path: string) => {
+    const result = await window.electronAPI.openFolder(path);
+    if (!result) return;
+    await loadWorkspaceResult(result);
+  }, [loadWorkspaceResult]);
+
+  // Listen for open-workspace events from Welcome component
+  useEffect(() => {
+    const handler = async (e: Event) => {
+      const customEvent = e as CustomEvent<{ folderPath: string }>;
+      if (customEvent.detail?.folderPath) {
+        await openWorkspaceByPath(customEvent.detail.folderPath);
+      }
+    };
+    window.addEventListener('open-workspace', handler);
+    return () => window.removeEventListener('open-workspace', handler);
+  }, [openWorkspaceByPath]);
 
   const openFile = useCallback(async (name: string, filePath: string, readOnly = false) => {
     const existing = openTabs.find(t => t.path === filePath);
