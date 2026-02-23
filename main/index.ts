@@ -1,9 +1,15 @@
 import { app, BrowserWindow, Menu } from 'electron';
 import * as path from 'path';
+import * as fs from 'fs';
 import { registerIpcHandlers } from './ipc';
 import { registerTerminalHandlers, killAllTerminals } from './terminal';
 
-const isDev = !app.isPackaged;
+// Check if we should use dev server or built files
+// Use built files if they exist and we're not running with VITE_DEV_SERVER env
+const rendererDistPath = path.join(__dirname, '..', '..', 'renderer', 'dist', 'index.html');
+const useDevServer = process.env.VITE_DEV_SERVER === 'true' || 
+  (!app.isPackaged && !fs.existsSync(rendererDistPath));
+
 let mainWindow: BrowserWindow | null = null;
 
 function createWindow(): void {
@@ -21,7 +27,7 @@ function createWindow(): void {
     },
   });
 
-  if (isDev) {
+  if (useDevServer) {
     mainWindow.loadURL('http://localhost:5173');
   } else {
     mainWindow.loadFile(path.join(__dirname, '..', '..', 'renderer', 'dist', 'index.html'));

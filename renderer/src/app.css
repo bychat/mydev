@@ -16,6 +16,8 @@ button{font-family:inherit;cursor:pointer}
 .status-bar{display:flex;align-items:center;justify-content:space-between;height:32px;padding:0 12px 0 80px;background:#f0f0f0;border-bottom:1px solid #e0e0e0;font-size:.78rem;-webkit-app-region:drag;user-select:none}
 .status-left{display:flex;align-items:center;gap:10px;-webkit-app-region:no-drag}
 .app-name{font-weight:700;color:#333;font-size:.8rem}
+.back-btn{display:flex;align-items:center;justify-content:center;width:22px;height:22px;background:none;border:none;color:#666;border-radius:4px;cursor:pointer;transition:background .1s,color .1s}
+.back-btn:hover{background:rgba(0,0,0,.08);color:#333}
 .badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:4px;font-size:.72rem;font-weight:600}
 .badge.git{background:rgba(0,0,0,.06);color:#e67e22}
 .badge.npm{background:rgba(0,0,0,.06);color:#c0392b}

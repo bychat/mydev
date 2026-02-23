@@ -20,8 +20,8 @@ function NpmIcon() {
 
 export default function StatusBar() {
   const {
-    hasGit, hasPackageJson, packageName, folderPath,
-    gitBranchInfo, gitPush, gitPull, gitCheckout,
+    hasGit, hasPackageJson, packageName, folderPath, folderName,
+    gitBranchInfo, gitPush, gitPull, gitCheckout, closeWorkspace,
   } = useWorkspace();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [branchMenuOpen, setBranchMenuOpen] = useState(false);
@@ -72,7 +72,22 @@ export default function StatusBar() {
   return (
     <div className="status-bar">
       <div className="status-left">
-        <span className="app-name">mydev.bychat.io</span>
+        {folderPath ? (
+          <>
+            <button 
+              className="back-btn" 
+              onClick={closeWorkspace}
+              title="Close project and go back"
+            >
+              <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor">
+                <path d="M11 1L5 8l6 7" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+            <span className="app-name">{folderName}</span>
+          </>
+        ) : (
+          <span className="app-name">mydev.bychat.io</span>
+        )}
         {hasGit && <span className="badge git"><GitIcon /> Git</span>}
         {hasPackageJson && <span className="badge npm"><NpmIcon /> {packageName ?? 'npm'}</span>}
       </div>

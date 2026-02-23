@@ -17,6 +17,7 @@ interface WorkspaceContextValue {
   gitIgnoredPaths: string[];
   setActivePanel: (p: SidePanel) => void;
   importFolder: () => Promise<void>;
+  closeWorkspace: () => void;
   openFile: (name: string, filePath: string, readOnly?: boolean) => Promise<void>;
   closeTab: (filePath: string) => void;
   closeOtherTabs: (filePath: string) => void;
@@ -78,6 +79,23 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     const result = await window.electronAPI.selectFolder();
     if (!result) return;
     await loadWorkspaceResult(result);
+  }, []);
+
+  // Close current workspace and go back to welcome screen
+  const closeWorkspace = useCallback(() => {
+    setFolderPath(null);
+    setFolderName('');
+    setTree([]);
+    setHasGit(false);
+    setHasPackageJson(false);
+    setPackageName(null);
+    setOpenTabs([]);
+    setActiveTabPath(null);
+    setGitChanges([]);
+    setGitSplitChanges([]);
+    setGitBranch(null);
+    setGitIgnoredPaths([]);
+    setNpmProjects([]);
   }, []);
 
   // Helper to load a workspace from a FolderResult
@@ -277,7 +295,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     <WorkspaceContext.Provider value={{
       folderPath, folderName, tree, hasGit, hasPackageJson, packageName,
       openTabs, activeTabPath, activePanel, gitChanges, gitSplitChanges, gitBranchInfo: gitBranch, gitIgnoredPaths,
-      setActivePanel, importFolder, openFile, closeTab, closeOtherTabs, closeAllTabs, closeTabsToTheRight,
+      setActivePanel, importFolder, closeWorkspace, openFile, closeTab, closeOtherTabs, closeAllTabs, closeTabsToTheRight,
       updateTabContent, setActiveTabPath, saveFile, refreshGitStatus, openDiff,
       stageFile, unstageFile, stageAll, unstageAll, gitCommit: commitChanges,
       gitPush: pushChanges, gitPull: pullChanges, gitCheckout: checkoutBranch,
