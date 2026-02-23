@@ -1,9 +1,38 @@
-import { useState, useCallback, type ReactNode } from 'react';
+import { useState, useCallback, useMemo, type ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import type { TreeEntry } from '../types';
 
 interface MarkdownProps {
   children: string;
+  /** Flat set of relative file paths in the workspace (e.g. "src/index.ts") */
+  workspaceFiles?: Set<string>;
+  /** Called when user clicks a recognised file reference */
+  onFileClick?: (relativePath: string) => void;
+}
+
+/** Build a flat set of all relative file paths from a tree */
+export function flattenTree(entries: TreeEntry[], prefix = ''): Set<string> {
+  const out = new Set<string>();
+  for (const e of entries) {
+    const rel = prefix ? `${prefix}/${e.name}` : e.name;
+    if (e.type === 'file') out.add(rel);
+    if (e.children) {
+      for (const p of flattenTree(e.children, rel)) out.add(p);
+    }
+  }
+  return out;
+}
+
+/** Simple file-extension → emoji mapping */
+function fileEmoji(name: string) {
+  const ext = name.split('.').pop()?.toLowerCase() ?? '';
+  const map: Record<string, string> = {
+    ts: '🟦', tsx: '🟦', js: '🟨', jsx: '🟨', json: '📋', css: '🎨', html: '🌐',
+    md: '📝', py: '🐍', rs: '🦀', go: '🐹', yaml: '⚙️', yml: '⚙️', toml: '⚙️',
+    sh: '🖥', bash: '🖥', zsh: '🖥', txt: '📄', svg: '🖼', png: '🖼', jpg: '🖼',
+  };
+  return map[ext] ?? '📄';
 }
 
 /** Inline copy button for code blocks */
@@ -21,7 +50,27 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-export default function Markdown({ children }: MarkdownProps) {
+export default function Markdown({ children, workspaceFiles, onFileClick }: MarkdownProps) {
+  /** Check if a string looks like a workspace file path */
+  const resolveFile = useMemo(() => {
+    if (!workspaceFiles || workspaceFiles.size === 0) return (_s: string) => null;
+
+    // Also build a name→path map so bare filenames like "package.json" match
+    const nameMap = new Map<string, string>();
+    for (const p of workspaceFiles) {
+      const name = p.split('/').pop()!;
+      // Only map if the name is unambiguous (first wins)
+      if (!nameMap.has(name)) nameMap.set(name, p);
+    }
+
+    return (text: string): string | null => {
+      const t = text.replace(/^[`'"/]+|[`'"/]+$/g, '').replace(/^\.\//, '');
+      if (workspaceFiles.has(t)) return t;
+      if (nameMap.has(t)) return nameMap.get(t)!;
+      return null;
+    };
+  }, [workspaceFiles]);
+
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
@@ -33,6 +82,21 @@ export default function Markdown({ children }: MarkdownProps) {
 
           // Inline code (no language class, short, no newlines)
           if (!match && !codeStr.includes('\n')) {
+            // Check if this looks like a workspace file
+            const resolved = resolveFile(codeStr);
+            if (resolved && onFileClick) {
+              const fileName = resolved.split('/').pop() ?? resolved;
+              return (
+                <button
+                  className="md-file-link"
+                  onClick={(e) => { e.preventDefault(); onFileClick(resolved); }}
+                  title={`Open ${resolved}`}
+                >
+                  <span className="md-file-link-icon">{fileEmoji(fileName)}</span>
+                  {codeStr}
+                </button>
+              );
+            }
             return <code className="md-inline-code" {...rest}>{codeChildren}</code>;
           }
 

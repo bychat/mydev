@@ -198,6 +198,12 @@ button{font-family:inherit;cursor:pointer}
 .md-inline-code{padding:1px 5px;background:rgba(0,0,0,.07);border-radius:4px;font-family:'SF Mono','Fira Code',monospace;font-size:.82em;color:#c0392b;word-break:break-all}
 .chat-msg.user .md-inline-code{background:rgba(255,255,255,.15);color:#fff}
 
+/* Clickable file reference in markdown */
+.md-file-link{display:inline-flex;align-items:center;gap:3px;padding:1px 7px;background:rgba(0,0,0,.05);border:1px solid rgba(0,0,0,.1);border-radius:5px;font-family:'SF Mono','Fira Code',monospace;font-size:.8em;color:#2563eb;cursor:pointer;transition:all .15s;word-break:break-all;text-align:left;line-height:1.4}
+.md-file-link:hover{background:rgba(37,99,235,.08);border-color:rgba(37,99,235,.25);color:#1d4ed8;transform:translateY(-0.5px);box-shadow:0 1px 4px rgba(37,99,235,.1)}
+.md-file-link:active{transform:translateY(0);box-shadow:none}
+.md-file-link-icon{font-style:normal;font-size:.9em;flex-shrink:0}
+
 /* Code block */
 .md-code-block{margin:.4em 0;border-radius:8px;overflow:hidden;background:#1e1e1e;border:1px solid rgba(0,0,0,.08)}
 .md-code-header{display:flex;align-items:center;justify-content:space-between;padding:4px 10px;background:#2d2d2d;font-size:.68rem;color:#999}

@@ -1,7 +1,7 @@
-import { useState, useRef, useEffect, useCallback, type ChangeEvent, type KeyboardEvent, type DragEvent } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo, type ChangeEvent, type KeyboardEvent, type DragEvent } from 'react';
 import type { AISettings, ChatMessage } from '../types';
 import SettingsModal from './SettingsModal';
-import Markdown from './Markdown';
+import Markdown, { flattenTree } from './Markdown';
 import { useWorkspace } from '../context/WorkspaceContext';
 
 type ChatMode = 'Agent' | 'Chat' | 'Edit';
@@ -29,7 +29,7 @@ function fileIcon(name: string) {
 }
 
 export default function ChatPanel() {
-  const { openTabs, activeTabPath } = useWorkspace();
+  const { openTabs, activeTabPath, tree, folderPath, openFile, setActivePanel } = useWorkspace();
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [history, setHistory] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -73,6 +73,17 @@ export default function ChatPanel() {
   const scrollToBottom = useCallback(() => {
     setTimeout(() => endRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
   }, []);
+
+  // ── Workspace file paths for clickable file references in markdown ──
+  const workspaceFiles = useMemo(() => flattenTree(tree), [tree]);
+
+  const handleMdFileClick = useCallback((relativePath: string) => {
+    if (!folderPath) return;
+    const fullPath = `${folderPath}/${relativePath}`;
+    const name = relativePath.split('/').pop() ?? relativePath;
+    openFile(name, fullPath);
+    setActivePanel('explorer');
+  }, [folderPath, openFile, setActivePanel]);
 
   // Load settings & models on mount
   useEffect(() => {
@@ -245,7 +256,11 @@ export default function ChatPanel() {
                   </div>
                 )}
                 {msg.sender === 'bot' ? (
-                  <div className="md-content"><Markdown>{msg.text}</Markdown></div>
+                  <div className="md-content">
+                    <Markdown workspaceFiles={workspaceFiles} onFileClick={handleMdFileClick}>
+                      {msg.text}
+                    </Markdown>
+                  </div>
                 ) : (
                   msg.text
                 )}
