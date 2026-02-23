@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   aiCheckOllama: () => ipcRenderer.invoke('ai-check-ollama'),
   aiListModels: (baseUrl, apiKey) => ipcRenderer.invoke('ai-list-models', baseUrl, apiKey),
   aiChat: (baseUrl, apiKey, model, messages) => ipcRenderer.invoke('ai-chat', baseUrl, apiKey, model, messages),
+  aiChatAbort: () => ipcRenderer.invoke('ai-chat-abort'),
   aiLoadSettings: () => ipcRenderer.invoke('ai-load-settings'),
   aiSaveSettings: (settings) => ipcRenderer.invoke('ai-save-settings', settings),
   // Terminal

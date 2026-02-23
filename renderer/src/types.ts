@@ -103,6 +103,7 @@ export interface ElectronAPI {
   aiCheckOllama: () => Promise<boolean>;
   aiListModels: (baseUrl: string, apiKey: string) => Promise<string[]>;
   aiChat: (baseUrl: string, apiKey: string, model: string, messages: ChatMessage[]) => Promise<AIChatResult>;
+  aiChatAbort: () => Promise<{ success: boolean }>;
   aiLoadSettings: () => Promise<AISettings>;
   aiSaveSettings: (settings: AISettings) => Promise<{ success: boolean }>;
   // Terminal

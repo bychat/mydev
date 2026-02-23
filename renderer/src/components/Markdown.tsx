@@ -55,18 +55,40 @@ export default function Markdown({ children, workspaceFiles, onFileClick }: Mark
   const resolveFile = useMemo(() => {
     if (!workspaceFiles || workspaceFiles.size === 0) return (_s: string) => null;
 
-    // Also build a name→path map so bare filenames like "package.json" match
-    const nameMap = new Map<string, string>();
+    // Build a name→path map so bare filenames like "package.json" match
+    const nameMap = new Map<string, string | null>(); // null = ambiguous (multiple files share the name)
+    // Build a suffix index for partial-path matching (e.g. "src/app.css" → "renderer/src/app.css")
+    const suffixMap = new Map<string, string | null>();
     for (const p of workspaceFiles) {
       const name = p.split('/').pop()!;
-      // Only map if the name is unambiguous (first wins)
-      if (!nameMap.has(name)) nameMap.set(name, p);
+      if (nameMap.has(name)) {
+        nameMap.set(name, null); // ambiguous — mark it
+      } else {
+        nameMap.set(name, p);
+      }
+      // Build suffix entries for every sub-path of the full path
+      const parts = p.split('/');
+      for (let i = 1; i < parts.length; i++) {
+        const suffix = parts.slice(i).join('/');
+        if (suffix === name) continue; // already in nameMap
+        if (suffixMap.has(suffix)) {
+          suffixMap.set(suffix, null); // ambiguous
+        } else {
+          suffixMap.set(suffix, p);
+        }
+      }
     }
 
     return (text: string): string | null => {
-      const t = text.replace(/^[`'"/]+|[`'"/]+$/g, '').replace(/^\.\//, '');
+      const t = text.replace(/^[`'"]+|[`'"]+$/g, '').replace(/^\.\//, '');
+      // 1. Exact match on full relative path
       if (workspaceFiles.has(t)) return t;
-      if (nameMap.has(t)) return nameMap.get(t)!;
+      // 2. Partial / suffix match (e.g. "src/app.css" → "renderer/src/app.css")
+      const sfx = suffixMap.get(t);
+      if (sfx) return sfx;
+      // 3. Bare filename match (unambiguous only)
+      const byName = nameMap.get(t);
+      if (byName) return byName;
       return null;
     };
   }, [workspaceFiles]);

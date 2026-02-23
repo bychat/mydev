@@ -4,6 +4,9 @@ import { checkOllama, listModels, chatComplete, loadSettings, saveSettings, type
 import * as path from 'path';
 import * as fs from 'fs';
 
+/** Active AI chat AbortController — allows the renderer to cancel an in-flight request */
+let activeChatController: AbortController | null = null;
+
 export function registerIpcHandlers(): void {
   ipcMain.handle('select-folder', async () => {
     const result = await dialog.showOpenDialog({ properties: ['openDirectory'], title: 'Import a Project' });
@@ -126,12 +129,28 @@ export function registerIpcHandlers(): void {
   });
 
   ipcMain.handle('ai-chat', async (_event, baseUrl: string, apiKey: string, model: string, messages: { role: 'user' | 'assistant' | 'system'; content: string }[]) => {
+    // Create an AbortController so the renderer can cancel the request
+    const controller = new AbortController();
+    activeChatController = controller;
     try {
-      const reply = await chatComplete(baseUrl, apiKey, model, messages);
+      const reply = await chatComplete(baseUrl, apiKey, model, messages, controller.signal);
       return { success: true, reply };
     } catch (err: unknown) {
+      if (controller.signal.aborted) {
+        return { success: false, error: 'aborted' };
+      }
       return { success: false, error: (err as Error).message };
+    } finally {
+      if (activeChatController === controller) activeChatController = null;
     }
+  });
+
+  ipcMain.handle('ai-chat-abort', async () => {
+    if (activeChatController) {
+      activeChatController.abort();
+      activeChatController = null;
+    }
+    return { success: true };
   });
 
   ipcMain.handle('ai-load-settings', async () => {

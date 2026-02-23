@@ -59,12 +59,13 @@ export async function chatComplete(
   baseUrl: string,
   apiKey: string,
   model: string,
-  messages: { role: 'user' | 'assistant' | 'system'; content: string }[]
+  messages: { role: 'user' | 'assistant' | 'system'; content: string }[],
+  signal?: AbortSignal,
 ): Promise<string> {
   const client = new OpenAI({ baseURL: baseUrl, apiKey });
-  const response = await client.chat.completions.create({
-    model,
-    messages,
-  });
+  const response = await client.chat.completions.create(
+    { model, messages },
+    { signal },
+  );
   return response.choices[0]?.message?.content ?? '';
 }

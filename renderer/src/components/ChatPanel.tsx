@@ -171,16 +171,30 @@ export default function ChatPanel() {
       if (result.success && result.reply) {
         setMessages(prev => [...prev, { text: result.reply!, sender: 'bot' }]);
         setHistory(prev => [...prev, { role: 'assistant', content: result.reply! }]);
+      } else if (result.error === 'aborted') {
+        setMessages(prev => [...prev, { text: '⏹ Response stopped.', sender: 'bot' }]);
       } else {
         setMessages(prev => [...prev, { text: `⚠️ ${result.error ?? 'Unknown error'}`, sender: 'bot' }]);
       }
     } catch (err: unknown) {
-      setMessages(prev => [...prev, { text: `⚠️ ${(err as Error).message}`, sender: 'bot' }]);
+      const msg = (err as Error).message;
+      if (msg?.includes('abort')) {
+        setMessages(prev => [...prev, { text: '⏹ Response stopped.', sender: 'bot' }]);
+      } else {
+        setMessages(prev => [...prev, { text: `⚠️ ${msg}`, sender: 'bot' }]);
+      }
     } finally {
       setLoading(false);
       scrollToBottom();
     }
   }, [input, loading, settings, selectedModel, history, attachedFiles, scrollToBottom]);
+
+  // ── Stop running request ──
+  const stopMessage = useCallback(async () => {
+    try {
+      await window.electronAPI.aiChatAbort();
+    } catch { /* ignore */ }
+  }, []);
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
@@ -376,11 +390,17 @@ export default function ChatPanel() {
             <button className="composer-icon-btn" title="Voice input">
               <svg viewBox="0 0 16 16" width="15" height="15" fill="currentColor"><path d="M8 11a3 3 0 0 0 3-3V3a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3z"/><path d="M12 8a.5.5 0 0 1 .5.5A4.5 4.5 0 0 1 8.5 13v1.5h2a.5.5 0 0 1 0 1h-5a.5.5 0 0 1 0-1h2V13A4.5 4.5 0 0 1 3.5 8.5a.5.5 0 0 1 1 0A3.5 3.5 0 0 0 8 12a3.5 3.5 0 0 0 3.5-3.5.5.5 0 0 1 .5-.5z"/></svg>
             </button>
-            {/* Send / Submit */}
-            <button className="composer-send-btn" onClick={sendMessage} disabled={!ready || loading} title="Send">
-              <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M1.724 1.053a.5.5 0 0 1 .541-.054l12 6.5a.5.5 0 0 1 0 .882l-12 6.5A.5.5 0 0 1 1.5 14.5v-5.191l7.72-1.31L1.5 6.69V1.5a.5.5 0 0 1 .224-.447z"/></svg>
-              <span className="caret">▾</span>
-            </button>
+            {/* Send / Stop */}
+            {loading ? (
+              <button className="composer-stop-btn" onClick={stopMessage} title="Stop generating">
+                <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><rect x="3" y="3" width="10" height="10" rx="1.5" /></svg>
+              </button>
+            ) : (
+              <button className="composer-send-btn" onClick={sendMessage} disabled={!ready} title="Send">
+                <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M1.724 1.053a.5.5 0 0 1 .541-.054l12 6.5a.5.5 0 0 1 0 .882l-12 6.5A.5.5 0 0 1 1.5 14.5v-5.191l7.72-1.31L1.5 6.69V1.5a.5.5 0 0 1 .224-.447z"/></svg>
+                <span className="caret">▾</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
