@@ -124,6 +124,58 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
     return gitPush(folderPath);
   });
 
+  // ── NPM Scripts ──
+  // Find all package.json files recursively, excluding gitignored paths
+  ipcMain.handle('get-all-npm-projects', async (_event, folderPath: string, gitIgnoredPaths: string[]) => {
+    const projects: { name: string; relativePath: string; absolutePath: string; scripts: Record<string, string> }[] = [];
+    
+    const ignoredSet = new Set(gitIgnoredPaths.map(p => path.resolve(folderPath, p)));
+    
+    function isIgnored(filePath: string): boolean {
+      // Check if the file or any parent is in the ignored set
+      let current = filePath;
+      while (current !== folderPath && current !== path.dirname(current)) {
+        if (ignoredSet.has(current)) return true;
+        current = path.dirname(current);
+      }
+      return false;
+    }
+    
+    function walkDir(dir: string) {
+      try {
+        const entries = fs.readdirSync(dir, { withFileTypes: true });
+        for (const entry of entries) {
+          const fullPath = path.join(dir, entry.name);
+          
+          // Skip common directories that shouldn't be searched
+          if (entry.isDirectory()) {
+            if (entry.name === 'node_modules' || entry.name === '.git' || entry.name.startsWith('.')) continue;
+            if (isIgnored(fullPath)) continue;
+            walkDir(fullPath);
+          } else if (entry.name === 'package.json') {
+            if (isIgnored(fullPath)) continue;
+            try {
+              const pkg = JSON.parse(fs.readFileSync(fullPath, 'utf-8'));
+              const scripts = pkg.scripts ?? {};
+              if (Object.keys(scripts).length > 0) {
+                const relativePath = path.relative(folderPath, path.dirname(fullPath)) || '.';
+                projects.push({
+                  name: pkg.name || relativePath,
+                  relativePath,
+                  absolutePath: path.dirname(fullPath),
+                  scripts,
+                });
+              }
+            } catch { /* ignore invalid package.json */ }
+          }
+        }
+      } catch { /* ignore unreadable directories */ }
+    }
+    
+    walkDir(folderPath);
+    return projects;
+  });
+
   // ── AI Handlers ──
   ipcMain.handle('ai-check-ollama', async () => {
     return checkOllama();

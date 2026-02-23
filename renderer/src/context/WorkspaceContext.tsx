@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
-import type { TreeEntry, Tab, GitChange, GitFileChange, GitBranchInfo, SidePanel } from '../types';
+import type { TreeEntry, Tab, GitChange, GitFileChange, GitBranchInfo, SidePanel, NpmProject } from '../types';
 
 interface WorkspaceContextValue {
   folderPath: string | null;
@@ -36,6 +36,8 @@ interface WorkspaceContextValue {
   gitPull: () => Promise<{ success: boolean; error?: string }>;
   gitCheckout: (branch: string) => Promise<{ success: boolean; error?: string }>;
   gitCreateBranch: (branchName: string) => Promise<{ success: boolean; error?: string }>;
+  npmProjects: NpmProject[];
+  runNpmScript: (projectPath: string, scriptName: string) => void;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
@@ -60,6 +62,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [gitSplitChanges, setGitSplitChanges] = useState<GitFileChange[]>([]);
   const [gitBranch, setGitBranch] = useState<GitBranchInfo | null>(null);
   const [gitIgnoredPaths, setGitIgnoredPaths] = useState<string[]>([]);
+  const [npmProjects, setNpmProjects] = useState<NpmProject[]>([]);
 
   const refreshGitStatus = useCallback(async () => {
     if (!folderPath) return;
@@ -80,11 +83,15 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     setHasGit(result.hasGit);
     setHasPackageJson(result.hasPackageJson);
     setPackageName(result.packageName);
-    setGitIgnoredPaths(result.gitIgnoredPaths ?? []);
+    const ignoredPaths = result.gitIgnoredPaths ?? [];
+    setGitIgnoredPaths(ignoredPaths);
     if (result.hasGit) {
       const changes = await window.electronAPI.gitStatus(result.folderPath);
       setGitChanges(changes);
     }
+    // Load all npm projects from the repo
+    const projects = await window.electronAPI.getAllNpmProjects(result.folderPath, ignoredPaths);
+    setNpmProjects(projects);
 
     // Auto-open README or first root file
     const rootFiles = result.tree.filter(e => e.type === 'file');
@@ -228,6 +235,16 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     return result;
   }, [folderPath, refreshGitStatus]);
 
+  const runNpmScript = useCallback((projectPath: string, scriptName: string) => {
+    // Dispatch event to show terminal
+    window.dispatchEvent(new CustomEvent('show-terminal'));
+    // Open terminal in the project directory and run the script
+    window.electronAPI.terminalCreate(projectPath).then(({ id }) => {
+      // Send the npm command
+      window.electronAPI.terminalInput(id, `npm run ${scriptName}\n`);
+    });
+  }, []);
+
   return (
     <WorkspaceContext.Provider value={{
       folderPath, folderName, tree, hasGit, hasPackageJson, packageName,
@@ -237,6 +254,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       stageFile, unstageFile, stageAll, unstageAll, gitCommit: commitChanges,
       gitPush: pushChanges, gitPull: pullChanges, gitCheckout: checkoutBranch,
       gitCreateBranch: createBranch,
+      npmProjects, runNpmScript,
     }}>
       {children}
     </WorkspaceContext.Provider>

@@ -3,6 +3,7 @@ import { useWorkspace } from '../context/WorkspaceContext';
 import FileTree from './FileTree';
 import SearchPanel from './SearchPanel';
 import SourceControlPanel from './SourceControlPanel';
+import NpmPanel from './NpmPanel';
 
 interface SidebarProps {
   onCollapse?: () => void;
@@ -167,6 +168,7 @@ export default function Sidebar({ onCollapse }: SidebarProps) {
 
   if (activePanel === 'search') return <aside className="sidebar"><SearchPanel /></aside>;
   if (activePanel === 'source-control') return <aside className="sidebar"><SourceControlPanel /></aside>;
+  if (activePanel === 'npm') return <aside className="sidebar"><NpmPanel /></aside>;
 
   return (
     <aside className="sidebar">

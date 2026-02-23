@@ -18,6 +18,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   gitCreateBranch: (folderPath, branch) => ipcRenderer.invoke('git-create-branch', folderPath, branch),
   gitPull: (folderPath) => ipcRenderer.invoke('git-pull', folderPath),
   gitPush: (folderPath) => ipcRenderer.invoke('git-push', folderPath),
+  getAllNpmProjects: (folderPath, gitIgnoredPaths) => ipcRenderer.invoke('get-all-npm-projects', folderPath, gitIgnoredPaths),
   aiCheckOllama: () => ipcRenderer.invoke('ai-check-ollama'),
   aiListModels: (baseUrl, apiKey) => ipcRenderer.invoke('ai-list-models', baseUrl, apiKey),
   aiChat: (baseUrl, apiKey, model, messages) => ipcRenderer.invoke('ai-chat', baseUrl, apiKey, model, messages),

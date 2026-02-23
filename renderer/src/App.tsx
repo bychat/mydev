@@ -41,6 +41,15 @@ function AppLayout() {
     return cleanup;
   }, [toggleTerminal]);
 
+  // Listen for show-terminal event (e.g. from npm script run)
+  useEffect(() => {
+    const handler = () => {
+      if (folderPath) setTerminalVisible(true);
+    };
+    window.addEventListener('show-terminal', handler);
+    return () => window.removeEventListener('show-terminal', handler);
+  }, [folderPath]);
+
   // Keyboard shortcut: Ctrl/Cmd + `
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
