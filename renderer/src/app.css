@@ -606,3 +606,39 @@ button{font-family:inherit;cursor:pointer}
 .prompt-save-btn{padding:.4rem 1rem;background:#333;border:none;border-radius:6px;color:#fff;font-size:.78rem;font-weight:600;cursor:pointer;transition:background .12s}
 .prompt-save-btn:hover:not(:disabled){background:#444}
 .prompt-save-btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* ── Supabase Panel ─── */
+.supabase-panel{padding:12px;height:100%;overflow-y:auto}
+.supabase-panel-header{display:flex;align-items:center;gap:8px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #eee}
+.supabase-panel-header h2{font-size:.9rem;font-weight:600;color:#333;margin:0}
+.supabase-panel-header svg{color:#3ECF8E}
+.supabase-panel-empty{padding:16px;text-align:center;color:#888;font-size:.8rem}
+.supabase-panel-empty p{margin-bottom:8px}
+.supabase-hint{color:#aaa;font-size:.72rem;margin-top:12px !important}
+.supabase-hint-list{list-style:none;margin-top:6px;text-align:left;padding-left:12px}
+.supabase-hint-list li{font-family:'SF Mono','Fira Code',monospace;font-size:.7rem;color:#666;padding:3px 0}
+.supabase-hint-list code{background:#f5f5f5;padding:2px 6px;border-radius:4px}
+
+.supabase-panel-content{display:flex;flex-direction:column;gap:16px}
+.supabase-section{background:#fafafa;border-radius:8px;padding:12px}
+.supabase-section-title{font-size:.7rem;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px}
+
+.supabase-project-card{display:flex;align-items:center;gap:12px;padding:10px;background:#fff;border:1px solid #e0e0e0;border-radius:8px}
+.supabase-project-icon{width:40px;height:40px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#3ECF8E 0%,#249361 100%);border-radius:8px}
+.supabase-project-icon svg{color:#fff}
+.supabase-project-info{flex:1;min-width:0}
+.supabase-project-name{display:block;font-size:.85rem;font-weight:600;color:#333;margin-bottom:2px}
+.supabase-project-url{display:block;font-size:.7rem;color:#888;font-family:'SF Mono','Fira Code',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.supabase-config-list{display:flex;flex-direction:column;gap:6px}
+.supabase-config-item{display:flex;align-items:center;gap:8px;font-size:.78rem;color:#555}
+.supabase-config-status{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;font-size:.7rem}
+.supabase-config-status.found{background:#d4edda;color:#27ae60}
+.supabase-config-status.missing{background:#f5f5f5;color:#bbb}
+
+.supabase-source-file code{display:block;font-size:.72rem;color:#666;background:#fff;padding:6px 10px;border-radius:6px;border:1px solid #e0e0e0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.supabase-actions{display:flex;flex-direction:column;gap:6px}
+.supabase-action-btn{display:flex;align-items:center;gap:8px;width:100%;padding:8px 12px;background:#fff;border:1px solid #e0e0e0;border-radius:6px;font-size:.78rem;font-weight:500;color:#333;cursor:pointer;transition:all .12s}
+.supabase-action-btn:hover{background:#f5f5f5;border-color:#ccc}
+.supabase-action-btn span{font-size:.9rem}

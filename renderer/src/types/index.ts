@@ -45,6 +45,9 @@ export type {
 export type { PromptSettings } from './prompts.types';
 export { DEFAULT_PROMPTS } from './prompts.types';
 
+// Supabase types
+export type { SupabaseConfig } from './supabase.types';
+
 // UI types
 export type { SidePanel, ChatMode } from './ui.types';
 

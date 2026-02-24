@@ -1,8 +1,9 @@
-import { ipcMain, dialog, BrowserWindow, type BrowserWindow as BW } from 'electron';
+import { ipcMain, dialog, BrowserWindow, shell, type BrowserWindow as BW } from 'electron';
 import { readDirectoryTree, getGitChangedFiles, getGitChangedFilesSplit, getGitDiff, getGitIgnoredPaths, gitStageFile, gitUnstageFile, gitStageAll, gitUnstageAll, gitDiscardFile, gitCommit, gitGetBranchInfo, gitListBranches, gitCheckout, gitCreateBranch, gitPull, gitPush } from './fileSystem';
 import { checkOllama, listModels, chatComplete, chatCompleteStream, loadSettings, saveSettings, type AISettings } from './ai';
 import { loadPrompts, savePrompts, resetPrompts, type PromptSettings } from './prompts';
 import { logRequest, logResult, logStreamingProgress, registerDebugIpc } from './debugWindow';
+import { detectSupabaseConfig, type SupabaseConfig } from './supabase';
 import {
   loadAppHistory,
   saveAppHistory,
@@ -474,6 +475,16 @@ export function registerIpcHandlers(getWindow: () => BW | null): void {
   ipcMain.handle('history-get-workspace', async (_event, folderPath: string) => {
     const history = loadAppHistory();
     return history.workspaces.find(w => w.folderPath === folderPath) ?? null;
+  });
+
+  // ── Supabase Detection ──
+  ipcMain.handle('detect-supabase', async (_event, folderPath: string) => {
+    return detectSupabaseConfig(folderPath);
+  });
+
+  // ── Shell ──
+  ipcMain.handle('shell-open-external', async (_event, url: string) => {
+    await shell.openExternal(url);
   });
 
   // ── Debug Window ──

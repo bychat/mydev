@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
-import type { TreeEntry, Tab, GitChange, GitFileChange, GitBranchInfo, SidePanel, NpmProject } from '../types';
+import type { TreeEntry, Tab, GitChange, GitFileChange, GitBranchInfo, SidePanel, NpmProject, SupabaseConfig } from '../types';
 
 interface WorkspaceContextValue {
   folderPath: string | null;
@@ -15,6 +15,7 @@ interface WorkspaceContextValue {
   gitSplitChanges: GitFileChange[];
   gitBranchInfo: GitBranchInfo | null;
   gitIgnoredPaths: string[];
+  supabaseConfig: SupabaseConfig | null;
   setActivePanel: (p: SidePanel) => void;
   importFolder: () => Promise<void>;
   closeWorkspace: () => void;
@@ -65,6 +66,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [gitBranch, setGitBranch] = useState<GitBranchInfo | null>(null);
   const [gitIgnoredPaths, setGitIgnoredPaths] = useState<string[]>([]);
   const [npmProjects, setNpmProjects] = useState<NpmProject[]>([]);
+  const [supabaseConfig, setSupabaseConfig] = useState<SupabaseConfig | null>(null);
   
   // Lock to prevent concurrent git operations
   const gitLockRef = useRef(false);
@@ -112,6 +114,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     setGitBranch(null);
     setGitIgnoredPaths([]);
     setNpmProjects([]);
+    setSupabaseConfig(null);
   }, []);
 
   // Helper to load a workspace from a FolderResult
@@ -131,6 +134,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     // Load all npm projects from the repo
     const projects = await window.electronAPI.getAllNpmProjects(result.folderPath, ignoredPaths);
     setNpmProjects(projects);
+
+    // Detect Supabase configuration
+    const supabase = await window.electronAPI.detectSupabase(result.folderPath);
+    setSupabaseConfig(supabase);
 
     // Auto-open README or first root file
     const rootFiles = result.tree.filter(e => e.type === 'file');
@@ -323,6 +330,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     <WorkspaceContext.Provider value={{
       folderPath, folderName, tree, hasGit, hasPackageJson, packageName,
       openTabs, activeTabPath, activePanel, gitChanges, gitSplitChanges, gitBranchInfo: gitBranch, gitIgnoredPaths,
+      supabaseConfig,
       setActivePanel, importFolder, closeWorkspace, openFile, closeTab, closeOtherTabs, closeAllTabs, closeTabsToTheRight,
       updateTabContent, setActiveTabPath, saveFile, refreshGitStatus, openDiff,
       stageFile, unstageFile, stageAll, unstageAll, discardFile, gitCommit: commitChanges,

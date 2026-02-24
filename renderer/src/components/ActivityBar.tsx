@@ -10,13 +10,15 @@ import {
   NewWindowIcon,
   ExplorerIcon,
   SearchIcon,
+  SupabaseIcon,
 } from './icons';
 
-const panels: { id: SidePanel; icon: 'explorer' | 'search' | 'source-control' | 'npm'; label: string; gitOnly?: boolean; npmOnly?: boolean }[] = [
+const panels: { id: SidePanel; icon: 'explorer' | 'search' | 'source-control' | 'npm' | 'supabase'; label: string; gitOnly?: boolean; npmOnly?: boolean }[] = [
   { id: 'explorer', icon: 'explorer', label: 'Explorer' },
   { id: 'search', icon: 'search', label: 'Search' },
   { id: 'source-control', icon: 'source-control', label: 'Source Control', gitOnly: true },
   { id: 'npm', icon: 'npm', label: 'NPM Scripts', npmOnly: true },
+  { id: 'supabase', icon: 'supabase', label: 'Supabase' },
 ];
 
 interface ActivityBarProps {
@@ -66,6 +68,8 @@ export default function ActivityBar({ onToggleTerminal, terminalVisible }: Activ
         return <GitIcon />;
       case 'npm':
         return <NpmIcon />;
+      case 'supabase':
+        return <SupabaseIcon />;
       default:
         return null;
     }

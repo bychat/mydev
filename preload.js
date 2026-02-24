@@ -90,4 +90,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   historySetActiveConversation: (folderPath, conversationId) => ipcRenderer.invoke('history-set-active-conversation', folderPath, conversationId),
   historyRenameConversation: (folderPath, conversationId, newTitle) => ipcRenderer.invoke('history-rename-conversation', folderPath, conversationId, newTitle),
   historyGetWorkspace: (folderPath) => ipcRenderer.invoke('history-get-workspace', folderPath),
+  // Supabase
+  detectSupabase: (folderPath) => ipcRenderer.invoke('detect-supabase', folderPath),
+  // Shell
+  shellOpenExternal: (url) => ipcRenderer.invoke('shell-open-external', url),
 });
