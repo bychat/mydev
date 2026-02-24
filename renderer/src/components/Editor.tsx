@@ -54,6 +54,7 @@ export default function Editor() {
 
   if (!activeTab) return null;
 
+  
   // Diff view
   if (isDiff) {
     let diff: DiffResult;
