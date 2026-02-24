@@ -3,7 +3,7 @@ import { readDirectoryTree, getGitChangedFiles, getGitChangedFilesSplit, getGitD
 import { checkOllama, listModels, chatComplete, chatCompleteStream, loadSettings, saveSettings, type AISettings } from './ai';
 import { loadPrompts, savePrompts, resetPrompts, type PromptSettings } from './prompts';
 import { logRequest, logResult, logStreamingProgress, registerDebugIpc } from './debugWindow';
-import { detectSupabaseConfig, type SupabaseConfig } from './supabase';
+import { detectSupabaseConfig, fetchSupabaseUsers, fetchSupabaseStorage, type SupabaseConfig, type SupabaseUsersResult, type SupabaseStorageResult } from './supabase';
 import {
   loadAppHistory,
   saveAppHistory,
@@ -480,6 +480,16 @@ export function registerIpcHandlers(getWindow: () => BW | null): void {
   // ── Supabase Detection ──
   ipcMain.handle('detect-supabase', async (_event, folderPath: string) => {
     return detectSupabaseConfig(folderPath);
+  });
+
+  // ── Supabase Users ──
+  ipcMain.handle('supabase-get-users', async (_event, projectUrl: string, serviceRoleKey: string) => {
+    return fetchSupabaseUsers(projectUrl, serviceRoleKey);
+  });
+
+  // ── Supabase Storage ──
+  ipcMain.handle('supabase-get-storage', async (_event, projectUrl: string, serviceRoleKey: string) => {
+    return fetchSupabaseStorage(projectUrl, serviceRoleKey);
   });
 
   // ── Shell ──

@@ -10,6 +10,49 @@ export interface SupabaseConfig {
   projectUrl: string | null;
   projectRef: string | null;
   sourceFile: string | null;
+  serviceRoleKey?: string | null;
+}
+
+export interface SupabaseUser {
+  id: string;
+  email: string | null;
+  phone: string | null;
+  created_at: string;
+  last_sign_in_at: string | null;
+  email_confirmed_at: string | null;
+  app_metadata: Record<string, unknown>;
+  user_metadata: Record<string, unknown>;
+}
+
+export interface SupabaseUsersResult {
+  success: boolean;
+  users: SupabaseUser[];
+  error?: string;
+}
+
+export interface SupabaseBucket {
+  id: string;
+  name: string;
+  public: boolean;
+  created_at: string;
+  updated_at: string;
+  file_size_limit: number | null;
+  allowed_mime_types: string[] | null;
+}
+
+export interface SupabaseStorageObject {
+  id: string;
+  name: string;
+  bucket_id: string;
+  created_at: string;
+  updated_at: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface SupabaseStorageResult {
+  success: boolean;
+  buckets: SupabaseBucket[];
+  error?: string;
 }
 
 // Directories to skip when scanning
@@ -40,6 +83,24 @@ function extractUrl(content: string): string | null {
 function extractProjectRef(url: string): string | null {
   const match = url.match(/https?:\/\/([a-z0-9-]+)\.supabase\.co/i);
   return match ? match[1] : null;
+}
+
+/**
+ * Extract service role key from env content
+ */
+function extractServiceRoleKey(content: string): string | null {
+  // Look for SUPABASE_SERVICE_ROLE_KEY or similar patterns
+  const patterns = [
+    /SUPABASE_SERVICE_ROLE_KEY\s*=\s*["']?([a-zA-Z0-9._-]+)["']?/i,
+    /SERVICE_ROLE_KEY\s*=\s*["']?([a-zA-Z0-9._-]+)["']?/i,
+    /SUPABASE_SERVICE_KEY\s*=\s*["']?([a-zA-Z0-9._-]+)["']?/i,
+  ];
+  
+  for (const pattern of patterns) {
+    const match = content.match(pattern);
+    if (match) return match[1];
+  }
+  return null;
 }
 
 /**
@@ -90,6 +151,7 @@ export function detectSupabaseConfig(folderPath: string): SupabaseConfig {
     projectUrl: null,
     projectRef: null,
     sourceFile: null,
+    serviceRoleKey: null,
   };
 
   // Search for .env file containing "supabase"
@@ -102,6 +164,7 @@ export function detectSupabaseConfig(folderPath: string): SupabaseConfig {
     if (result.projectUrl) {
       result.projectRef = extractProjectRef(result.projectUrl);
     }
+    result.serviceRoleKey = extractServiceRoleKey(found.content);
     return result;
   }
 
@@ -117,4 +180,78 @@ export function detectSupabaseConfig(folderPath: string): SupabaseConfig {
   }
 
   return result;
+}
+
+/**
+ * Fetch users from Supabase using Admin API
+ */
+export async function fetchSupabaseUsers(projectUrl: string, serviceRoleKey: string): Promise<SupabaseUsersResult> {
+  try {
+    const response = await fetch(`${projectUrl}/auth/v1/admin/users`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${serviceRoleKey}`,
+        'apikey': serviceRoleKey,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return {
+        success: false,
+        users: [],
+        error: `API error: ${response.status} - ${errorText}`,
+      };
+    }
+
+    const data = await response.json() as { users?: SupabaseUser[] };
+    return {
+      success: true,
+      users: data.users || [],
+    };
+  } catch (error) {
+    return {
+      success: false,
+      users: [],
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+/**
+ * Fetch storage buckets from Supabase
+ */
+export async function fetchSupabaseStorage(projectUrl: string, serviceRoleKey: string): Promise<SupabaseStorageResult> {
+  try {
+    const response = await fetch(`${projectUrl}/storage/v1/bucket`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${serviceRoleKey}`,
+        'apikey': serviceRoleKey,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return {
+        success: false,
+        buckets: [],
+        error: `API error: ${response.status} - ${errorText}`,
+      };
+    }
+
+    const buckets = await response.json() as SupabaseBucket[];
+    return {
+      success: true,
+      buckets: buckets || [],
+    };
+  } catch (error) {
+    return {
+      success: false,
+      buckets: [],
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
 }

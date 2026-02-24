@@ -619,7 +619,7 @@ button{font-family:inherit;cursor:pointer}
 .supabase-hint-list li{font-family:'SF Mono','Fira Code',monospace;font-size:.7rem;color:#666;padding:3px 0}
 .supabase-hint-list code{background:#f5f5f5;padding:2px 6px;border-radius:4px}
 
-.supabase-panel-content{display:flex;flex-direction:column;gap:16px}
+.supabase-panel-content{display:flex;flex-direction:column;gap:8px;padding:4px}
 .supabase-section{background:#fafafa;border-radius:8px;padding:12px}
 .supabase-section-title{font-size:.7rem;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px}
 
@@ -642,3 +642,85 @@ button{font-family:inherit;cursor:pointer}
 .supabase-action-btn{display:flex;align-items:center;gap:8px;width:100%;padding:8px 12px;background:#fff;border:1px solid #e0e0e0;border-radius:6px;font-size:.78rem;font-weight:500;color:#333;cursor:pointer;transition:all .12s}
 .supabase-action-btn:hover{background:#f5f5f5;border-color:#ccc}
 .supabase-action-btn span{font-size:.9rem}
+
+/* Supabase Accordion Styles */
+.sb-accordion{border:1px solid #d0d0d0;border-radius:8px;margin-bottom:10px;overflow:hidden;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.sb-accordion-header{display:flex;align-items:center;width:100%;padding:12px 14px;background:#f8f8f8;border:none;cursor:pointer;transition:background .12s;font-family:inherit}
+.sb-accordion-header:hover{background:#f0f0f0}
+.sb-accordion-icon{font-size:1.1rem;margin-right:10px}
+.sb-accordion-title{flex:1;text-align:left;font-size:.82rem;font-weight:600;color:#333}
+.sb-accordion-chevron{color:#666;display:flex;align-items:center}
+.sb-accordion-content{padding:10px;border-top:1px solid #e5e5e5;background:#fff}
+
+.sb-detail-row{display:flex;align-items:center;gap:6px;margin:8px 0;font-size:.72rem}
+.sb-detail-label{color:#888;font-weight:500}
+.sb-detail-value{color:#555;background:#f5f5f5;padding:2px 6px;border-radius:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px}
+
+.sb-action-list{display:flex;flex-direction:column;gap:4px}
+.sb-action-item{display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;background:none;border:none;border-radius:6px;cursor:pointer;transition:background .12s;text-align:left;font-family:inherit}
+.sb-action-item:hover{background:#f5f5f5}
+.sb-action-item-icon{font-size:1.1rem;width:24px;text-align:center}
+.sb-action-item-content{flex:1;min-width:0}
+.sb-action-item-title{display:block;font-size:.78rem;font-weight:500;color:#333}
+.sb-action-item-desc{display:block;font-size:.68rem;color:#888;margin-top:1px}
+
+.sb-docs-link{margin-top:12px;padding-top:12px;border-top:1px solid #eee}
+
+/* Supabase Users View */
+.sb-users-view{padding:8px}
+.sb-view-header{display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #e5e5e5}
+.sb-view-header h3{flex:1;margin:0;font-size:.85rem;font-weight:600;color:#333}
+.sb-back-btn{padding:4px 10px;font-size:.75rem;background:#f0f0f0;border:none;border-radius:4px;cursor:pointer;font-weight:500;color:#555}
+.sb-back-btn:hover{background:#e5e5e5}
+.sb-refresh-btn{padding:4px 8px;font-size:.85rem;background:none;border:none;cursor:pointer;border-radius:4px}
+.sb-refresh-btn:hover{background:#f0f0f0}
+.sb-refresh-btn:disabled{opacity:.5;cursor:not-allowed}
+
+.sb-loading{display:flex;align-items:center;gap:8px;padding:16px;color:#666;font-size:.8rem}
+.sb-spinner{width:16px;height:16px;border:2px solid #ddd;border-top-color:#3ecf8e;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.sb-error{display:flex;align-items:flex-start;gap:8px;padding:12px;background:#fff5f5;border:1px solid #ffcccc;border-radius:6px;color:#cc4444;font-size:.75rem}
+.sb-empty{padding:16px;text-align:center;color:#888;font-size:.8rem}
+
+.sb-users-count{font-size:.7rem;color:#888;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid #f0f0f0}
+.sb-users-list{display:flex;flex-direction:column;gap:6px;max-height:calc(100vh - 200px);overflow-y:auto}
+
+.sb-user-card{display:flex;align-items:flex-start;gap:10px;padding:10px;background:#fafafa;border:1px solid #eee;border-radius:8px;transition:background .12s}
+.sb-user-card:hover{background:#f5f5f5}
+.sb-user-avatar{width:36px;height:36px;background:linear-gradient(135deg,#3ecf8e,#2db67d);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:600;font-size:.85rem;flex-shrink:0}
+.sb-user-info{flex:1;min-width:0;overflow:hidden}
+.sb-user-email{font-size:.78rem;font-weight:500;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-user-meta{display:flex;align-items:center;gap:6px;font-size:.68rem;color:#888;margin-top:2px}
+.sb-verified{color:#3ecf8e;font-size:.75rem}
+.sb-user-last-login{font-size:.65rem;color:#aaa;margin-top:3px}
+
+/* ── Supabase Users Tab (Editor View) ── */
+.sb-users-tab{display:flex;flex-direction:column;height:100%;background:#fafafa;overflow:hidden}
+.sb-users-tab-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:#fff;border-bottom:1px solid #e5e5e5}
+.sb-users-tab-title{display:flex;align-items:center;gap:10px}
+.sb-users-tab-title h2{margin:0;font-size:1rem;font-weight:600;color:#333}
+.sb-users-count-badge{background:#3ecf8e;color:#fff;font-size:.7rem;font-weight:600;padding:2px 8px;border-radius:10px}
+
+.sb-users-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:48px;color:#666;font-size:.85rem}
+.sb-users-error{display:flex;align-items:center;gap:10px;margin:20px;padding:16px;background:#fff5f5;border:1px solid #ffcccc;border-radius:8px;color:#cc4444;font-size:.82rem}
+.sb-error-icon{font-size:1.2rem}
+.sb-users-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:48px;color:#888}
+.sb-users-empty span{font-size:2rem}
+.sb-users-empty p{margin:0;font-size:.85rem}
+
+.sb-users-table-wrapper{flex:1;overflow:auto;padding:16px 20px}
+.sb-users-table{width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.sb-users-table th{text-align:left;padding:12px 16px;background:#f8f9fa;font-size:.72rem;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #e5e5e5}
+.sb-users-table td{padding:12px 16px;border-bottom:1px solid #f0f0f0;font-size:.82rem;color:#333}
+.sb-users-table tr:last-child td{border-bottom:none}
+.sb-users-table tr:hover td{background:#fafafa}
+
+.sb-user-cell{display:flex;align-items:center;gap:12px}
+.sb-user-details{display:flex;flex-direction:column;gap:2px}
+.sb-user-id{font-size:.68rem;color:#999;font-family:monospace}
+.sb-date-cell{font-size:.75rem;color:#666}
+
+.sb-status-badge{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:12px;font-size:.7rem;font-weight:500}
+.sb-status-verified{background:#e8f9f0;color:#2db67d}
+.sb-status-pending{background:#fff8e6;color:#c98600}

@@ -2,6 +2,8 @@ import { useEffect, useRef, useCallback, type KeyboardEvent, type ChangeEvent } 
 import { useWorkspace } from '../context/WorkspaceContext';
 import EditorTabs from './EditorTabs';
 import DiffViewer from './DiffViewer';
+import SupabaseUsersTab from './SupabaseUsersTab';
+import SupabaseStorageTab from './SupabaseStorageTab';
 import type { DiffResult } from '../types';
 
 export default function Editor() {
@@ -11,6 +13,8 @@ export default function Editor() {
   const activeTab = openTabs.find(t => t.path === activeTabPath);
 
   const isDiff = activeTab?.path.startsWith('diff:');
+  const isSupabaseUsers = activeTab?.path === 'supabase:users';
+  const isSupabaseStorage = activeTab?.path === 'supabase:storage';
 
   useEffect(() => {
     const handler = (e: globalThis.KeyboardEvent) => {
@@ -61,6 +65,26 @@ export default function Editor() {
       <div className="editor-container">
         <EditorTabs />
         <DiffViewer diff={diff} fileName={fileName} />
+      </div>
+    );
+  }
+
+  // Supabase Users view
+  if (isSupabaseUsers) {
+    return (
+      <div className="editor-container">
+        <EditorTabs />
+        <SupabaseUsersTab />
+      </div>
+    );
+  }
+
+  // Supabase Storage view
+  if (isSupabaseStorage) {
+    return (
+      <div className="editor-container">
+        <EditorTabs />
+        <SupabaseStorageTab />
       </div>
     );
   }

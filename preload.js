@@ -92,6 +92,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   historyGetWorkspace: (folderPath) => ipcRenderer.invoke('history-get-workspace', folderPath),
   // Supabase
   detectSupabase: (folderPath) => ipcRenderer.invoke('detect-supabase', folderPath),
+  supabaseGetUsers: (projectUrl, serviceRoleKey) => ipcRenderer.invoke('supabase-get-users', projectUrl, serviceRoleKey),
+  supabaseGetStorage: (projectUrl, serviceRoleKey) => ipcRenderer.invoke('supabase-get-storage', projectUrl, serviceRoleKey),
   // Shell
   shellOpenExternal: (url) => ipcRenderer.invoke('shell-open-external', url),
 });

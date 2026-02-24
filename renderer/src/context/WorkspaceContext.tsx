@@ -25,6 +25,7 @@ interface WorkspaceContextValue {
   closeAllTabs: () => void;
   closeTabsToTheRight: (filePath: string) => void;
   updateTabContent: (filePath: string, content: string) => void;
+  setTabData: (filePath: string, content: string) => void;
   setActiveTabPath: (path: string | null) => void;
   saveFile: (filePath: string) => Promise<void>;
   refreshGitStatus: () => Promise<void>;
@@ -41,6 +42,7 @@ interface WorkspaceContextValue {
   gitCreateBranch: (branchName: string) => Promise<{ success: boolean; error?: string }>;
   npmProjects: NpmProject[];
   runNpmScript: (projectPath: string, scriptName: string) => void;
+  openSupabaseTab: (tabType: 'users' | 'storage') => void;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
@@ -197,6 +199,27 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     setActiveTabPath(diffKey);
   }, [folderPath, openTabs]);
 
+  // Open special Supabase tabs (users, storage, etc.)
+  const openSupabaseTab = useCallback((tabType: 'users' | 'storage') => {
+    const tabKey = `supabase:${tabType}`;
+    const existing = openTabs.find(t => t.path === tabKey);
+    if (existing) { setActiveTabPath(tabKey); return; }
+    
+    const tabNames: Record<string, string> = {
+      users: 'Supabase: Users',
+      storage: 'Supabase: Storage',
+    };
+    
+    setOpenTabs(prev => [...prev, {
+      name: tabNames[tabType] || tabType,
+      path: tabKey,
+      content: '', // Content is loaded by the component
+      modified: false,
+      readOnly: true,
+    }]);
+    setActiveTabPath(tabKey);
+  }, [openTabs]);
+
   const closeTab = useCallback((filePath: string) => {
     setOpenTabs(prev => {
       const next = prev.filter(t => t.path !== filePath);
@@ -232,6 +255,11 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   const updateTabContent = useCallback((filePath: string, content: string) => {
     setOpenTabs(prev => prev.map(t => (t.path === filePath ? { ...t, content, modified: true } : t)));
+  }, []);
+
+  // Update content for read-only tabs (like Supabase data views) without marking as modified
+  const setTabData = useCallback((filePath: string, content: string) => {
+    setOpenTabs(prev => prev.map(t => (t.path === filePath ? { ...t, content } : t)));
   }, []);
 
   const saveFile = useCallback(async (filePath: string) => {
@@ -332,11 +360,12 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       openTabs, activeTabPath, activePanel, gitChanges, gitSplitChanges, gitBranchInfo: gitBranch, gitIgnoredPaths,
       supabaseConfig,
       setActivePanel, importFolder, closeWorkspace, openFile, closeTab, closeOtherTabs, closeAllTabs, closeTabsToTheRight,
-      updateTabContent, setActiveTabPath, saveFile, refreshGitStatus, openDiff,
+      updateTabContent, setTabData, setActiveTabPath, saveFile, refreshGitStatus, openDiff,
       stageFile, unstageFile, stageAll, unstageAll, discardFile, gitCommit: commitChanges,
       gitPush: pushChanges, gitPull: pullChanges, gitCheckout: checkoutBranch,
       gitCreateBranch: createBranch,
       npmProjects, runNpmScript,
+      openSupabaseTab,
     }}>
       {children}
     </WorkspaceContext.Provider>

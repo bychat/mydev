@@ -8,7 +8,7 @@ import type { NpmProject } from './npm.types';
 import type { AISettings, ChatMessage, AIChatResult } from './ai.types';
 import type { Conversation, WorkspaceHistory, AppHistory } from './history.types';
 import type { PromptSettings } from './prompts.types';
-import type { SupabaseConfig } from './supabase.types';
+import type { SupabaseConfig, SupabaseUsersResult, SupabaseStorageResult } from './supabase.types';
 
 export interface ElectronAPI {
   // Window management
@@ -74,6 +74,8 @@ export interface ElectronAPI {
   historyGetWorkspace: (folderPath: string) => Promise<WorkspaceHistory | null>;
   // Supabase
   detectSupabase: (folderPath: string) => Promise<SupabaseConfig>;
+  supabaseGetUsers: (projectUrl: string, serviceRoleKey: string) => Promise<SupabaseUsersResult>;
+  supabaseGetStorage: (projectUrl: string, serviceRoleKey: string) => Promise<SupabaseStorageResult>;
   // Shell
   shellOpenExternal: (url: string) => Promise<void>;
 }
