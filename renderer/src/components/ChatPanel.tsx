@@ -113,7 +113,7 @@ export default function ChatPanel({ onCollapse }: ChatPanelProps) {
   // ── Suggested files from open editor tabs ──
   const suggestedFiles = openTabs
     .filter(t => !t.path.startsWith('diff:') && !attachedFiles.some(a => a.path === t.path))
-    .map(t => ({ name: t.name, path: t.path }));
+    .map(t => ({ name: t.name, path: t.path, content: t.content }));
 
   const sortedSuggestions = [...suggestedFiles].sort((a, b) => {
     if (a.path === activeTabPath) return -1;
@@ -121,8 +121,11 @@ export default function ChatPanel({ onCollapse }: ChatPanelProps) {
     return 0;
   });
 
-  const addSuggestedFile = useCallback(async (name: string, path: string) => {
-    await addFile(name, path);
+  const addSuggestedFile = useCallback(async (name: string, path: string, content?: string) => {
+    // For special tabs (like supabase:users), pass the content directly
+    // For regular files, let addFile read from filesystem
+    const isSpecialTab = path.startsWith('supabase:');
+    await addFile(name, path, isSpecialTab ? content : undefined);
     textareaRef.current?.focus();
   }, [addFile]);
 
@@ -709,7 +712,7 @@ export default function ChatPanel({ onCollapse }: ChatPanelProps) {
                   <button
                     key={f.path}
                     className={`composer-suggestion-chip ${f.path === activeTabPath ? 'active-file' : ''}`}
-                    onClick={() => addSuggestedFile(f.name, f.path)}
+                    onClick={() => addSuggestedFile(f.name, f.path, f.content)}
                     title={`Add ${f.name} as context`}
                   >
                     {getFileIcon(f.name)} {f.name}

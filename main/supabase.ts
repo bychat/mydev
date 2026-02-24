@@ -103,11 +103,20 @@ function extractServiceRoleKey(content: string): string | null {
   return null;
 }
 
+interface EnvFileInfo {
+  filePath: string;
+  content: string;
+  hasServiceRoleKey: boolean;
+  hasProjectUrl: boolean;
+}
+
 /**
- * Recursively find .env files containing "supabase"
+ * Recursively find ALL .env files containing "supabase"
  */
-function findSupabaseEnvFile(dir: string, maxDepth: number = 4, currentDepth: number = 0): { filePath: string; content: string } | null {
-  if (currentDepth > maxDepth) return null;
+function findAllSupabaseEnvFiles(dir: string, maxDepth: number = 4, currentDepth: number = 0): EnvFileInfo[] {
+  const results: EnvFileInfo[] = [];
+  
+  if (currentDepth > maxDepth) return results;
   
   try {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -120,7 +129,12 @@ function findSupabaseEnvFile(dir: string, maxDepth: number = 4, currentDepth: nu
           const content = fs.readFileSync(filePath, 'utf-8');
           // Simple case-insensitive search for "supabase"
           if (content.toLowerCase().includes('supabase')) {
-            return { filePath, content };
+            results.push({
+              filePath,
+              content,
+              hasServiceRoleKey: extractServiceRoleKey(content) !== null,
+              hasProjectUrl: extractUrl(content) !== null,
+            });
           }
         } catch {
           // Skip files we can't read
@@ -131,15 +145,77 @@ function findSupabaseEnvFile(dir: string, maxDepth: number = 4, currentDepth: nu
     // Then recurse into subdirectories
     for (const entry of entries) {
       if (entry.isDirectory() && !SKIP_DIRS.has(entry.name) && !entry.name.startsWith('.')) {
-        const result = findSupabaseEnvFile(path.join(dir, entry.name), maxDepth, currentDepth + 1);
-        if (result) return result;
+        const subResults = findAllSupabaseEnvFiles(path.join(dir, entry.name), maxDepth, currentDepth + 1);
+        results.push(...subResults);
       }
     }
   } catch {
     // Skip directories we can't read
   }
   
-  return null;
+  return results;
+}
+
+/**
+ * Find the best Supabase env file - prioritizes files with service role key
+ */
+function findBestSupabaseEnvFile(dir: string): { filePath: string; content: string; serviceRoleKey: string | null; projectUrl: string | null } | null {
+  const allEnvFiles = findAllSupabaseEnvFiles(dir);
+  
+  if (allEnvFiles.length === 0) return null;
+  
+  // Sort: prioritize files with service role key, then files with project URL
+  allEnvFiles.sort((a, b) => {
+    // Service role key is most important
+    if (a.hasServiceRoleKey && !b.hasServiceRoleKey) return -1;
+    if (!a.hasServiceRoleKey && b.hasServiceRoleKey) return 1;
+    // Then project URL
+    if (a.hasProjectUrl && !b.hasProjectUrl) return -1;
+    if (!a.hasProjectUrl && b.hasProjectUrl) return 1;
+    return 0;
+  });
+  
+  // If the best file has the service role key, use it
+  const bestFile = allEnvFiles[0];
+  
+  // But we might need to combine info from multiple files
+  // e.g., project URL from one file, service role key from another
+  let projectUrl = extractUrl(bestFile.content);
+  let serviceRoleKey = extractServiceRoleKey(bestFile.content);
+  let sourceFile = bestFile.filePath;
+  
+  // If we don't have a service role key, search other files
+  if (!serviceRoleKey) {
+    for (const envFile of allEnvFiles) {
+      const key = extractServiceRoleKey(envFile.content);
+      if (key) {
+        serviceRoleKey = key;
+        // If we got the key from a different file, note it
+        if (envFile.filePath !== sourceFile) {
+          console.log(`[Supabase] Found service role key in: ${envFile.filePath}`);
+        }
+        break;
+      }
+    }
+  }
+  
+  // If we don't have a project URL, search other files
+  if (!projectUrl) {
+    for (const envFile of allEnvFiles) {
+      const url = extractUrl(envFile.content);
+      if (url) {
+        projectUrl = url;
+        break;
+      }
+    }
+  }
+  
+  return {
+    filePath: sourceFile,
+    content: bestFile.content,
+    serviceRoleKey,
+    projectUrl,
+  };
 }
 
 /**
@@ -154,17 +230,17 @@ export function detectSupabaseConfig(folderPath: string): SupabaseConfig {
     serviceRoleKey: null,
   };
 
-  // Search for .env file containing "supabase"
-  const found = findSupabaseEnvFile(folderPath);
+  // Search for .env files containing "supabase" and find the best one
+  const found = findBestSupabaseEnvFile(folderPath);
   
   if (found) {
     result.detected = true;
     result.sourceFile = found.filePath;
-    result.projectUrl = extractUrl(found.content);
+    result.projectUrl = found.projectUrl;
     if (result.projectUrl) {
       result.projectRef = extractProjectRef(result.projectUrl);
     }
-    result.serviceRoleKey = extractServiceRoleKey(found.content);
+    result.serviceRoleKey = found.serviceRoleKey;
     return result;
   }
 

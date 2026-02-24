@@ -13,7 +13,7 @@ interface UseAttachedFilesReturn {
   handleDragOver: (e: DragEvent) => void;
   handleDragLeave: (e: DragEvent) => void;
   handleDrop: (e: DragEvent) => Promise<void>;
-  addFile: (name: string, path: string) => Promise<void>;
+  addFile: (name: string, path: string, content?: string) => Promise<void>;
   removeFile: (path: string) => void;
   clearFiles: () => void;
   handleFilePick: (e: ChangeEvent<HTMLInputElement>) => Promise<void>;
@@ -68,9 +68,19 @@ export function useAttachedFiles(): UseAttachedFilesReturn {
   );
 
   const addFile = useCallback(
-    async (name: string, path: string) => {
+    async (name: string, path: string, providedContent?: string) => {
       if (attachedFiles.some(a => a.path === path)) return;
 
+      // If content is provided directly (e.g., from special tabs), use it
+      if (providedContent !== undefined) {
+        setAttachedFiles(prev => [
+          ...prev,
+          { name, path, content: providedContent },
+        ]);
+        return;
+      }
+
+      // Otherwise, read from filesystem
       try {
         const result = await window.electronAPI.readFile(path);
         setAttachedFiles(prev => [
