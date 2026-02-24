@@ -274,8 +274,8 @@ export function loadAppHistory(): AppHistory {
 }
 
 export function saveAppHistory(_history: AppHistory): void {
-  // No-op - we save incrementally now
-  console.warn('[ChatHistory] saveAppHistory is deprecated, using incremental saves');
+  // No-op - we save incrementally now via individual save functions
+  // The history object is no longer used as the source of truth
 }
 
 export function getOrCreateWorkspace(_history: AppHistory, folderPath: string): WorkspaceHistory {

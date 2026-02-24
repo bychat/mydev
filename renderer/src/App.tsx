@@ -4,7 +4,7 @@ import StatusBar from './components/StatusBar';
 import ActivityBar from './components/ActivityBar';
 import Sidebar from './components/Sidebar';
 import Editor from './components/Editor';
-import ChatPanel from './components/ChatPanelRefactored';
+import ChatPanel from './components/ChatPanel';
 import Welcome from './components/Welcome';
 import TerminalPanel from './components/TerminalPanel';
 import { ChevronLeftIcon, ChevronRightIcon } from './components/icons';
