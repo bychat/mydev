@@ -53,6 +53,27 @@ export function getGitChangedFiles(folderPath: string): { file: string; status: 
   }
 }
 
+/**
+ * Recursively list all files in a directory
+ */
+function listFilesRecursively(dirPath: string, basePath: string = ''): string[] {
+  const result: string[] = [];
+  try {
+    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+    for (const entry of entries) {
+      const relativePath = basePath ? `${basePath}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) {
+        result.push(...listFilesRecursively(path.join(dirPath, entry.name), relativePath));
+      } else {
+        result.push(relativePath);
+      }
+    }
+  } catch {
+    // Directory not accessible
+  }
+  return result;
+}
+
 export function getGitChangedFilesSplit(folderPath: string): GitFileChange[] {
   try {
     const out = execSync('git status --porcelain', { cwd: folderPath, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
@@ -86,7 +107,7 @@ export function getGitChangedFilesSplit(folderPath: string): GitFileChange[] {
       
       const indexStatus = line[0];   // staged column
       const wtStatus = line[1];      // working tree column
-      const file = line.substring(3);
+      let file = line.substring(3);
       console.log(`[getGitChangedFilesSplit] Line: "${line}" | indexStatus: "${indexStatus}" | wtStatus: "${wtStatus}" | file: "${file}"`);
 
       // Staged change (index column has a letter, not space or ?)
@@ -98,8 +119,20 @@ export function getGitChangedFilesSplit(folderPath: string): GitFileChange[] {
       if (wtStatus !== ' ' && wtStatus !== undefined) {
         // Untracked files show as '??' — only add once as unstaged
         if (indexStatus === '?') {
-          console.log(`[getGitChangedFilesSplit] Adding untracked: ${file}`);
-          result.push({ file, status: '??', staged: false });
+          // Check if this is a directory (ends with /) - expand it to individual files
+          if (file.endsWith('/')) {
+            const dirPath = path.join(folderPath, file);
+            const filesInDir = listFilesRecursively(dirPath);
+            console.log(`[getGitChangedFilesSplit] Expanding untracked directory: ${file} -> ${filesInDir.length} files`);
+            for (const subFile of filesInDir) {
+              const fullRelPath = file + subFile;
+              console.log(`[getGitChangedFilesSplit] Adding untracked file from dir: ${fullRelPath}`);
+              result.push({ file: fullRelPath, status: '??', staged: false });
+            }
+          } else {
+            console.log(`[getGitChangedFilesSplit] Adding untracked: ${file}`);
+            result.push({ file, status: '??', staged: false });
+          }
         } else {
           console.log(`[getGitChangedFilesSplit] Adding unstaged: ${file} (status: ${wtStatus})`);
           result.push({ file, status: wtStatus, staged: false });

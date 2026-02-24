@@ -1,0 +1,40 @@
+/**
+ * AI and Chat related types
+ */
+
+export interface AISettings {
+  provider: 'ollama' | 'openai';
+  baseUrl: string;
+  apiKey: string;
+  selectedModel: string;
+}
+
+export interface ChatMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  /** Original display text (for user messages, this is the text without embedded file context) */
+  displayText?: string;
+}
+
+export interface AIChatResult {
+  success: boolean;
+  reply?: string;
+  error?: string;
+}
+
+/** A single planned file action from the check agent */
+export interface FileActionPlan {
+  file: string;          // relative path
+  action: 'create' | 'update' | 'delete';
+  description: string;   // what changes to make
+}
+
+/** Progress state for a file action */
+export type FileActionStatus = 'pending' | 'reading' | 'updating' | 'done' | 'error';
+
+export interface FileActionProgress {
+  plan: FileActionPlan;
+  status: FileActionStatus;
+  diff?: { before: string; after: string };
+  error?: string;
+}

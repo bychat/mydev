@@ -4,9 +4,10 @@ import StatusBar from './components/StatusBar';
 import ActivityBar from './components/ActivityBar';
 import Sidebar from './components/Sidebar';
 import Editor from './components/Editor';
-import ChatPanel from './components/ChatPanel';
+import ChatPanel from './components/ChatPanelRefactored';
 import Welcome from './components/Welcome';
 import TerminalPanel from './components/TerminalPanel';
+import { ChevronLeftIcon, ChevronRightIcon } from './components/icons';
 
 const SIDEBAR_MIN = 180;
 const SIDEBAR_MAX = 600;
@@ -132,7 +133,7 @@ function AppLayout() {
         {sidebarCollapsed ? (
           <div className="panel-collapsed sidebar-collapsed">
             <button className="panel-expand-btn" onClick={() => setSidebarCollapsed(false)} title="Expand sidebar">
-              <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M6 3.5a.5.5 0 0 1 .82-.38l4 3.5a.5.5 0 0 1 0 .76l-4 3.5A.5.5 0 0 1 6 10.5v-7z"/></svg>
+              <ChevronRightIcon />
             </button>
           </div>
         ) : (
@@ -153,7 +154,7 @@ function AppLayout() {
         {chatCollapsed ? (
           <div className="panel-collapsed chat-collapsed">
             <button className="panel-expand-btn" onClick={() => setChatCollapsed(false)} title="Expand chat">
-              <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M10 3.5a.5.5 0 0 0-.82-.38l-4 3.5a.5.5 0 0 0 0 .76l4 3.5A.5.5 0 0 0 10 10.5v-7z"/></svg>
+              <ChevronLeftIcon />
             </button>
           </div>
         ) : (
