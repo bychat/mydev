@@ -8,7 +8,7 @@ import type { NpmProject } from './npm.types';
 import type { AISettings, ChatMessage, AIChatResult } from './ai.types';
 import type { Conversation, WorkspaceHistory, AppHistory } from './history.types';
 import type { PromptSettings } from './prompts.types';
-import type { SupabaseConfig, SupabaseUsersResult, SupabaseStorageResult, SupabaseTablesResult, SqlQueryResult } from './supabase.types';
+import type { SupabaseConfig, SupabaseUsersResult, SupabaseStorageResult, SupabaseStorageObjectsResult, SupabaseBucketOpResult, SupabaseTablesResult, SqlQueryResult } from './supabase.types';
 import type { GitHubRepoInfo, GitHubWorkflowsResult, GitHubRunsResult, GitHubJobsResult, GitHubLogsResult } from './github.types';
 
 export interface ElectronAPI {
@@ -83,6 +83,11 @@ export interface ElectronAPI {
   detectSupabase: (folderPath: string) => Promise<SupabaseConfig>;
   supabaseGetUsers: (projectUrl: string, serviceRoleKey: string) => Promise<SupabaseUsersResult>;
   supabaseGetStorage: (projectUrl: string, serviceRoleKey: string) => Promise<SupabaseStorageResult>;
+  supabaseListObjects: (projectUrl: string, serviceRoleKey: string, bucketId: string, prefix?: string) => Promise<SupabaseStorageObjectsResult>;
+  supabaseCreateBucket: (projectUrl: string, serviceRoleKey: string, bucketName: string, isPublic: boolean) => Promise<SupabaseBucketOpResult>;
+  supabaseDeleteBucket: (projectUrl: string, serviceRoleKey: string, bucketId: string) => Promise<SupabaseBucketOpResult>;
+  supabaseDeleteObject: (projectUrl: string, serviceRoleKey: string, bucketId: string, objectPaths: string[]) => Promise<SupabaseBucketOpResult>;
+  supabaseGetPublicUrl: (projectUrl: string, bucketId: string, objectPath: string) => Promise<string>;
   supabaseGetTables: (projectUrl: string, serviceRoleKey: string) => Promise<SupabaseTablesResult>;
   supabaseExecuteQuery: (projectUrl: string, serviceRoleKey: string, query: string) => Promise<SqlQueryResult>;
   // GitHub Actions

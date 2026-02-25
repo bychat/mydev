@@ -1,7 +1,7 @@
 /**
  * SqlQueryResultTab - Displays SQL query results in a table view
  */
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useWorkspace } from '../context/WorkspaceContext';
 import { DatabaseIcon, PlayIcon } from './icons';
 import type { SqlQueryResult } from '../types/supabase.types';
@@ -55,6 +55,7 @@ export default function SqlQueryResultTab({ queryId }: SqlQueryResultTabProps) {
   // Extract query from tab content (stored when tab was opened)
   const tabPath = `sql-result:${queryId}`;
   const tab = openTabs.find(t => t.path === tabPath);
+  const hasExecutedRef = React.useRef(false);
 
   useEffect(() => {
     if (tab?.content) {
@@ -67,6 +68,10 @@ export default function SqlQueryResultTab({ queryId }: SqlQueryResultTabProps) {
         if (stored.result) {
           setResult(stored.result);
           setLoading(false);
+        } else if (stored.query && !hasExecutedRef.current) {
+          // Auto-execute query when tab opens with a query but no result
+          hasExecutedRef.current = true;
+          executeQuery(stored.query);
         }
       } catch {
         // Content might not be JSON yet

@@ -292,7 +292,12 @@ export default function DatabasePanel() {
           ) : (
             <div className="db-tables-list">
               {tables.map(table => (
-                <div key={`${table.schema}.${table.name}`} className="db-table-item">
+                <div 
+                  key={`${table.schema}.${table.name}`} 
+                  className="db-table-item"
+                  onClick={() => openSqlQueryTab(`SELECT * FROM ${table.name} LIMIT 50`)}
+                  title={`Query ${table.name}`}
+                >
                   <TableIcon size={12} />
                   <span className="db-table-name">{table.name}</span>
                   <span className="db-table-schema">{table.schema}</span>

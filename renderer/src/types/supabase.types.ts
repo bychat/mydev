@@ -48,6 +48,27 @@ export interface SupabaseStorageResult {
   error?: string;
 }
 
+export interface SupabaseStorageObject {
+  id: string;
+  name: string;
+  bucket_id: string;
+  created_at: string;
+  updated_at: string;
+  last_accessed_at: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface SupabaseStorageObjectsResult {
+  success: boolean;
+  objects: SupabaseStorageObject[];
+  error?: string;
+}
+
+export interface SupabaseBucketOpResult {
+  success: boolean;
+  error?: string;
+}
+
 export interface SupabaseTable {
   table_name: string;
   table_schema: string;

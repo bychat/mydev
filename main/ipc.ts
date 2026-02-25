@@ -3,7 +3,7 @@ import { readDirectoryTree, getGitChangedFiles, getGitChangedFilesSplit, getGitD
 import { checkOllama, listModels, chatComplete, chatCompleteStream, loadSettings, saveSettings, type AISettings } from './ai';
 import { loadPrompts, savePrompts, resetPrompts, type PromptSettings } from './prompts';
 import { logRequest, logResult, logStreamingProgress, registerDebugIpc } from './debugWindow';
-import { detectSupabaseConfig, fetchSupabaseUsers, fetchSupabaseStorage, fetchSupabaseTables, executeSupabaseQuery, type SupabaseConfig, type SupabaseUsersResult, type SupabaseStorageResult, type SupabaseTablesResult, type SqlQueryResult } from './supabase';
+import { detectSupabaseConfig, fetchSupabaseUsers, fetchSupabaseStorage, fetchSupabaseTables, executeSupabaseQuery, listBucketObjects, createBucket, deleteBucket, deleteStorageObject, getPublicUrl, type SupabaseConfig, type SupabaseUsersResult, type SupabaseStorageResult, type SupabaseStorageObjectsResult, type SupabaseBucketOpResult, type SupabaseTablesResult, type SqlQueryResult } from './supabase';
 import { extractRepoInfo, listWorkflows, listWorkflowRuns, listRunJobs, getRunLogs, getJobLogs, rerunWorkflow } from './github';
 import {
   loadAppHistory,
@@ -513,6 +513,27 @@ export function registerIpcHandlers(getWindow: () => BW | null): void {
   // ── Supabase Storage ──
   ipcMain.handle('supabase-get-storage', async (_event, projectUrl: string, serviceRoleKey: string) => {
     return fetchSupabaseStorage(projectUrl, serviceRoleKey);
+  });
+
+  // ── Supabase Storage Objects ──
+  ipcMain.handle('supabase-list-objects', async (_event, projectUrl: string, serviceRoleKey: string, bucketId: string, prefix?: string) => {
+    return listBucketObjects(projectUrl, serviceRoleKey, bucketId, prefix || '');
+  });
+
+  ipcMain.handle('supabase-create-bucket', async (_event, projectUrl: string, serviceRoleKey: string, bucketName: string, isPublic: boolean) => {
+    return createBucket(projectUrl, serviceRoleKey, bucketName, isPublic);
+  });
+
+  ipcMain.handle('supabase-delete-bucket', async (_event, projectUrl: string, serviceRoleKey: string, bucketId: string) => {
+    return deleteBucket(projectUrl, serviceRoleKey, bucketId);
+  });
+
+  ipcMain.handle('supabase-delete-object', async (_event, projectUrl: string, serviceRoleKey: string, bucketId: string, objectPaths: string[]) => {
+    return deleteStorageObject(projectUrl, serviceRoleKey, bucketId, objectPaths);
+  });
+
+  ipcMain.handle('supabase-get-public-url', async (_event, projectUrl: string, bucketId: string, objectPath: string) => {
+    return getPublicUrl(projectUrl, bucketId, objectPath);
   });
 
   // ── Supabase Tables ──

@@ -99,6 +99,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   detectSupabase: (folderPath) => ipcRenderer.invoke('detect-supabase', folderPath),
   supabaseGetUsers: (projectUrl, serviceRoleKey) => ipcRenderer.invoke('supabase-get-users', projectUrl, serviceRoleKey),
   supabaseGetStorage: (projectUrl, serviceRoleKey) => ipcRenderer.invoke('supabase-get-storage', projectUrl, serviceRoleKey),
+  supabaseListObjects: (projectUrl, serviceRoleKey, bucketId, prefix) => ipcRenderer.invoke('supabase-list-objects', projectUrl, serviceRoleKey, bucketId, prefix),
+  supabaseCreateBucket: (projectUrl, serviceRoleKey, bucketName, isPublic) => ipcRenderer.invoke('supabase-create-bucket', projectUrl, serviceRoleKey, bucketName, isPublic),
+  supabaseDeleteBucket: (projectUrl, serviceRoleKey, bucketId) => ipcRenderer.invoke('supabase-delete-bucket', projectUrl, serviceRoleKey, bucketId),
+  supabaseDeleteObject: (projectUrl, serviceRoleKey, bucketId, objectPaths) => ipcRenderer.invoke('supabase-delete-object', projectUrl, serviceRoleKey, bucketId, objectPaths),
+  supabaseGetPublicUrl: (projectUrl, bucketId, objectPath) => ipcRenderer.invoke('supabase-get-public-url', projectUrl, bucketId, objectPath),
   supabaseGetTables: (projectUrl, serviceRoleKey) => ipcRenderer.invoke('supabase-get-tables', projectUrl, serviceRoleKey),
   supabaseExecuteQuery: (projectUrl, serviceRoleKey, query) => ipcRenderer.invoke('supabase-execute-query', projectUrl, serviceRoleKey, query),
   // GitHub Actions
