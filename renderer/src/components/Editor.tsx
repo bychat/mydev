@@ -5,6 +5,7 @@ import DiffViewer from './DiffViewer';
 import SupabaseUsersTab from './SupabaseUsersTab';
 import SupabaseStorageTab from './SupabaseStorageTab';
 import SqlQueryResultTab from './SqlQueryResultTab';
+import GitHubLogsViewer from './GitHubLogsViewer';
 import type { DiffResult } from '../types';
 
 export default function Editor() {
@@ -17,6 +18,7 @@ export default function Editor() {
   const isSupabaseUsers = activeTab?.path === 'supabase:users';
   const isSupabaseStorage = activeTab?.path === 'supabase:storage';
   const isSqlResult = activeTab?.path.startsWith('sql-result:');
+  const isGitHubLogs = activeTab?.path.startsWith('github-logs:');
 
   useEffect(() => {
     const handler = (e: globalThis.KeyboardEvent) => {
@@ -99,6 +101,17 @@ export default function Editor() {
       <div className="editor-container">
         <EditorTabs />
         <SqlQueryResultTab queryId={queryId} />
+      </div>
+    );
+  }
+
+  // GitHub Logs view
+  if (isGitHubLogs) {
+    const jobName = activeTab.name.replace('Logs: ', '');
+    return (
+      <div className="editor-container">
+        <EditorTabs />
+        <GitHubLogsViewer logs={activeTab.content} jobName={jobName} />
       </div>
     );
   }

@@ -300,6 +300,34 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     setActiveTabPath(tabKey);
   }, []);
 
+  // Open GitHub logs tab
+  const openGitHubLogsTab = useCallback((jobName: string, jobId: number, logs: string) => {
+    const tabKey = `github-logs:${jobId}`;
+    const existing = openTabs.find(t => t.path === tabKey);
+    if (existing) { 
+      setActiveTabPath(tabKey); 
+      return; 
+    }
+    
+    setOpenTabs(prev => [...prev, {
+      name: `Logs: ${jobName}`,
+      path: tabKey,
+      content: logs,
+      modified: false,
+      readOnly: true,
+    }]);
+    setActiveTabPath(tabKey);
+  }, [openTabs]);
+
+  // Listen for custom event to open GitHub logs tab
+  useEffect(() => {
+    const handler = (e: CustomEvent<{ jobName: string; jobId: number; logs: string }>) => {
+      openGitHubLogsTab(e.detail.jobName, e.detail.jobId, e.detail.logs);
+    };
+    window.addEventListener('open-github-logs-tab', handler as EventListener);
+    return () => window.removeEventListener('open-github-logs-tab', handler as EventListener);
+  }, [openGitHubLogsTab]);
+
   const closeTab = useCallback((filePath: string) => {
     setOpenTabs(prev => {
       const next = prev.filter(t => t.path !== filePath);

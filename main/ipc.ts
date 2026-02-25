@@ -4,6 +4,7 @@ import { checkOllama, listModels, chatComplete, chatCompleteStream, loadSettings
 import { loadPrompts, savePrompts, resetPrompts, type PromptSettings } from './prompts';
 import { logRequest, logResult, logStreamingProgress, registerDebugIpc } from './debugWindow';
 import { detectSupabaseConfig, fetchSupabaseUsers, fetchSupabaseStorage, fetchSupabaseTables, executeSupabaseQuery, type SupabaseConfig, type SupabaseUsersResult, type SupabaseStorageResult, type SupabaseTablesResult, type SqlQueryResult } from './supabase';
+import { extractRepoInfo, listWorkflows, listWorkflowRuns, listRunJobs, getRunLogs, getJobLogs, rerunWorkflow } from './github';
 import {
   loadAppHistory,
   saveAppHistory,
@@ -527,6 +528,35 @@ export function registerIpcHandlers(getWindow: () => BW | null): void {
   // ── Shell ──
   ipcMain.handle('shell-open-external', async (_event, url: string) => {
     await shell.openExternal(url);
+  });
+
+  // ── GitHub Actions ──
+  ipcMain.handle('github-extract-repo-info', async (_event, remoteUrl: string) => {
+    return extractRepoInfo(remoteUrl);
+  });
+
+  ipcMain.handle('github-list-workflows', async (_event, owner: string, repo: string) => {
+    return listWorkflows(owner, repo);
+  });
+
+  ipcMain.handle('github-list-workflow-runs', async (_event, owner: string, repo: string, workflowId?: number, perPage?: number) => {
+    return listWorkflowRuns(owner, repo, workflowId, perPage);
+  });
+
+  ipcMain.handle('github-list-run-jobs', async (_event, owner: string, repo: string, runId: number) => {
+    return listRunJobs(owner, repo, runId);
+  });
+
+  ipcMain.handle('github-get-run-logs', async (_event, owner: string, repo: string, runId: number) => {
+    return getRunLogs(owner, repo, runId);
+  });
+
+  ipcMain.handle('github-get-job-logs', async (_event, owner: string, repo: string, jobId: number) => {
+    return getJobLogs(owner, repo, jobId);
+  });
+
+  ipcMain.handle('github-rerun-workflow', async (_event, owner: string, repo: string, runId: number) => {
+    return rerunWorkflow(owner, repo, runId);
   });
 
   // ── Debug Window ──

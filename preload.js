@@ -101,6 +101,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   supabaseGetStorage: (projectUrl, serviceRoleKey) => ipcRenderer.invoke('supabase-get-storage', projectUrl, serviceRoleKey),
   supabaseGetTables: (projectUrl, serviceRoleKey) => ipcRenderer.invoke('supabase-get-tables', projectUrl, serviceRoleKey),
   supabaseExecuteQuery: (projectUrl, serviceRoleKey, query) => ipcRenderer.invoke('supabase-execute-query', projectUrl, serviceRoleKey, query),
+  // GitHub Actions
+  githubExtractRepoInfo: (remoteUrl) => ipcRenderer.invoke('github-extract-repo-info', remoteUrl),
+  githubListWorkflows: (owner, repo) => ipcRenderer.invoke('github-list-workflows', owner, repo),
+  githubListWorkflowRuns: (owner, repo, workflowId, perPage) => ipcRenderer.invoke('github-list-workflow-runs', owner, repo, workflowId, perPage),
+  githubListRunJobs: (owner, repo, runId) => ipcRenderer.invoke('github-list-run-jobs', owner, repo, runId),
+  githubGetRunLogs: (owner, repo, runId) => ipcRenderer.invoke('github-get-run-logs', owner, repo, runId),
+  githubGetJobLogs: (owner, repo, jobId) => ipcRenderer.invoke('github-get-job-logs', owner, repo, jobId),
+  githubRerunWorkflow: (owner, repo, runId) => ipcRenderer.invoke('github-rerun-workflow', owner, repo, runId),
   // Shell
   shellOpenExternal: (url) => ipcRenderer.invoke('shell-open-external', url),
 });

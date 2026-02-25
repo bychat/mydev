@@ -48,6 +48,19 @@ export { DEFAULT_PROMPTS } from './prompts.types';
 // Supabase types
 export type { SupabaseConfig } from './supabase.types';
 
+// GitHub types
+export type { 
+  GitHubRepoInfo,
+  GitHubWorkflow,
+  GitHubWorkflowRun,
+  GitHubJob,
+  GitHubStep,
+  GitHubWorkflowsResult,
+  GitHubRunsResult,
+  GitHubJobsResult,
+  GitHubLogsResult,
+} from './github.types';
+
 // UI types
 export type { SidePanel, ChatMode } from './ui.types';
 

@@ -9,6 +9,7 @@ import type { AISettings, ChatMessage, AIChatResult } from './ai.types';
 import type { Conversation, WorkspaceHistory, AppHistory } from './history.types';
 import type { PromptSettings } from './prompts.types';
 import type { SupabaseConfig, SupabaseUsersResult, SupabaseStorageResult, SupabaseTablesResult, SqlQueryResult } from './supabase.types';
+import type { GitHubRepoInfo, GitHubWorkflowsResult, GitHubRunsResult, GitHubJobsResult, GitHubLogsResult } from './github.types';
 
 export interface ElectronAPI {
   // Window management
@@ -84,6 +85,14 @@ export interface ElectronAPI {
   supabaseGetStorage: (projectUrl: string, serviceRoleKey: string) => Promise<SupabaseStorageResult>;
   supabaseGetTables: (projectUrl: string, serviceRoleKey: string) => Promise<SupabaseTablesResult>;
   supabaseExecuteQuery: (projectUrl: string, serviceRoleKey: string, query: string) => Promise<SqlQueryResult>;
+  // GitHub Actions
+  githubExtractRepoInfo: (remoteUrl: string) => Promise<GitHubRepoInfo | null>;
+  githubListWorkflows: (owner: string, repo: string) => Promise<GitHubWorkflowsResult>;
+  githubListWorkflowRuns: (owner: string, repo: string, workflowId?: number, perPage?: number) => Promise<GitHubRunsResult>;
+  githubListRunJobs: (owner: string, repo: string, runId: number) => Promise<GitHubJobsResult>;
+  githubGetRunLogs: (owner: string, repo: string, runId: number) => Promise<GitHubLogsResult>;
+  githubGetJobLogs: (owner: string, repo: string, jobId: number) => Promise<GitHubLogsResult>;
+  githubRerunWorkflow: (owner: string, repo: string, runId: number) => Promise<{ success: boolean; error?: string }>;
   // Shell
   shellOpenExternal: (url: string) => Promise<void>;
 }
