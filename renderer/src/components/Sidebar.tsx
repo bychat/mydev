@@ -170,8 +170,6 @@ function ExplorerGitControls() {
 export default function Sidebar({ onCollapse }: SidebarProps) {
   const { importFolder, folderName, folderPath, tree, activePanel } = useWorkspace();
 
-  console.log('Sidebar activePanel:', activePanel);
-
   if (activePanel === 'search') return <aside className="sidebar"><SearchPanel /></aside>;
   if (activePanel === 'source-control') return <aside className="sidebar"><SourceControlPanel /></aside>;
   if (activePanel === 'npm') return <aside className="sidebar"><NpmPanel /></aside>;
