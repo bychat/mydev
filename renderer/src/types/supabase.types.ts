@@ -47,3 +47,24 @@ export interface SupabaseStorageResult {
   buckets: SupabaseBucket[];
   error?: string;
 }
+
+export interface SupabaseTable {
+  table_name: string;
+  table_schema: string;
+  table_type: string;
+}
+
+export interface SupabaseTablesResult {
+  success: boolean;
+  tables: SupabaseTable[];
+  error?: string;
+}
+
+export interface SqlQueryResult {
+  success: boolean;
+  data: Record<string, unknown>[];
+  columns: string[];
+  rowCount: number;
+  error?: string;
+  executionTime?: number;
+}

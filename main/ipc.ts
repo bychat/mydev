@@ -1,9 +1,9 @@
 import { ipcMain, dialog, BrowserWindow, shell, type BrowserWindow as BW } from 'electron';
-import { readDirectoryTree, getGitChangedFiles, getGitChangedFilesSplit, getGitDiff, getGitIgnoredPaths, gitStageFile, gitUnstageFile, gitStageAll, gitUnstageAll, gitDiscardFile, gitCommit, gitGetBranchInfo, gitListBranches, gitCheckout, gitCreateBranch, gitPull, gitPush } from './fileSystem';
+import { readDirectoryTree, getGitChangedFiles, getGitChangedFilesSplit, getGitDiff, getGitIgnoredPaths, gitStageFile, gitUnstageFile, gitStageAll, gitUnstageAll, gitDiscardFile, gitCommit, gitGetBranchInfo, gitListBranches, gitCheckout, gitCreateBranch, gitPull, gitPush, createFile, createFolder, deleteFileOrFolder, renameFileOrFolder } from './fileSystem';
 import { checkOllama, listModels, chatComplete, chatCompleteStream, loadSettings, saveSettings, type AISettings } from './ai';
 import { loadPrompts, savePrompts, resetPrompts, type PromptSettings } from './prompts';
 import { logRequest, logResult, logStreamingProgress, registerDebugIpc } from './debugWindow';
-import { detectSupabaseConfig, fetchSupabaseUsers, fetchSupabaseStorage, type SupabaseConfig, type SupabaseUsersResult, type SupabaseStorageResult } from './supabase';
+import { detectSupabaseConfig, fetchSupabaseUsers, fetchSupabaseStorage, fetchSupabaseTables, executeSupabaseQuery, type SupabaseConfig, type SupabaseUsersResult, type SupabaseStorageResult, type SupabaseTablesResult, type SqlQueryResult } from './supabase';
 import {
   loadAppHistory,
   saveAppHistory,
@@ -119,6 +119,28 @@ export function registerIpcHandlers(getWindow: () => BW | null): void {
     } catch (err: unknown) {
       return { success: false, error: (err as Error).message };
     }
+  });
+
+  // File/folder creation and deletion
+  ipcMain.handle('create-file', async (_event, filePath: string, content?: string) => {
+    return createFile(filePath, content || '');
+  });
+
+  ipcMain.handle('create-folder', async (_event, folderPath: string) => {
+    return createFolder(folderPath);
+  });
+
+  ipcMain.handle('delete-file-or-folder', async (_event, targetPath: string) => {
+    return deleteFileOrFolder(targetPath);
+  });
+
+  ipcMain.handle('rename-file-or-folder', async (_event, oldPath: string, newPath: string) => {
+    return renameFileOrFolder(oldPath, newPath);
+  });
+
+  // Refresh directory tree
+  ipcMain.handle('refresh-tree', async (_event, folderPath: string) => {
+    return readDirectoryTree(folderPath);
   });
 
   ipcMain.handle('git-status', async (_event, folderPath: string) => {
@@ -490,6 +512,16 @@ export function registerIpcHandlers(getWindow: () => BW | null): void {
   // ── Supabase Storage ──
   ipcMain.handle('supabase-get-storage', async (_event, projectUrl: string, serviceRoleKey: string) => {
     return fetchSupabaseStorage(projectUrl, serviceRoleKey);
+  });
+
+  // ── Supabase Tables ──
+  ipcMain.handle('supabase-get-tables', async (_event, projectUrl: string, serviceRoleKey: string) => {
+    return fetchSupabaseTables(projectUrl, serviceRoleKey);
+  });
+
+  // ── Supabase SQL Query ──
+  ipcMain.handle('supabase-execute-query', async (_event, projectUrl: string, serviceRoleKey: string, query: string) => {
+    return executeSupabaseQuery(projectUrl, serviceRoleKey, query);
   });
 
   // ── Shell ──

@@ -7,6 +7,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openFolder: (folderPath) => ipcRenderer.invoke('open-folder', folderPath),
   readFile: (filePath) => ipcRenderer.invoke('read-file', filePath),
   saveFile: (filePath, content) => ipcRenderer.invoke('save-file', filePath, content),
+  createFile: (filePath, content) => ipcRenderer.invoke('create-file', filePath, content),
+  createFolder: (folderPath) => ipcRenderer.invoke('create-folder', folderPath),
+  deleteFileOrFolder: (targetPath) => ipcRenderer.invoke('delete-file-or-folder', targetPath),
+  renameFileOrFolder: (oldPath, newPath) => ipcRenderer.invoke('rename-file-or-folder', oldPath, newPath),
+  refreshTree: (folderPath) => ipcRenderer.invoke('refresh-tree', folderPath),
   gitStatus: (folderPath) => ipcRenderer.invoke('git-status', folderPath),
   gitStatusSplit: (folderPath) => ipcRenderer.invoke('git-status-split', folderPath),
   gitDiff: (folderPath, filePath) => ipcRenderer.invoke('git-diff', folderPath, filePath),
@@ -94,6 +99,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   detectSupabase: (folderPath) => ipcRenderer.invoke('detect-supabase', folderPath),
   supabaseGetUsers: (projectUrl, serviceRoleKey) => ipcRenderer.invoke('supabase-get-users', projectUrl, serviceRoleKey),
   supabaseGetStorage: (projectUrl, serviceRoleKey) => ipcRenderer.invoke('supabase-get-storage', projectUrl, serviceRoleKey),
+  supabaseGetTables: (projectUrl, serviceRoleKey) => ipcRenderer.invoke('supabase-get-tables', projectUrl, serviceRoleKey),
+  supabaseExecuteQuery: (projectUrl, serviceRoleKey, query) => ipcRenderer.invoke('supabase-execute-query', projectUrl, serviceRoleKey, query),
   // Shell
   shellOpenExternal: (url) => ipcRenderer.invoke('shell-open-external', url),
 });

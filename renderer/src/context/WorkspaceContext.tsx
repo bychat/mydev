@@ -29,6 +29,11 @@ interface WorkspaceContextValue {
   setActiveTabPath: (path: string | null) => void;
   saveFile: (filePath: string) => Promise<void>;
   refreshGitStatus: () => Promise<void>;
+  refreshTree: () => Promise<void>;
+  createFile: (parentPath: string, fileName: string) => Promise<{ success: boolean; error?: string; filePath?: string }>;
+  createFolder: (parentPath: string, folderName: string) => Promise<{ success: boolean; error?: string }>;
+  deleteItem: (itemPath: string) => Promise<{ success: boolean; error?: string }>;
+  renameItem: (oldPath: string, newName: string) => Promise<{ success: boolean; error?: string }>;
   openDiff: (filePath: string) => Promise<void>;
   stageFile: (filePath: string) => Promise<void>;
   unstageFile: (filePath: string) => Promise<void>;
@@ -43,6 +48,7 @@ interface WorkspaceContextValue {
   npmProjects: NpmProject[];
   runNpmScript: (projectPath: string, scriptName: string) => void;
   openSupabaseTab: (tabType: 'users' | 'storage') => void;
+  openSqlQueryTab: (query: string) => void;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
@@ -94,6 +100,63 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       gitLockRef.current = false;
     }
   }, [folderPath]);
+
+  const refreshTree = useCallback(async () => {
+    if (!folderPath) return;
+    const newTree = await window.electronAPI.refreshTree(folderPath);
+    setTree(newTree);
+  }, [folderPath]);
+
+  const createFile = useCallback(async (parentPath: string, fileName: string) => {
+    const filePath = `${parentPath}/${fileName}`;
+    const result = await window.electronAPI.createFile(filePath);
+    if (result.success) {
+      await refreshTree();
+      return { success: true, filePath };
+    }
+    return { success: false, error: result.error };
+  }, [refreshTree]);
+
+  const createFolder = useCallback(async (parentPath: string, folderName: string) => {
+    const folderFullPath = `${parentPath}/${folderName}`;
+    const result = await window.electronAPI.createFolder(folderFullPath);
+    if (result.success) {
+      await refreshTree();
+    }
+    return result;
+  }, [refreshTree]);
+
+  const deleteItem = useCallback(async (itemPath: string) => {
+    const result = await window.electronAPI.deleteFileOrFolder(itemPath);
+    if (result.success) {
+      // Close any open tabs for this file/folder
+      setOpenTabs(prev => prev.filter(t => !t.path.startsWith(itemPath)));
+      await refreshTree();
+      await refreshGitStatus();
+    }
+    return result;
+  }, [refreshTree, refreshGitStatus]);
+
+  const renameItem = useCallback(async (oldPath: string, newName: string) => {
+    const parentDir = oldPath.substring(0, oldPath.lastIndexOf('/'));
+    const newPath = `${parentDir}/${newName}`;
+    const result = await window.electronAPI.renameFileOrFolder(oldPath, newPath);
+    if (result.success) {
+      // Update any open tabs with the old path
+      setOpenTabs(prev => prev.map(t => {
+        if (t.path === oldPath) {
+          return { ...t, name: newName, path: newPath };
+        }
+        if (t.path.startsWith(oldPath + '/')) {
+          const newTabPath = t.path.replace(oldPath, newPath);
+          return { ...t, path: newTabPath };
+        }
+        return t;
+      }));
+      await refreshTree();
+    }
+    return result;
+  }, [refreshTree]);
 
   const importFolder = useCallback(async () => {
     const result = await window.electronAPI.selectFolder();
@@ -219,6 +282,23 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     }]);
     setActiveTabPath(tabKey);
   }, [openTabs]);
+
+  // Open SQL query result tab
+  const openSqlQueryTab = useCallback((query: string) => {
+    // Generate unique ID for this query
+    const queryId = Date.now().toString();
+    const tabKey = `sql-result:${queryId}`;
+    
+    // Store query in tab content for the component to use
+    setOpenTabs(prev => [...prev, {
+      name: `Query Results`,
+      path: tabKey,
+      content: JSON.stringify({ query, result: null }),
+      modified: false,
+      readOnly: true,
+    }]);
+    setActiveTabPath(tabKey);
+  }, []);
 
   const closeTab = useCallback((filePath: string) => {
     setOpenTabs(prev => {
@@ -360,12 +440,15 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       openTabs, activeTabPath, activePanel, gitChanges, gitSplitChanges, gitBranchInfo: gitBranch, gitIgnoredPaths,
       supabaseConfig,
       setActivePanel, importFolder, closeWorkspace, openFile, closeTab, closeOtherTabs, closeAllTabs, closeTabsToTheRight,
-      updateTabContent, setTabData, setActiveTabPath, saveFile, refreshGitStatus, openDiff,
+      updateTabContent, setTabData, setActiveTabPath, saveFile, refreshGitStatus, refreshTree,
+      createFile, createFolder, deleteItem, renameItem,
+      openDiff,
       stageFile, unstageFile, stageAll, unstageAll, discardFile, gitCommit: commitChanges,
       gitPush: pushChanges, gitPull: pullChanges, gitCheckout: checkoutBranch,
       gitCreateBranch: createBranch,
       npmProjects, runNpmScript,
       openSupabaseTab,
+      openSqlQueryTab,
     }}>
       {children}
     </WorkspaceContext.Provider>

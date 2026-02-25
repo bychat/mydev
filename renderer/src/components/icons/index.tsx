@@ -235,3 +235,31 @@ export const SupabaseIcon = ({ size = 16, className }: IconProps) => (
     <path d="M45.317 2.071c2.86-3.601 8.657-1.628 8.726 2.97l.442 67.251H9.83c-8.19 0-12.759-9.46-7.665-15.875L45.317 2.072z" fill="#3ECF8E" fillOpacity=".6"/>
   </svg>
 );
+
+export const DatabaseIcon = ({ size = 16, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="currentColor" className={className}>
+    <ellipse cx="8" cy="3.5" rx="6" ry="2.5"/>
+    <path d="M2 3.5v3c0 1.38 2.69 2.5 6 2.5s6-1.12 6-2.5v-3"/>
+    <path d="M2 6.5v3c0 1.38 2.69 2.5 6 2.5s6-1.12 6-2.5v-3"/>
+    <path d="M2 9.5v3c0 1.38 2.69 2.5 6 2.5s6-1.12 6-2.5v-3"/>
+  </svg>
+);
+
+export const PlayIcon = ({ size = 14, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="currentColor" className={className}>
+    <path d="M4 2.5a.5.5 0 0 1 .77-.42l9 5.5a.5.5 0 0 1 0 .84l-9 5.5A.5.5 0 0 1 4 13.5v-11z"/>
+  </svg>
+);
+
+export const TableIcon = ({ size = 14, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="currentColor" className={className}>
+    <path d="M0 2a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2zm15 2h-4v3h4V4zm0 4h-4v3h4V8zm0 4h-4v3h3a1 1 0 0 0 1-1v-2zm-5 3v-3H6v3h4zm-5 0v-3H1v2a1 1 0 0 0 1 1h3zm-4-4h4V8H1v3zm0-4h4V4H1v3zm5-3v3h4V4H6zm4 4H6v3h4V8z"/>
+  </svg>
+);
+
+export const SqlFileIcon = ({ size = 14, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="currentColor" className={className}>
+    <path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5h-2z"/>
+    <path d="M5.5 11.5A1.5 1.5 0 0 1 7 10h2a1.5 1.5 0 0 1 0 3H7a1.5 1.5 0 0 1-1.5-1.5z"/>
+  </svg>
+);

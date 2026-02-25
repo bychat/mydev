@@ -4,6 +4,7 @@ import EditorTabs from './EditorTabs';
 import DiffViewer from './DiffViewer';
 import SupabaseUsersTab from './SupabaseUsersTab';
 import SupabaseStorageTab from './SupabaseStorageTab';
+import SqlQueryResultTab from './SqlQueryResultTab';
 import type { DiffResult } from '../types';
 
 export default function Editor() {
@@ -15,6 +16,7 @@ export default function Editor() {
   const isDiff = activeTab?.path.startsWith('diff:');
   const isSupabaseUsers = activeTab?.path === 'supabase:users';
   const isSupabaseStorage = activeTab?.path === 'supabase:storage';
+  const isSqlResult = activeTab?.path.startsWith('sql-result:');
 
   useEffect(() => {
     const handler = (e: globalThis.KeyboardEvent) => {
@@ -54,7 +56,7 @@ export default function Editor() {
 
   if (!activeTab) return null;
 
-  
+
   // Diff view
   if (isDiff) {
     let diff: DiffResult;
@@ -86,6 +88,17 @@ export default function Editor() {
       <div className="editor-container">
         <EditorTabs />
         <SupabaseStorageTab />
+      </div>
+    );
+  }
+
+  // SQL Query Result view
+  if (isSqlResult) {
+    const queryId = activeTab.path.replace('sql-result:', '');
+    return (
+      <div className="editor-container">
+        <EditorTabs />
+        <SqlQueryResultTab queryId={queryId} />
       </div>
     );
   }

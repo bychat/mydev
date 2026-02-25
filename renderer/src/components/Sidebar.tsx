@@ -5,6 +5,7 @@ import SearchPanel from './SearchPanel';
 import SourceControlPanel from './SourceControlPanel';
 import NpmPanel from './NpmPanel';
 import SupabasePanel from './SupabasePanel';
+import DatabasePanel from './DatabasePanel';
 import { ChevronLeftIcon } from './icons';
 
 interface SidebarProps {
@@ -166,12 +167,13 @@ function ExplorerGitControls() {
 }
 
 export default function Sidebar({ onCollapse }: SidebarProps) {
-  const { importFolder, folderName, tree, activePanel } = useWorkspace();
+  const { importFolder, folderName, folderPath, tree, activePanel } = useWorkspace();
 
   if (activePanel === 'search') return <aside className="sidebar"><SearchPanel /></aside>;
   if (activePanel === 'source-control') return <aside className="sidebar"><SourceControlPanel /></aside>;
   if (activePanel === 'npm') return <aside className="sidebar"><NpmPanel /></aside>;
   if (activePanel === 'supabase') return <aside className="sidebar"><SupabasePanel /></aside>;
+  if (activePanel === 'database') return <aside className="sidebar"><DatabasePanel /></aside>;
 
   return (
     <aside className="sidebar">
@@ -189,7 +191,7 @@ export default function Sidebar({ onCollapse }: SidebarProps) {
       {folderName && <div className="folder-name">📂 {folderName}</div>}
       <ExplorerGitControls />
       <div className="file-tree">
-        <FileTree items={tree} depth={0} />
+        <FileTree items={tree} depth={0} folderPath={folderPath || undefined} />
       </div>
     </aside>
   );

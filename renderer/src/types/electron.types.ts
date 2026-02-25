@@ -8,7 +8,7 @@ import type { NpmProject } from './npm.types';
 import type { AISettings, ChatMessage, AIChatResult } from './ai.types';
 import type { Conversation, WorkspaceHistory, AppHistory } from './history.types';
 import type { PromptSettings } from './prompts.types';
-import type { SupabaseConfig, SupabaseUsersResult, SupabaseStorageResult } from './supabase.types';
+import type { SupabaseConfig, SupabaseUsersResult, SupabaseStorageResult, SupabaseTablesResult, SqlQueryResult } from './supabase.types';
 
 export interface ElectronAPI {
   // Window management
@@ -17,6 +17,12 @@ export interface ElectronAPI {
   openFolder: (folderPath: string) => Promise<FolderResult | null>;
   readFile: (filePath: string) => Promise<FileResult>;
   saveFile: (filePath: string, content: string) => Promise<SaveResult>;
+  // File/folder operations
+  createFile: (filePath: string, content?: string) => Promise<SaveResult>;
+  createFolder: (folderPath: string) => Promise<SaveResult>;
+  deleteFileOrFolder: (targetPath: string) => Promise<SaveResult>;
+  renameFileOrFolder: (oldPath: string, newPath: string) => Promise<SaveResult>;
+  refreshTree: (folderPath: string) => Promise<TreeEntry[]>;
   gitStatus: (folderPath: string) => Promise<GitChange[]>;
   gitStatusSplit: (folderPath: string) => Promise<GitFileChange[]>;
   gitDiff: (folderPath: string, filePath: string) => Promise<DiffResult>;
@@ -76,6 +82,8 @@ export interface ElectronAPI {
   detectSupabase: (folderPath: string) => Promise<SupabaseConfig>;
   supabaseGetUsers: (projectUrl: string, serviceRoleKey: string) => Promise<SupabaseUsersResult>;
   supabaseGetStorage: (projectUrl: string, serviceRoleKey: string) => Promise<SupabaseStorageResult>;
+  supabaseGetTables: (projectUrl: string, serviceRoleKey: string) => Promise<SupabaseTablesResult>;
+  supabaseExecuteQuery: (projectUrl: string, serviceRoleKey: string, query: string) => Promise<SqlQueryResult>;
   // Shell
   shellOpenExternal: (url: string) => Promise<void>;
 }

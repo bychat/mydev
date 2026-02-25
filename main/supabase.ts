@@ -331,3 +331,262 @@ export async function fetchSupabaseStorage(projectUrl: string, serviceRoleKey: s
     };
   }
 }
+
+/**
+ * Table info interface
+ */
+export interface SupabaseTable {
+  table_name: string;
+  table_schema: string;
+  table_type: string;
+}
+
+export interface SupabaseTablesResult {
+  success: boolean;
+  tables: SupabaseTable[];
+  error?: string;
+}
+
+/**
+ * Fetch tables from Supabase PostgreSQL database
+ * Uses the pg_catalog to get table information
+ */
+export async function fetchSupabaseTables(projectUrl: string, serviceRoleKey: string): Promise<SupabaseTablesResult> {
+  try {
+    // Query the information_schema.tables via PostgREST
+    // We need to use a raw SQL query via the /rest/v1/rpc endpoint or query a view
+    // Since information_schema isn't directly exposed, we'll try a different approach
+    
+    // First, try to get tables from pg_catalog via a custom RPC (if exists)
+    // If that fails, we'll query the PostgREST schema endpoint
+    
+    // Try the OpenAPI schema endpoint to get available tables
+    const schemaResponse = await fetch(`${projectUrl}/rest/v1/`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${serviceRoleKey}`,
+        'apikey': serviceRoleKey,
+        'Accept': 'application/openapi+json',
+      },
+    });
+
+    if (schemaResponse.ok) {
+      const schemaData = await schemaResponse.json() as { paths?: Record<string, unknown> };
+      
+      // Extract table names from OpenAPI paths
+      const tables: SupabaseTable[] = [];
+      if (schemaData.paths) {
+        for (const path of Object.keys(schemaData.paths)) {
+          // Paths look like "/tablename" 
+          const tableName = path.replace(/^\//, '').split('?')[0];
+          if (tableName && !tableName.includes('/') && tableName !== 'rpc') {
+            tables.push({
+              table_name: tableName,
+              table_schema: 'public',
+              table_type: 'BASE TABLE',
+            });
+          }
+        }
+      }
+      
+      // Sort alphabetically
+      tables.sort((a, b) => a.table_name.localeCompare(b.table_name));
+      
+      return {
+        success: true,
+        tables,
+      };
+    }
+
+    // Fallback: Try to get definitions from the schema
+    const defResponse = await fetch(`${projectUrl}/rest/v1/`, {
+      method: 'OPTIONS',
+      headers: {
+        'Authorization': `Bearer ${serviceRoleKey}`,
+        'apikey': serviceRoleKey,
+      },
+    });
+
+    if (!defResponse.ok) {
+      return {
+        success: false,
+        tables: [],
+        error: `Could not fetch schema: ${defResponse.status}`,
+      };
+    }
+
+    return {
+      success: true,
+      tables: [],
+    };
+  } catch (error) {
+    return {
+      success: false,
+      tables: [],
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+/**
+ * SQL Query result types
+ */
+export interface SqlQueryResult {
+  success: boolean;
+  data: Record<string, unknown>[];
+  columns: string[];
+  rowCount: number;
+  error?: string;
+  executionTime?: number;
+}
+
+/**
+ * Execute a SQL query via Supabase PostgREST or pg_graphql
+ * For read queries, we can use PostgREST. For raw SQL, we need pg_graphql or a custom RPC.
+ */
+export async function executeSupabaseQuery(
+  projectUrl: string, 
+  serviceRoleKey: string, 
+  query: string
+): Promise<SqlQueryResult> {
+  const startTime = Date.now();
+  
+  try {
+    // Clean the query
+    const cleanQuery = query.trim();
+    
+    // Check if it's a simple SELECT from a table
+    const selectMatch = cleanQuery.match(/^SELECT\s+(.+?)\s+FROM\s+["']?(\w+)["']?(?:\s+(.*))?$/i);
+    
+    if (selectMatch) {
+      const [, selectColumns, tableName, rest] = selectMatch;
+      
+      // Build PostgREST URL
+      let url = `${projectUrl}/rest/v1/${tableName}`;
+      const params = new URLSearchParams();
+      
+      // Handle column selection
+      if (selectColumns.trim() !== '*') {
+        const cols = selectColumns.split(',').map(c => c.trim()).join(',');
+        params.set('select', cols);
+      }
+      
+      // Handle WHERE clause (basic support)
+      if (rest) {
+        const whereMatch = rest.match(/WHERE\s+(.+?)(?:\s+ORDER|\s+LIMIT|\s*$)/i);
+        if (whereMatch) {
+          // Basic WHERE parsing - supports simple conditions
+          const whereClause = whereMatch[1].trim();
+          // For now, we'll just use basic eq filter for simple cases
+          const eqMatch = whereClause.match(/(\w+)\s*=\s*['"]?([^'"]+)['"]?/);
+          if (eqMatch) {
+            params.set(eqMatch[1], `eq.${eqMatch[2]}`);
+          }
+        }
+        
+        // Handle LIMIT
+        const limitMatch = rest.match(/LIMIT\s+(\d+)/i);
+        if (limitMatch) {
+          params.set('limit', limitMatch[1]);
+        }
+        
+        // Handle ORDER BY
+        const orderMatch = rest.match(/ORDER\s+BY\s+(\w+)(?:\s+(ASC|DESC))?/i);
+        if (orderMatch) {
+          const dir = orderMatch[2]?.toLowerCase() === 'desc' ? '.desc' : '.asc';
+          params.set('order', `${orderMatch[1]}${dir}`);
+        }
+      }
+      
+      const queryString = params.toString();
+      if (queryString) {
+        url += `?${queryString}`;
+      }
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${serviceRoleKey}`,
+          'apikey': serviceRoleKey,
+          'Content-Type': 'application/json',
+          'Prefer': 'count=exact',
+        },
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = `Query failed: ${response.status}`;
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMessage = errorJson.message || errorJson.error || errorMessage;
+        } catch {
+          errorMessage = errorText || errorMessage;
+        }
+        return {
+          success: false,
+          data: [],
+          columns: [],
+          rowCount: 0,
+          error: errorMessage,
+          executionTime: Date.now() - startTime,
+        };
+      }
+      
+      const data = await response.json() as Record<string, unknown>[];
+      const resultColumns = data.length > 0 ? Object.keys(data[0]) : [];
+      
+      return {
+        success: true,
+        data,
+        columns: resultColumns,
+        rowCount: data.length,
+        executionTime: Date.now() - startTime,
+      };
+    }
+    
+    // For non-SELECT queries or complex queries, try RPC if available
+    // First, let's try to call a generic SQL execution RPC (if user has set one up)
+    const rpcResponse = await fetch(`${projectUrl}/rest/v1/rpc/exec_sql`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${serviceRoleKey}`,
+        'apikey': serviceRoleKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query: cleanQuery }),
+    });
+    
+    if (rpcResponse.ok) {
+      const data = await rpcResponse.json() as Record<string, unknown>[];
+      const rpcColumns = Array.isArray(data) && data.length > 0 ? Object.keys(data[0]) : [];
+      
+      return {
+        success: true,
+        data: Array.isArray(data) ? data : [],
+        columns: rpcColumns,
+        rowCount: Array.isArray(data) ? data.length : 0,
+        executionTime: Date.now() - startTime,
+      };
+    }
+    
+    // If no exec_sql RPC, return helpful error
+    return {
+      success: false,
+      data: [],
+      columns: [],
+      rowCount: 0,
+      error: 'Complex queries require an exec_sql RPC function. Only simple SELECT queries are supported via PostgREST.',
+      executionTime: Date.now() - startTime,
+    };
+    
+  } catch (error) {
+    return {
+      success: false,
+      data: [],
+      columns: [],
+      rowCount: 0,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      executionTime: Date.now() - startTime,
+    };
+  }
+}

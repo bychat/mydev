@@ -321,3 +321,85 @@ export function getGitIgnoredPaths(folderPath: string): string[] {
     return [];
   }
 }
+
+/**
+ * Create a new file at the specified path
+ */
+export function createFile(filePath: string, content: string = ''): { success: boolean; error?: string } {
+  try {
+    // Ensure parent directory exists
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    
+    // Check if file already exists
+    if (fs.existsSync(filePath)) {
+      return { success: false, error: 'File already exists' };
+    }
+    
+    fs.writeFileSync(filePath, content, 'utf-8');
+    return { success: true };
+  } catch (err: unknown) {
+    return { success: false, error: (err as Error).message };
+  }
+}
+
+/**
+ * Create a new folder at the specified path
+ */
+export function createFolder(folderPath: string): { success: boolean; error?: string } {
+  try {
+    // Check if folder already exists
+    if (fs.existsSync(folderPath)) {
+      return { success: false, error: 'Folder already exists' };
+    }
+    
+    fs.mkdirSync(folderPath, { recursive: true });
+    return { success: true };
+  } catch (err: unknown) {
+    return { success: false, error: (err as Error).message };
+  }
+}
+
+/**
+ * Delete a file or folder at the specified path
+ */
+export function deleteFileOrFolder(targetPath: string): { success: boolean; error?: string } {
+  try {
+    if (!fs.existsSync(targetPath)) {
+      return { success: false, error: 'Path does not exist' };
+    }
+    
+    const stat = fs.statSync(targetPath);
+    if (stat.isDirectory()) {
+      fs.rmSync(targetPath, { recursive: true, force: true });
+    } else {
+      fs.unlinkSync(targetPath);
+    }
+    
+    return { success: true };
+  } catch (err: unknown) {
+    return { success: false, error: (err as Error).message };
+  }
+}
+
+/**
+ * Rename a file or folder
+ */
+export function renameFileOrFolder(oldPath: string, newPath: string): { success: boolean; error?: string } {
+  try {
+    if (!fs.existsSync(oldPath)) {
+      return { success: false, error: 'Source path does not exist' };
+    }
+    
+    if (fs.existsSync(newPath)) {
+      return { success: false, error: 'Destination already exists' };
+    }
+    
+    fs.renameSync(oldPath, newPath);
+    return { success: true };
+  } catch (err: unknown) {
+    return { success: false, error: (err as Error).message };
+  }
+}
