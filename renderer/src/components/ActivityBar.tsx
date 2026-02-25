@@ -101,7 +101,10 @@ export default function ActivityBar({ onToggleTerminal, terminalVisible }: Activ
             <button
               key={p.id}
               className={`ab-btn${activePanel === p.id ? ' active' : ''}`}
-              onClick={() => setActivePanel(p.id)}
+              onClick={() => {
+                console.log('ActivityBar: clicking panel', p.id);
+                setActivePanel(p.id);
+              }}
               title={p.label}
             >
               {getIconElement(p.icon)}
