@@ -9,7 +9,7 @@ import type { AISettings, ChatMessage, AIChatResult } from './ai.types';
 import type { Conversation, WorkspaceHistory, AppHistory } from './history.types';
 import type { PromptSettings } from './prompts.types';
 import type { SupabaseConfig, SupabaseUsersResult, SupabaseStorageResult, SupabaseTablesResult, SqlQueryResult } from './supabase.types';
-import type { GitHubRepoInfo, GitHubWorkflowsResult, GitHubRunsResult, GitHubJobsResult, GitHubLogsResult } from './github.types';
+import type { GitHubRepoInfo, GitHubWorkflowsResult, GitHubRunsResult, GitHubJobsResult, GitHubLogsResult, GitHubIssuesResult } from './github.types';
 
 export interface ElectronAPI {
   // Window management
@@ -93,6 +93,7 @@ export interface ElectronAPI {
   githubGetRunLogs: (owner: string, repo: string, runId: number) => Promise<GitHubLogsResult>;
   githubGetJobLogs: (owner: string, repo: string, jobId: number) => Promise<GitHubLogsResult>;
   githubRerunWorkflow: (owner: string, repo: string, runId: number) => Promise<{ success: boolean; error?: string }>;
+  githubListIssues: (owner: string, repo: string, state?: 'open' | 'closed' | 'all', perPage?: number) => Promise<GitHubIssuesResult>;
   // Shell
   shellOpenExternal: (url: string) => Promise<void>;
 }
