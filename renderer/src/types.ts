@@ -51,5 +51,15 @@ export { DEFAULT_PROMPTS } from './types/prompts.types';
 // UI types
 export type { SidePanel, ChatMode } from './types/ui.types';
 
+// Atlassian types
+export type {
+  AtlassianConnection,
+  AtlassianProject,
+  AtlassianIssue,
+  AtlassianProjectsResult,
+  AtlassianIssuesResult,
+  AtlassianConnectionResult,
+} from './types/atlassian.types';
+
 // Electron API types
 export type { ElectronAPI } from './types/electron.types';

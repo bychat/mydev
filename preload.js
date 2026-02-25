@@ -109,6 +109,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   githubGetRunLogs: (owner, repo, runId) => ipcRenderer.invoke('github-get-run-logs', owner, repo, runId),
   githubGetJobLogs: (owner, repo, jobId) => ipcRenderer.invoke('github-get-job-logs', owner, repo, jobId),
   githubRerunWorkflow: (owner, repo, runId) => ipcRenderer.invoke('github-rerun-workflow', owner, repo, runId),
+  // Atlassian/Jira
+  atlassianLoadConnections: () => ipcRenderer.invoke('atlassian-load-connections'),
+  atlassianSaveConnections: (connections) => ipcRenderer.invoke('atlassian-save-connections', connections),
+  atlassianTestConnection: (connection) => ipcRenderer.invoke('atlassian-test-connection', connection),
+  atlassianFetchProjects: (connection) => ipcRenderer.invoke('atlassian-fetch-projects', connection),
+  atlassianFetchIssues: (connection, projectKey, maxResults) => ipcRenderer.invoke('atlassian-fetch-issues', connection, projectKey, maxResults),
   // Shell
   shellOpenExternal: (url) => ipcRenderer.invoke('shell-open-external', url),
 });

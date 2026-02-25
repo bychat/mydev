@@ -964,3 +964,76 @@ button{font-family:inherit;cursor:pointer}
 .gh-log-success{color:#89d185}
 .gh-log-timestamp{color:#6a9955}
 .gh-log-section{color:#569cd6;font-weight:600}
+
+/* ── Atlassian Panel ─── */
+.at-panel{height:100%;display:flex;flex-direction:column;background:#fff;overflow:hidden}
+.at-panel-header{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid #e5e5e5;background:#f8f8f8}
+.at-panel-header h2{font-size:.82rem;font-weight:600;color:#333;flex:1}
+.at-panel-header svg{color:#0052CC}
+.at-panel-header-actions{display:flex;align-items:center;gap:4px}
+.at-refresh-btn{display:flex;align-items:center;justify-content:center;width:22px;height:22px;background:none;border:none;cursor:pointer;border-radius:4px;color:#666}
+.at-refresh-btn:hover{background:#e5e5e5}
+.at-refresh-btn:disabled{opacity:.5;cursor:not-allowed}
+.at-refresh-btn .spinning{animation:spin .8s linear infinite}
+.at-add-btn-small{display:flex;align-items:center;justify-content:center;width:22px;height:22px;background:none;border:none;cursor:pointer;border-radius:4px;color:#666;font-size:1rem}
+.at-add-btn-small:hover{background:#e5e5e5;color:#0052CC}
+.at-panel-empty{padding:16px;text-align:center;color:#888;font-size:.78rem}
+.at-panel-empty p{margin-bottom:8px}
+.at-hint{font-size:.72rem;color:#aaa}
+.at-add-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 16px;margin-top:12px;background:#0052CC;color:#fff;border:none;border-radius:6px;font-size:.78rem;cursor:pointer;transition:background .12s}
+.at-add-btn:hover{background:#0747A6}
+
+/* Connection form */
+.at-form{padding:10px 12px;border-bottom:1px solid #e5e5e5;background:#fafafa}
+.at-form-label{display:block;font-size:.7rem;font-weight:600;color:#666;margin-bottom:3px;margin-top:8px}
+.at-form-label:first-child{margin-top:0}
+.at-form-input{width:100%;padding:5px 8px;border:1px solid #ddd;border-radius:4px;font-size:.78rem;background:#fff;outline:none;transition:border-color .12s}
+.at-form-input:focus{border-color:#0052CC}
+.at-form-error{font-size:.72rem;color:#de350b;margin-top:6px}
+.at-form-actions{display:flex;gap:6px;margin-top:10px}
+.at-form-cancel{flex:1;padding:5px;border:1px solid #ddd;border-radius:4px;background:#fff;font-size:.75rem;cursor:pointer;color:#666}
+.at-form-cancel:hover{background:#f5f5f5}
+.at-form-save{flex:1;padding:5px;border:none;border-radius:4px;background:#0052CC;color:#fff;font-size:.75rem;cursor:pointer}
+.at-form-save:hover{background:#0747A6}
+.at-form-save:disabled{opacity:.6;cursor:not-allowed}
+
+/* Connection selector */
+.at-connections{padding:4px 8px;border-bottom:1px solid #e5e5e5}
+.at-connection-item{display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:.75rem;color:#555;transition:background .1s}
+.at-connection-item:hover{background:#f0f0f0}
+.at-connection-item.active{background:#e8f0fe;color:#0052CC;font-weight:600}
+.at-connection-dot{font-size:.5rem;color:#36B37E}
+.at-connection-item.active .at-connection-dot{color:#0052CC}
+.at-connection-domain{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.at-connection-remove{display:none;background:none;border:none;color:#999;cursor:pointer;font-size:.85rem;padding:0 2px}
+.at-connection-item:hover .at-connection-remove{display:block}
+.at-connection-remove:hover{color:#de350b}
+
+/* Loading & error */
+.at-loading{display:flex;align-items:center;gap:8px;padding:16px;color:#888;font-size:.78rem}
+.at-error{padding:8px 12px;font-size:.72rem;color:#de350b;background:#fff5f5;border-bottom:1px solid #ffebe6;display:flex;align-items:center;gap:8px}
+.at-error-retry{background:none;border:none;color:#0052CC;cursor:pointer;font-size:.72rem;text-decoration:underline}
+.at-empty-projects{padding:16px;text-align:center;color:#aaa;font-size:.75rem}
+
+/* Projects list */
+.at-projects{flex:1;overflow-y:auto;padding:4px 0}
+.at-project-group{border-bottom:1px solid #f0f0f0}
+.at-project-item{display:flex;align-items:center;gap:6px;padding:6px 12px;cursor:pointer;font-size:.78rem;transition:background .1s}
+.at-project-item:hover{background:#f5f5f5}
+.at-chevron{display:flex;align-items:center;color:#999;flex-shrink:0}
+.at-project-key{font-weight:600;color:#0052CC;font-size:.72rem;background:#e8f0fe;padding:1px 5px;border-radius:3px;flex-shrink:0}
+.at-project-name{color:#333;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Issues list */
+.at-issues{background:#fafafa}
+.at-loading-issues{display:flex;align-items:center;gap:8px;padding:8px 24px;color:#888;font-size:.72rem}
+.at-issue-item{display:flex;align-items:center;gap:6px;padding:4px 12px 4px 28px;cursor:pointer;font-size:.73rem;transition:background .1s}
+.at-issue-item:hover{background:#eef2ff}
+.at-issue-type{flex-shrink:0;font-size:.7rem}
+.at-issue-key{font-weight:600;color:#555;font-size:.68rem;flex-shrink:0}
+.at-issue-summary{flex:1;color:#333;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.at-status{font-size:.62rem;padding:1px 5px;border-radius:3px;font-weight:600;flex-shrink:0;white-space:nowrap}
+.at-status.done{background:#e3fcef;color:#006644}
+.at-status.todo{background:#f0f0f0;color:#666}
+.at-status.inprogress{background:#deebff;color:#0747A6}
+.at-no-issues{padding:8px 28px;font-size:.72rem;color:#aaa}

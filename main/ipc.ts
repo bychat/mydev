@@ -5,6 +5,7 @@ import { loadPrompts, savePrompts, resetPrompts, type PromptSettings } from './p
 import { logRequest, logResult, logStreamingProgress, registerDebugIpc } from './debugWindow';
 import { detectSupabaseConfig, fetchSupabaseUsers, fetchSupabaseStorage, fetchSupabaseTables, executeSupabaseQuery, type SupabaseConfig, type SupabaseUsersResult, type SupabaseStorageResult, type SupabaseTablesResult, type SqlQueryResult } from './supabase';
 import { extractRepoInfo, listWorkflows, listWorkflowRuns, listRunJobs, getRunLogs, getJobLogs, rerunWorkflow } from './github';
+import { loadConnections, saveConnections, testConnection, fetchProjects, fetchProjectIssues, type AtlassianConnection } from './atlassian';
 import {
   loadAppHistory,
   saveAppHistory,
@@ -557,6 +558,28 @@ export function registerIpcHandlers(getWindow: () => BW | null): void {
 
   ipcMain.handle('github-rerun-workflow', async (_event, owner: string, repo: string, runId: number) => {
     return rerunWorkflow(owner, repo, runId);
+  });
+
+  // ── Atlassian/Jira ──
+  ipcMain.handle('atlassian-load-connections', async () => {
+    return loadConnections();
+  });
+
+  ipcMain.handle('atlassian-save-connections', async (_event, connections: AtlassianConnection[]) => {
+    saveConnections(connections);
+    return { success: true };
+  });
+
+  ipcMain.handle('atlassian-test-connection', async (_event, connection: AtlassianConnection) => {
+    return testConnection(connection);
+  });
+
+  ipcMain.handle('atlassian-fetch-projects', async (_event, connection: AtlassianConnection) => {
+    return fetchProjects(connection);
+  });
+
+  ipcMain.handle('atlassian-fetch-issues', async (_event, connection: AtlassianConnection, projectKey: string, maxResults?: number) => {
+    return fetchProjectIssues(connection, projectKey, maxResults);
   });
 
   // ── Debug Window ──

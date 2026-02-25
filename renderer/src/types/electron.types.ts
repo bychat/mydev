@@ -10,6 +10,7 @@ import type { Conversation, WorkspaceHistory, AppHistory } from './history.types
 import type { PromptSettings } from './prompts.types';
 import type { SupabaseConfig, SupabaseUsersResult, SupabaseStorageResult, SupabaseTablesResult, SqlQueryResult } from './supabase.types';
 import type { GitHubRepoInfo, GitHubWorkflowsResult, GitHubRunsResult, GitHubJobsResult, GitHubLogsResult } from './github.types';
+import type { AtlassianConnection, AtlassianProjectsResult, AtlassianIssuesResult, AtlassianConnectionResult } from './atlassian.types';
 
 export interface ElectronAPI {
   // Window management
@@ -93,6 +94,12 @@ export interface ElectronAPI {
   githubGetRunLogs: (owner: string, repo: string, runId: number) => Promise<GitHubLogsResult>;
   githubGetJobLogs: (owner: string, repo: string, jobId: number) => Promise<GitHubLogsResult>;
   githubRerunWorkflow: (owner: string, repo: string, runId: number) => Promise<{ success: boolean; error?: string }>;
+  // Atlassian/Jira
+  atlassianLoadConnections: () => Promise<AtlassianConnection[]>;
+  atlassianSaveConnections: (connections: AtlassianConnection[]) => Promise<{ success: boolean }>;
+  atlassianTestConnection: (connection: AtlassianConnection) => Promise<AtlassianConnectionResult>;
+  atlassianFetchProjects: (connection: AtlassianConnection) => Promise<AtlassianProjectsResult>;
+  atlassianFetchIssues: (connection: AtlassianConnection, projectKey: string, maxResults?: number) => Promise<AtlassianIssuesResult>;
   // Shell
   shellOpenExternal: (url: string) => Promise<void>;
 }
