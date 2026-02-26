@@ -81,6 +81,8 @@ export interface GitHubLogsResult {
   error?: string;
 }
 
+export type GitHubIssueFilterState = 'open' | 'closed' | 'all';
+
 export interface GitHubIssue {
   id: number;
   number: number;
@@ -319,7 +321,7 @@ export async function getJobLogs(owner: string, repo: string, jobId: number): Pr
 export async function listIssues(
   owner: string,
   repo: string,
-  state: 'open' | 'closed' | 'all' = 'open',
+  state: GitHubIssueFilterState = 'open',
   perPage: number = 20
 ): Promise<GitHubIssuesResult> {
   const result = await githubFetch<GitHubIssue[]>(

@@ -4,7 +4,7 @@ import { checkOllama, listModels, chatComplete, chatCompleteStream, loadSettings
 import { loadPrompts, savePrompts, resetPrompts, type PromptSettings } from './prompts';
 import { logRequest, logResult, logStreamingProgress, registerDebugIpc } from './debugWindow';
 import { detectSupabaseConfig, fetchSupabaseUsers, fetchSupabaseStorage, fetchSupabaseTables, executeSupabaseQuery, type SupabaseConfig, type SupabaseUsersResult, type SupabaseStorageResult, type SupabaseTablesResult, type SqlQueryResult } from './supabase';
-import { extractRepoInfo, listWorkflows, listWorkflowRuns, listRunJobs, getRunLogs, getJobLogs, rerunWorkflow, listIssues } from './github';
+import { extractRepoInfo, listWorkflows, listWorkflowRuns, listRunJobs, getRunLogs, getJobLogs, rerunWorkflow, listIssues, type GitHubIssueFilterState } from './github';
 import {
   loadAppHistory,
   saveAppHistory,
@@ -559,7 +559,7 @@ export function registerIpcHandlers(getWindow: () => BW | null): void {
     return rerunWorkflow(owner, repo, runId);
   });
 
-  ipcMain.handle('github-list-issues', async (_event, owner: string, repo: string, state?: 'open' | 'closed' | 'all', perPage?: number) => {
+  ipcMain.handle('github-list-issues', async (_event, owner: string, repo: string, state?: GitHubIssueFilterState, perPage?: number) => {
     return listIssues(owner, repo, state, perPage);
   });
 

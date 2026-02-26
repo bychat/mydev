@@ -142,7 +142,7 @@ export default function GitHubActionsTab() {
         setIssues(result.issues);
       }
     } catch (err) {
-      console.error('Failed to load issues:', err);
+      console.error('[GitHub] Failed to load issues:', err instanceof Error ? err.message : err);
     } finally {
       setIssuesLoading(false);
     }
@@ -157,7 +157,7 @@ export default function GitHubActionsTab() {
         setJobsCache(prev => ({ ...prev, [runId]: result.jobs }));
       }
     } catch (err) {
-      console.error('Failed to load jobs:', err);
+      console.error('[GitHub] Failed to load jobs for run', runId, ':', err instanceof Error ? err.message : err);
     }
   };
 

@@ -85,6 +85,8 @@ export interface GitHubLogsResult {
   error?: string;
 }
 
+export type GitHubIssueFilterState = 'open' | 'closed' | 'all';
+
 export interface GitHubIssue {
   id: number;
   number: number;
