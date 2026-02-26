@@ -580,6 +580,8 @@ export function registerIpcHandlers(getWindow: () => BW | null): void {
 
   ipcMain.handle('atlassian-fetch-issues', async (_event, connection: AtlassianConnection, projectKey: string, maxResults?: number) => {
     return fetchProjectIssues(connection, projectKey, maxResults);
+  });
+
   ipcMain.handle('github-list-issues', async (_event, owner: string, repo: string, state?: GitHubIssueFilterState, perPage?: number) => {
     return listIssues(owner, repo, state, perPage);
   });
