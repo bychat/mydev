@@ -115,6 +115,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   atlassianTestConnection: (connection) => ipcRenderer.invoke('atlassian-test-connection', connection),
   atlassianFetchProjects: (connection) => ipcRenderer.invoke('atlassian-fetch-projects', connection),
   atlassianFetchIssues: (connection, projectKey, maxResults) => ipcRenderer.invoke('atlassian-fetch-issues', connection, projectKey, maxResults),
+  githubListIssues: (owner, repo, state, perPage) => ipcRenderer.invoke('github-list-issues', owner, repo, state, perPage),
   // Shell
   shellOpenExternal: (url) => ipcRenderer.invoke('shell-open-external', url),
 });

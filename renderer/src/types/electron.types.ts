@@ -9,8 +9,8 @@ import type { AISettings, ChatMessage, AIChatResult } from './ai.types';
 import type { Conversation, WorkspaceHistory, AppHistory } from './history.types';
 import type { PromptSettings } from './prompts.types';
 import type { SupabaseConfig, SupabaseUsersResult, SupabaseStorageResult, SupabaseTablesResult, SqlQueryResult } from './supabase.types';
-import type { GitHubRepoInfo, GitHubWorkflowsResult, GitHubRunsResult, GitHubJobsResult, GitHubLogsResult } from './github.types';
 import type { AtlassianConnection, AtlassianProjectsResult, AtlassianIssuesResult, AtlassianConnectionResult } from './atlassian.types';
+import type { GitHubRepoInfo, GitHubWorkflowsResult, GitHubRunsResult, GitHubJobsResult, GitHubLogsResult, GitHubIssuesResult, GitHubIssueFilterState } from './github.types';
 
 export interface ElectronAPI {
   // Window management
@@ -100,6 +100,7 @@ export interface ElectronAPI {
   atlassianTestConnection: (connection: AtlassianConnection) => Promise<AtlassianConnectionResult>;
   atlassianFetchProjects: (connection: AtlassianConnection) => Promise<AtlassianProjectsResult>;
   atlassianFetchIssues: (connection: AtlassianConnection, projectKey: string, maxResults?: number) => Promise<AtlassianIssuesResult>;
+  githubListIssues: (owner: string, repo: string, state?: GitHubIssueFilterState, perPage?: number) => Promise<GitHubIssuesResult>;
   // Shell
   shellOpenExternal: (url: string) => Promise<void>;
 }

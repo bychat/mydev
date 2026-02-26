@@ -945,6 +945,14 @@ button{font-family:inherit;cursor:pointer}
 .gh-tree-workflow-dot.active{color:#3fb950}
 .gh-tree-workflow-dot.disabled{color:#8b949e}
 
+.gh-tree-top-section{border-bottom:1px solid #e5e5e5}
+.gh-tree-top-section-header{display:flex;align-items:center;gap:4px;padding:8px 8px;cursor:pointer;user-select:none;background:#f8f8f8}
+.gh-tree-top-section-header:hover{background:#f0f0f0}
+.gh-tree-top-section-content{padding:2px 0}
+
+.gh-tree-issue-labels{display:inline-flex;gap:3px;margin-left:4px;align-items:center}
+.gh-tree-issue-label{display:inline-block;width:8px;height:8px;border-radius:50%;flex-shrink:0}
+
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 
 /* GitHub Logs Viewer */
