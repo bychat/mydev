@@ -109,6 +109,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   githubGetRunLogs: (owner, repo, runId) => ipcRenderer.invoke('github-get-run-logs', owner, repo, runId),
   githubGetJobLogs: (owner, repo, jobId) => ipcRenderer.invoke('github-get-job-logs', owner, repo, jobId),
   githubRerunWorkflow: (owner, repo, runId) => ipcRenderer.invoke('github-rerun-workflow', owner, repo, runId),
+  githubListIssues: (owner, repo, state, perPage) => ipcRenderer.invoke('github-list-issues', owner, repo, state, perPage),
   // Shell
   shellOpenExternal: (url) => ipcRenderer.invoke('shell-open-external', url),
 });

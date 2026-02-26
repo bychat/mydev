@@ -84,3 +84,26 @@ export interface GitHubLogsResult {
   logs: string;
   error?: string;
 }
+
+export type GitHubIssueFilterState = 'open' | 'closed' | 'all';
+
+export interface GitHubIssue {
+  id: number;
+  number: number;
+  title: string;
+  state: 'open' | 'closed' | string;
+  html_url: string;
+  created_at: string;
+  updated_at: string;
+  labels: { id: number; name: string; color: string }[];
+  user: {
+    login: string;
+    avatar_url: string;
+  };
+}
+
+export interface GitHubIssuesResult {
+  success: boolean;
+  issues: GitHubIssue[];
+  error?: string;
+}

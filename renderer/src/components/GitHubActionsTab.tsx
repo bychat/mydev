@@ -1,12 +1,13 @@
 /**
- * GitHubActionsTab - Professional expandable tree view for GitHub Actions
+ * GitHubActionsTab - Professional expandable tree view for GitHub Actions and Issues
  */
 import { useState, useEffect } from 'react';
 import { useWorkspace } from '../context/WorkspaceContext';
 import type { 
   GitHubWorkflow, 
   GitHubWorkflowRun, 
-  GitHubJob 
+  GitHubJob,
+  GitHubIssue 
 } from '../types/github.types';
 import { 
   ChevronDownIcon, 
@@ -37,6 +38,12 @@ const GlobeIcon = () => (
   </svg>
 );
 
+// Issue state icon
+const IssueIcon = ({ state }: { state: string }) => {
+  if (state === 'open') return <span className="gh-tree-status success">◉</span>;
+  return <span className="gh-tree-status neutral">◉</span>;
+};
+
 export default function GitHubActionsTab() {
   const { folderPath } = useWorkspace();
   const [repoInfo, setRepoInfo] = useState<{ owner: string; repo: string } | null>(null);
@@ -46,8 +53,14 @@ export default function GitHubActionsTab() {
   const [expandedRuns, setExpandedRuns] = useState<Set<number>>(new Set());
   const [expandedJobs, setExpandedJobs] = useState<Set<number>>(new Set());
   const [jobsCache, setJobsCache] = useState<Record<number, GitHubJob[]>>({});
+  const [issues, setIssues] = useState<GitHubIssue[]>([]);
+  const [issuesLoading, setIssuesLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [topSections, setTopSections] = useState({
+    actions: true,
+    issues: true
+  });
   const [sectionsExpanded, setSectionsExpanded] = useState({
     currentBranch: true,
     workflows: false
@@ -110,10 +123,28 @@ export default function GitHubActionsTab() {
           setCurrentBranchRun(runsResult.runs[0]);
         }
       }
+
+      loadIssues();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadIssues = async () => {
+    if (!repoInfo) return;
+    
+    setIssuesLoading(true);
+    try {
+      const result = await window.electronAPI.githubListIssues(repoInfo.owner, repoInfo.repo, 'open', 20);
+      if (result.success) {
+        setIssues(result.issues);
+      }
+    } catch (err) {
+      console.error('[GitHub] Failed to load issues:', err instanceof Error ? err.message : err);
+    } finally {
+      setIssuesLoading(false);
     }
   };
 
@@ -126,7 +157,7 @@ export default function GitHubActionsTab() {
         setJobsCache(prev => ({ ...prev, [runId]: result.jobs }));
       }
     } catch (err) {
-      console.error('Failed to load jobs:', err);
+      console.error('[GitHub] Failed to load jobs for run', runId, ':', err instanceof Error ? err.message : err);
     }
   };
 
@@ -157,6 +188,10 @@ export default function GitHubActionsTab() {
 
   const toggleSection = (section: 'currentBranch' | 'workflows') => {
     setSectionsExpanded(prev => ({ ...prev, [section]: !prev[section] }));
+  };
+
+  const toggleTopSection = (section: 'actions' | 'issues') => {
+    setTopSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
 
   const openInBrowser = (url: string) => {
@@ -263,11 +298,42 @@ export default function GitHubActionsTab() {
     );
   };
 
+  const renderIssue = (issue: GitHubIssue) => (
+    <div key={issue.id} className="gh-tree-item-group">
+      <div 
+        className="gh-tree-item depth-0"
+        onClick={() => openInBrowser(issue.html_url)}
+      >
+        <span className="gh-tree-chevron" style={{ width: 12 }} />
+        <IssueIcon state={issue.state} />
+        <span className="gh-tree-label">#{issue.number} {issue.title}</span>
+        {issue.labels.length > 0 && (
+          <span className="gh-tree-issue-labels">
+            {issue.labels.slice(0, 2).map(label => (
+              <span 
+                key={label.id} 
+                className="gh-tree-issue-label"
+                style={{ backgroundColor: `#${label.color}` }}
+              />
+            ))}
+          </span>
+        )}
+        <button 
+          className="gh-tree-action"
+          onClick={(e) => { e.stopPropagation(); openInBrowser(issue.html_url); }}
+          title="Open in browser"
+        >
+          <GlobeIcon />
+        </button>
+      </div>
+    </div>
+  );
+
   if (loading && !workflows.length) {
     return (
       <div className="gh-tree-panel">
         <div className="gh-tree-header">
-          <span className="gh-tree-title">GITHUB ACTIONS</span>
+          <span className="gh-tree-title">GITHUB</span>
           <button className="gh-tree-refresh" disabled>
             <RefreshIcon size={14} className="spinning" />
           </button>
@@ -284,7 +350,7 @@ export default function GitHubActionsTab() {
     return (
       <div className="gh-tree-panel">
         <div className="gh-tree-header">
-          <span className="gh-tree-title">GITHUB ACTIONS</span>
+          <span className="gh-tree-title">GITHUB</span>
         </div>
         <div className="gh-tree-empty">
           <span>{error}</span>
@@ -296,7 +362,7 @@ export default function GitHubActionsTab() {
   return (
     <div className="gh-tree-panel">
       <div className="gh-tree-header">
-        <span className="gh-tree-title">GITHUB ACTIONS</span>
+        <span className="gh-tree-title">GITHUB</span>
         <button 
           className="gh-tree-refresh" 
           onClick={loadData}
@@ -308,66 +374,113 @@ export default function GitHubActionsTab() {
       </div>
 
       <div className="gh-tree-content">
-        {currentBranchRun && (
-          <div className="gh-tree-section">
-            <div 
-              className="gh-tree-section-header"
-              onClick={() => toggleSection('currentBranch')}
-            >
-              <span className="gh-tree-chevron">
-                {sectionsExpanded.currentBranch ? <ChevronDownIcon size={12} /> : <ChevronRightIcon size={12} />}
-              </span>
-              <span className="gh-tree-section-title">CURRENT BRANCH</span>
-            </div>
-            
-            {sectionsExpanded.currentBranch && (
-              <div className="gh-tree-section-content">
-                {renderRun(currentBranchRun, 0)}
-              </div>
-            )}
-          </div>
-        )}
-
-        <div className="gh-tree-section">
-          <div className="gh-tree-section-header">
-            <span className="gh-tree-section-title" style={{ marginLeft: 0 }}>RECENT RUNS</span>
-          </div>
-          <div className="gh-tree-section-content">
-            {runs.map(run => renderRun(run, 0))}
-          </div>
-        </div>
-
-        <div className="gh-tree-section">
+        {/* ACTIONS collapsible section */}
+        <div className="gh-tree-top-section">
           <div 
-            className="gh-tree-section-header"
-            onClick={() => toggleSection('workflows')}
+            className="gh-tree-top-section-header"
+            onClick={() => toggleTopSection('actions')}
           >
             <span className="gh-tree-chevron">
-              {sectionsExpanded.workflows ? <ChevronDownIcon size={12} /> : <ChevronRightIcon size={12} />}
+              {topSections.actions ? <ChevronDownIcon size={12} /> : <ChevronRightIcon size={12} />}
             </span>
-            <span className="gh-tree-section-title">WORKFLOWS</span>
+            <span className="gh-tree-section-title">ACTIONS</span>
           </div>
           
-          {sectionsExpanded.workflows && (
-            <div className="gh-tree-section-content">
-              {workflows.map(workflow => (
-                <div 
-                  key={workflow.id} 
-                  className="gh-tree-item depth-0"
-                  onClick={() => openInBrowser(workflow.html_url)}
-                >
-                  <span className="gh-tree-chevron" style={{ width: 12 }} />
-                  <span className={`gh-tree-workflow-dot ${workflow.state}`}>●</span>
-                  <span className="gh-tree-label">{workflow.name}</span>
-                  <button 
-                    className="gh-tree-action"
-                    onClick={(e) => { e.stopPropagation(); openInBrowser(workflow.html_url); }}
-                    title="Open in browser"
+          {topSections.actions && (
+            <div className="gh-tree-top-section-content">
+              {currentBranchRun && (
+                <div className="gh-tree-section">
+                  <div 
+                    className="gh-tree-section-header"
+                    onClick={() => toggleSection('currentBranch')}
                   >
-                    <GlobeIcon />
-                  </button>
+                    <span className="gh-tree-chevron">
+                      {sectionsExpanded.currentBranch ? <ChevronDownIcon size={12} /> : <ChevronRightIcon size={12} />}
+                    </span>
+                    <span className="gh-tree-section-title">CURRENT BRANCH</span>
+                  </div>
+                  
+                  {sectionsExpanded.currentBranch && (
+                    <div className="gh-tree-section-content">
+                      {renderRun(currentBranchRun, 0)}
+                    </div>
+                  )}
                 </div>
-              ))}
+              )}
+
+              <div className="gh-tree-section">
+                <div className="gh-tree-section-header">
+                  <span className="gh-tree-section-title" style={{ marginLeft: 0 }}>RECENT RUNS</span>
+                </div>
+                <div className="gh-tree-section-content">
+                  {runs.map(run => renderRun(run, 0))}
+                </div>
+              </div>
+
+              <div className="gh-tree-section">
+                <div 
+                  className="gh-tree-section-header"
+                  onClick={() => toggleSection('workflows')}
+                >
+                  <span className="gh-tree-chevron">
+                    {sectionsExpanded.workflows ? <ChevronDownIcon size={12} /> : <ChevronRightIcon size={12} />}
+                  </span>
+                  <span className="gh-tree-section-title">WORKFLOWS</span>
+                </div>
+                
+                {sectionsExpanded.workflows && (
+                  <div className="gh-tree-section-content">
+                    {workflows.map(workflow => (
+                      <div 
+                        key={workflow.id} 
+                        className="gh-tree-item depth-0"
+                        onClick={() => openInBrowser(workflow.html_url)}
+                      >
+                        <span className="gh-tree-chevron" style={{ width: 12 }} />
+                        <span className={`gh-tree-workflow-dot ${workflow.state}`}>●</span>
+                        <span className="gh-tree-label">{workflow.name}</span>
+                        <button 
+                          className="gh-tree-action"
+                          onClick={(e) => { e.stopPropagation(); openInBrowser(workflow.html_url); }}
+                          title="Open in browser"
+                        >
+                          <GlobeIcon />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ISSUES collapsible section */}
+        <div className="gh-tree-top-section">
+          <div 
+            className="gh-tree-top-section-header"
+            onClick={() => toggleTopSection('issues')}
+          >
+            <span className="gh-tree-chevron">
+              {topSections.issues ? <ChevronDownIcon size={12} /> : <ChevronRightIcon size={12} />}
+            </span>
+            <span className="gh-tree-section-title">ISSUES</span>
+          </div>
+          
+          {topSections.issues && (
+            <div className="gh-tree-top-section-content">
+              {issuesLoading && issues.length === 0 ? (
+                <div className="gh-tree-loading-state">
+                  <span className="gh-tree-spinner"></span>
+                  <span>Loading issues...</span>
+                </div>
+              ) : issues.length === 0 ? (
+                <div className="gh-tree-empty">
+                  <span>No open issues</span>
+                </div>
+              ) : (
+                issues.map(issue => renderIssue(issue))
+              )}
             </div>
           )}
         </div>

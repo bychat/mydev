@@ -81,6 +81,29 @@ export interface GitHubLogsResult {
   error?: string;
 }
 
+export type GitHubIssueFilterState = 'open' | 'closed' | 'all';
+
+export interface GitHubIssue {
+  id: number;
+  number: number;
+  title: string;
+  state: 'open' | 'closed' | string;
+  html_url: string;
+  created_at: string;
+  updated_at: string;
+  labels: { id: number; name: string; color: string }[];
+  user: {
+    login: string;
+    avatar_url: string;
+  };
+}
+
+export interface GitHubIssuesResult {
+  success: boolean;
+  issues: GitHubIssue[];
+  error?: string;
+}
+
 export interface GitHubRepoInfo {
   owner: string;
   repo: string;
@@ -290,6 +313,29 @@ export async function getJobLogs(owner: string, repo: string, jobId: number): Pr
   }
   
   return { success: true, logs: result.data };
+}
+
+/**
+ * List issues for a repository
+ */
+export async function listIssues(
+  owner: string,
+  repo: string,
+  state: GitHubIssueFilterState = 'open',
+  perPage: number = 20
+): Promise<GitHubIssuesResult> {
+  const result = await githubFetch<GitHubIssue[]>(
+    `/repos/${owner}/${repo}/issues?state=${state}&per_page=${perPage}&sort=updated&direction=desc`
+  );
+  
+  if (result.error || !result.data) {
+    return { success: false, issues: [], error: result.error };
+  }
+  
+  // Filter out pull requests (GitHub API returns PRs in issues endpoint)
+  const issues = result.data.filter((item: any) => !item.pull_request);
+  
+  return { success: true, issues };
 }
 
 /**
