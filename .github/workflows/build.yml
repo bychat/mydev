@@ -13,23 +13,39 @@ env:
   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
-  # ── Determine the artifact label (tag name or short SHA) ──────
+  # ── Quick build check (every push & PR – no artifacts) ───────
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript compile check (main process)
+        run: npx tsc --noEmit
+
+      - name: Build renderer (Vite)
+        run: npx vite build
+
+  # ── Determine the artifact label (tag name) ──────────────────
   meta:
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     outputs:
       label: ${{ steps.label.outputs.value }}
     steps:
       - name: Compute label
         id: label
-        run: |
-          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
-            echo "value=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
-          else
-            echo "value=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
-          fi
+        run: echo "value=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
 
   # ── macOS build (universal – Intel + Apple Silicon) ───────────
   build-mac:
+    if: startsWith(github.ref, 'refs/tags/')
     needs: meta
     runs-on: macos-latest
     steps:
@@ -63,6 +79,7 @@ jobs:
 
   # ── Windows build (x64 .exe installer) ───────────────────────
   build-win:
+    if: startsWith(github.ref, 'refs/tags/')
     needs: meta
     runs-on: windows-latest
     steps:
@@ -94,6 +111,7 @@ jobs:
 
   # ── Linux build (x64 AppImage) ───────────────────────────────
   build-linux:
+    if: startsWith(github.ref, 'refs/tags/')
     needs: meta
     runs-on: ubuntu-latest
     steps:
