@@ -7,6 +7,7 @@ import NpmPanel from './NpmPanel';
 import SupabasePanel from './SupabasePanel';
 import DatabasePanel from './DatabasePanel';
 import GitHubActionsTab from './GitHubActionsTab';
+import AtlassianPanel from './AtlassianPanel';
 import { ChevronLeftIcon } from './icons';
 
 interface SidebarProps {
@@ -176,6 +177,7 @@ export default function Sidebar({ onCollapse }: SidebarProps) {
   if (activePanel === 'supabase') return <aside className="sidebar"><SupabasePanel /></aside>;
   if (activePanel === 'database') return <aside className="sidebar"><DatabasePanel /></aside>;
   if (activePanel === 'github') return <aside className="sidebar"><GitHubActionsTab /></aside>;
+  if (activePanel === 'atlassian') return <aside className="sidebar"><AtlassianPanel /></aside>;
 
   return (
     <aside className="sidebar">

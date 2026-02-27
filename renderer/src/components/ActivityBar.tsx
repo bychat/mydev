@@ -21,7 +21,14 @@ const GitHubIcon = ({ size = 16 }: { size?: number }) => (
   </svg>
 );
 
-const panels: { id: SidePanel; icon: 'explorer' | 'search' | 'source-control' | 'npm' | 'supabase' | 'database' | 'github'; label: string; gitOnly?: boolean; npmOnly?: boolean }[] = [
+// Atlassian Icon component
+const AtlassianIcon = ({ size = 16 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M7.12 11.084c-.294-.375-.75-.349-1.001.074L.609 21.137c-.252.424-.053.768.44.768h6.96c.246 0 .56-.2.69-.442.892-1.632.628-5.145-1.579-10.379zM11.614 1.088c-2.886 5.14-2.479 9.122-.496 12.735.193.353.514.546.83.546H18.3c.493 0 .695-.346.44-.769L12.615 1.161c-.25-.422-.703-.447-1.001-.073z"/>
+  </svg>
+);
+
+const panels: { id: SidePanel; icon: 'explorer' | 'search' | 'source-control' | 'npm' | 'supabase' | 'database' | 'github' | 'atlassian'; label: string; gitOnly?: boolean; npmOnly?: boolean }[] = [
   { id: 'explorer', icon: 'explorer', label: 'Explorer' },
   { id: 'search', icon: 'search', label: 'Search' },
   { id: 'source-control', icon: 'source-control', label: 'Source Control', gitOnly: true },
@@ -29,6 +36,7 @@ const panels: { id: SidePanel; icon: 'explorer' | 'search' | 'source-control' | 
   { id: 'supabase', icon: 'supabase', label: 'Supabase' },
   { id: 'database', icon: 'database', label: 'Database' },
   { id: 'github', icon: 'github', label: 'GitHub Actions', gitOnly: true },
+  { id: 'atlassian', icon: 'atlassian', label: 'Atlassian' },
 ];
 
 interface ActivityBarProps {
@@ -84,6 +92,8 @@ export default function ActivityBar({ onToggleTerminal, terminalVisible }: Activ
         return <DatabaseIcon />;
       case 'github':
         return <GitHubIcon />;
+      case 'atlassian':
+        return <AtlassianIcon />;
       default:
         return null;
     }
