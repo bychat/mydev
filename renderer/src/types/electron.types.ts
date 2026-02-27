@@ -67,6 +67,7 @@ export interface ElectronAPI {
   onToggleTerminal: (cb: () => void) => () => void;
   onOpenPrompts: (cb: () => void) => () => void;
   onOpenDebug: (cb: () => void) => () => void;
+  onOpenAgents: (cb: () => void) => () => void;
   // Chat History
   historyLoad: () => Promise<AppHistory>;
   historyGetRecentWorkspaces: (limit?: number) => Promise<WorkspaceHistory[]>;

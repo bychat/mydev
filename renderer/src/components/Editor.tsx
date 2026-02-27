@@ -6,6 +6,7 @@ import SupabaseUsersTab from './SupabaseUsersTab';
 import SupabaseStorageTab from './SupabaseStorageTab';
 import SqlQueryResultTab from './SqlQueryResultTab';
 import GitHubLogsViewer from './GitHubLogsViewer';
+import AgentsPanel from './AgentsPanel';
 import type { DiffResult } from '../types';
 
 export default function Editor() {
@@ -19,6 +20,7 @@ export default function Editor() {
   const isSupabaseStorage = activeTab?.path === 'supabase:storage';
   const isSqlResult = activeTab?.path.startsWith('sql-result:');
   const isGitHubLogs = activeTab?.path.startsWith('github-logs:');
+  const isAgents = activeTab?.path === 'agents:flow';
 
   useEffect(() => {
     const handler = (e: globalThis.KeyboardEvent) => {
@@ -112,6 +114,16 @@ export default function Editor() {
       <div className="editor-container">
         <EditorTabs />
         <GitHubLogsViewer logs={activeTab.content} jobName={jobName} />
+      </div>
+    );
+  }
+
+  // Agents flow view
+  if (isAgents) {
+    return (
+      <div className="editor-container">
+        <EditorTabs />
+        <AgentsPanel />
       </div>
     );
   }

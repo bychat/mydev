@@ -49,6 +49,7 @@ interface WorkspaceContextValue {
   runNpmScript: (projectPath: string, scriptName: string) => void;
   openSupabaseTab: (tabType: 'users' | 'storage') => void;
   openSqlQueryTab: (query: string) => void;
+  openAgentsTab: () => void;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
@@ -328,6 +329,22 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('open-github-logs-tab', handler as EventListener);
   }, [openGitHubLogsTab]);
 
+  // Open Agents flow tab
+  const openAgentsTab = useCallback(() => {
+    const tabKey = 'agents:flow';
+    const existing = openTabs.find(t => t.path === tabKey);
+    if (existing) { setActiveTabPath(tabKey); return; }
+    
+    setOpenTabs(prev => [...prev, {
+      name: '🤖 Agents',
+      path: tabKey,
+      content: '',
+      modified: false,
+      readOnly: true,
+    }]);
+    setActiveTabPath(tabKey);
+  }, [openTabs]);
+
   const closeTab = useCallback((filePath: string) => {
     setOpenTabs(prev => {
       const next = prev.filter(t => t.path !== filePath);
@@ -477,6 +494,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       npmProjects, runNpmScript,
       openSupabaseTab,
       openSqlQueryTab,
+      openAgentsTab,
     }}>
       {children}
     </WorkspaceContext.Provider>

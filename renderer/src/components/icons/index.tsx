@@ -263,3 +263,9 @@ export const SqlFileIcon = ({ size = 14, className }: IconProps) => (
     <path d="M5.5 11.5A1.5 1.5 0 0 1 7 10h2a1.5 1.5 0 0 1 0 3H7a1.5 1.5 0 0 1-1.5-1.5z"/>
   </svg>
 );
+
+export const AgentsIcon = ({ size = 16, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="currentColor" className={className}>
+    <path d="M8 1a2 2 0 0 1 2 2v1h1.5A1.5 1.5 0 0 1 13 5.5v1A1.5 1.5 0 0 1 11.5 8H10v1h1.5A1.5 1.5 0 0 1 13 10.5v1a1.5 1.5 0 0 1-1.5 1.5H10v1a2 2 0 1 1-4 0v-1H4.5A1.5 1.5 0 0 1 3 11.5v-1A1.5 1.5 0 0 1 4.5 9H6V8H4.5A1.5 1.5 0 0 1 3 6.5v-1A1.5 1.5 0 0 1 4.5 4H6V3a2 2 0 0 1 2-2zm0 1a1 1 0 0 0-1 1v1.5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h2a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.5.5h-2a.5.5 0 0 0-.5.5v1a.5.5 0 0 0 .5.5h2a.5.5 0 0 1 .5.5V14a1 1 0 1 0 2 0v-1.5a.5.5 0 0 1 .5-.5h2a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5h-2a.5.5 0 0 1-.5-.5v-2a.5.5 0 0 1 .5-.5h2a.5.5 0 0 0 .5-.5v-1a.5.5 0 0 0-.5-.5h-2a.5.5 0 0 1-.5-.5V3a1 1 0 0 0-1-1z"/>
+  </svg>
+);

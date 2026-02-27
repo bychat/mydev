@@ -82,6 +82,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('open-debug', listener);
     return () => ipcRenderer.removeListener('open-debug', listener);
   },
+  onOpenAgents: (cb) => {
+    const listener = () => cb();
+    ipcRenderer.on('open-agents', listener);
+    return () => ipcRenderer.removeListener('open-agents', listener);
+  },
   // Chat History
   historyLoad: () => ipcRenderer.invoke('history-load'),
   historyGetRecentWorkspaces: (limit) => ipcRenderer.invoke('history-get-recent-workspaces', limit),

@@ -45,7 +45,7 @@ interface ActivityBarProps {
 }
 
 export default function ActivityBar({ onToggleTerminal, terminalVisible }: ActivityBarProps) {
-  const { activePanel, setActivePanel, hasGit, npmProjects, gitSplitChanges } = useWorkspace();
+  const { activePanel, setActivePanel, hasGit, npmProjects, gitSplitChanges, openAgentsTab } = useWorkspace();
   const [promptSettingsOpen, setPromptSettingsOpen] = useState(false);
 
   // Listen for menu-triggered open prompts
@@ -67,6 +67,14 @@ export default function ActivityBar({ onToggleTerminal, terminalVisible }: Activ
     });
     return cleanup;
   }, []);
+
+  // Listen for menu-triggered open agents
+  useEffect(() => {
+    const cleanup = window.electronAPI.onOpenAgents(() => {
+      openAgentsTab();
+    });
+    return cleanup;
+  }, [openAgentsTab]);
 
   const handleNewWindow = async () => {
     try {

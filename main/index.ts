@@ -83,6 +83,17 @@ function buildMenu(): void {
           },
         },
         { type: 'separator' },
+        {
+          label: 'Agents',
+          accelerator: 'CmdOrCtrl+Shift+A',
+          click: () => {
+            const focusedWindow = BrowserWindow.getFocusedWindow();
+            if (focusedWindow && !focusedWindow.isDestroyed()) {
+              focusedWindow.webContents.send('open-agents');
+            }
+          },
+        },
+        { type: 'separator' },
         { role: 'close' },
       ],
     },
