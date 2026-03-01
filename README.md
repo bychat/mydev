@@ -1,6 +1,6 @@
 # mydev.bychat.io
 
-An open-source AI-powered developer workspace — runs as an Electron desktop app or an enterprise cloud server.
+An open-source AI-powered developer workspace — runs as an Electron desktop app, a CLI, or an enterprise cloud server.
 
 ## Prerequisites
 
@@ -24,6 +24,14 @@ Start the enterprise cloud server:
 
 ```bash
 npm run server:dev
+```
+
+Use the CLI:
+
+```bash
+npm run cli -- "explain the auth flow"
+npm run cli -- -m agent "add dark mode support"
+npm run cli -- -m ask -w ./my-project "what testing framework is used?"
 ```
 
 ## Build for Production
@@ -88,6 +96,83 @@ The Electron app runs the full experience locally — file system access, integr
 
 The Express server (`npm run server:dev`) exposes the same connector operations over REST. Layer on auth, RBAC, audit logging, and multi-tenancy for enterprise use.
 
+### CLI
+
+The command-line interface (`cli/index.ts`) lets you use mydev from the terminal — no Electron required. It reads your workspace, builds context, and talks to any OpenAI-compatible API.
+
+## CLI
+
+```
+mydev [options] "your message"
+echo "your message" | mydev [options]
+```
+
+### Modes
+
+| Mode | Flag | Description |
+|------|------|-------------|
+| **ask** | `-m ask` | Answer questions about the codebase (default) |
+| **agent** | `-m agent` | Plan and describe file changes with SEARCH/REPLACE blocks |
+| **chat** | `-m chat` | General conversation — no workspace context |
+
+### Options
+
+| Flag | Description |
+|------|-------------|
+| `-m, --mode <mode>` | `ask`, `agent`, or `chat` (default: `ask`) |
+| `-w, --workspace <path>` | Workspace directory (default: current directory) |
+| `--model <name>` | Model to use (or set `MYDEV_MODEL` env var) |
+| `--base-url <url>` | OpenAI-compatible API URL (or set `OPENAI_BASE_URL`) |
+| `--api-key <key>` | API key (or set `OPENAI_API_KEY`) |
+| `-s, --system <prompt>` | Custom system prompt |
+| `--no-stream` | Wait for full response instead of streaming |
+| `--list-models` | List available models and exit |
+| `-o, --output <file>` | Write response to a file |
+| `--verbose` | Show model, timing, and debug info |
+
+### Examples
+
+```bash
+# Ask about a codebase
+mydev "explain the auth flow"
+
+# Agent mode — get code changes
+mydev -m agent "add input validation to the signup form"
+
+# Point at a different workspace
+mydev -m ask -w ./my-project "what testing framework is used?"
+
+# Use a specific model and API key
+mydev --model gpt-4o --api-key sk-... "refactor the utils folder"
+
+# Pipe input
+echo "summarize this project" | mydev
+
+# List available models
+mydev --list-models
+
+# Save response to a file
+mydev -m agent -o changes.md "add dark mode support"
+```
+
+### Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `OPENAI_API_KEY` | API key for the AI provider |
+| `OPENAI_BASE_URL` | Base URL for the AI provider |
+| `OLLAMA_BASE_URL` | Base URL for Ollama (fallback) |
+| `MYDEV_MODEL` | Default model name |
+
+### Global Install
+
+```bash
+npm run build:cli
+npm link
+# Now use "mydev" from anywhere:
+mydev -w ~/projects/my-app "explain the auth flow"
+```
+
 ## Project Structure
 
 ```
@@ -119,6 +204,10 @@ main/                        # Electron main process
 server/                      # Enterprise cloud server
   index.ts                   #   Express REST API entrypoint
   tsconfig.json              #   TypeScript config for server build
+
+cli/                         # Command-line interface
+  index.ts                   #   CLI entrypoint (no Electron dependency)
+  tsconfig.json              #   TypeScript config for CLI build
 
 renderer/                    # React frontend (Vite)
   src/
@@ -262,9 +351,11 @@ The server version (`server/index.ts`) is designed to be extended with:
 | Script | Description |
 |--------|-------------|
 | `npm run dev` | Start desktop app (Electron + Vite dev server) |
+| `npm run cli -- "msg"` | Run CLI directly via tsx |
 | `npm run server` | Start enterprise cloud server |
 | `npm run server:dev` | Start enterprise cloud server with hot-reload |
 | `npm run build` | Build for current platform |
+| `npm run build:cli` | Compile CLI to `dist-cli/` (for `npm link`) |
 | `npm run build:mac` | Build macOS dmg (x64 + arm64) |
 | `npm run build:win` | Build Windows installer |
 | `npm run build:linux` | Build Linux AppImage |
