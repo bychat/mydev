@@ -3,6 +3,8 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { registerIpcHandlers } from './ipc';
 import { registerTerminalHandlers, killAllTerminals } from './terminal';
+import { registerBuiltInConnectors } from '../connectors';
+import { registerConnectorIpcHandlers } from './connectorIpc';
 
 // Check if we should use dev server or built files
 // Use built files if they exist and we're not running with VITE_DEV_SERVER env
@@ -114,9 +116,13 @@ function buildMenu(): void {
 }
 
 app.whenReady().then(() => {
+  // Bootstrap connector plugin system
+  registerBuiltInConnectors();
+
   createWindow();
   registerIpcHandlers(() => mainWindow);
   registerTerminalHandlers(() => mainWindow);
+  registerConnectorIpcHandlers();
   buildMenu();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

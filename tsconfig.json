@@ -14,6 +14,6 @@
     "declaration": false,
     "sourceMap": true
   },
-  "include": ["main/**/*.ts"],
-  "exclude": ["node_modules", "renderer"]
+  "include": ["main/**/*.ts", "core/**/*.ts", "connectors/**/*.ts"],
+  "exclude": ["node_modules", "renderer", "server"]
 }

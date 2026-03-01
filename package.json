@@ -12,7 +12,9 @@
     "build": "npm run build:main && vite build && electron-builder",
     "build:mac": "npm run build:main && vite build && electron-builder --mac",
     "build:win": "npm run build:main && vite build && electron-builder --win",
-    "build:linux": "npm run build:main && vite build && electron-builder --linux"
+    "build:linux": "npm run build:main && vite build && electron-builder --linux",
+    "server": "tsx server/index.ts",
+    "server:dev": "tsx watch server/index.ts"
   },
   "build": {
     "appId": "io.bychat.mydev",
@@ -49,6 +51,8 @@
   "license": "MIT",
   "devDependencies": {
     "@electron/rebuild": "^4.0.3",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
     "@types/node": "^25.3.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
@@ -56,6 +60,7 @@
     "concurrently": "^9.0.0",
     "electron": "^33.0.0",
     "electron-builder": "^25.0.0",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vite": "^6.0.0",
     "wait-on": "^8.0.0"
@@ -64,6 +69,8 @@
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/xterm": "^6.0.0",
     "@xyflow/react": "^12.10.1",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
     "node-pty": "^1.1.0",
     "openai": "^6.22.0",
     "react": "^19.0.0",
