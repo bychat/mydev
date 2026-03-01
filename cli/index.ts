@@ -1,17 +1,18 @@
 #!/usr/bin/env node
 
 /**
- * mydev CLI
+ * bychat CLI
  *
  * Shares the same AI provider, model, and prompts as the desktop app.
  * Reads ai-settings.json and prompt-settings.json from the Electron
  * userData directory — configure once in the UI, use everywhere.
  *
  * Usage:
- *   mydev "explain the auth flow"
- *   mydev -m agent "add dark mode support"
- *   mydev -m ask -w ./my-project "what does this project do"
- *   echo "fix the bug" | mydev -m agent
+ *   bychat "explain the auth flow"
+ *   bychat ask "what does this project do"
+ *   bychat agent "add dark mode support"
+ *   bychat agent -w ./my-project "refactor the utils folder"
+ *   echo "fix the bug" | bychat agent
  */
 
 import * as fs from 'fs';
@@ -74,9 +75,19 @@ function parseArgs(argv: string[]): CliArgs {
 
   const positional: string[] = [];
   let i = 0;
+  let subcommandParsed = false;
 
   while (i < argv.length) {
     const arg = argv[i];
+
+    // Support subcommand-style: bychat ask, bychat agent, bychat chat
+    if (!subcommandParsed && !arg.startsWith('-') && ['ask', 'agent', 'chat'].includes(arg)) {
+      args.mode = arg as CliArgs['mode'];
+      subcommandParsed = true;
+      i++;
+      continue;
+    }
+
     switch (arg) {
       case '-h': case '--help':
         args.showHelp = true; break;
@@ -121,19 +132,20 @@ function parseArgs(argv: string[]): CliArgs {
 function showHelp(): void {
   const settings = loadAISettings();
   console.log(`
-\x1b[1mmydev\x1b[0m — AI-powered developer assistant CLI
+\x1b[1mbychat\x1b[0m — AI-powered developer assistant CLI (bychat.io)
 
   Uses the same AI provider, model, and prompts configured in the desktop app.
 
 \x1b[1mUSAGE\x1b[0m
-  mydev [options] "your message"
-  echo "your message" | mydev [options]
+  bychat ask [options] "your message"
+  bychat agent [options] "your message"
+  bychat chat [options] "your message"
+  echo "your message" | bychat agent [options]
 
-\x1b[1mMODES\x1b[0m
-  -m, --mode <mode>       Set the chat mode (default: ask)
-                            \x1b[36mask\x1b[0m   — answer questions about the codebase
-                            \x1b[36magent\x1b[0m — plan and describe file changes (SEARCH/REPLACE)
-                            \x1b[36mchat\x1b[0m  — general conversation (no workspace context)
+\x1b[1mCOMMANDS\x1b[0m
+  \x1b[36mask\x1b[0m     Answer questions about the codebase (default)
+  \x1b[36magent\x1b[0m   Plan and apply file changes (SEARCH/REPLACE)
+  \x1b[36mchat\x1b[0m    General conversation (no workspace context)
 
 \x1b[1mOPTIONS\x1b[0m
   -w, --workspace <path>  Path to workspace directory (default: cwd)
@@ -155,20 +167,20 @@ function showHelp(): void {
   Config:    ${getUserDataDir()}
 
 \x1b[1mEXAMPLES\x1b[0m
-  mydev "explain the auth flow"
-  mydev -m agent "add input validation to the signup form"
-  mydev -m ask -w ./my-project "what testing framework is used?"
-  echo "summarize this project" | mydev
-  mydev --list-models
+  bychat ask "explain the auth flow"
+  bychat agent "add input validation to the signup form"
+  bychat ask -w ./my-project "what testing framework is used?"
+  echo "summarize this project" | bychat agent
+  bychat --list-models
 `);
 }
 
 function showVersion(): void {
   try {
     const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf-8'));
-    console.log(`mydev v${pkg.version}`);
+    console.log(`bychat v${pkg.version}`);
   } catch {
-    console.log('mydev v1.0.0');
+    console.log('bychat v1.0.0');
   }
 }
 
@@ -464,9 +476,9 @@ async function main(): Promise<void> {
   if (!message) message = await readStdin();
   if (!message) {
     console.error('\x1b[31mError:\x1b[0m No message provided.\n');
-    console.error('Usage: mydev "your message"');
-    console.error('       echo "your message" | mydev\n');
-    console.error('Run \x1b[36mmydev --help\x1b[0m for all options.');
+    console.error('Usage: bychat ask "your message"');
+    console.error('       echo "your message" | bychat agent\n');
+    console.error('Run \x1b[36mbychat --help\x1b[0m for all options.');
     process.exit(1);
   }
 
@@ -478,12 +490,12 @@ async function main(): Promise<void> {
   if (!model) {
     console.error(`\x1b[31mError:\x1b[0m No model configured.`);
     console.error(`Configure one in the desktop app, or pass --model <name>.\n`);
-    console.error(`Run \x1b[36mmydev --list-models\x1b[0m to see available models.`);
+    console.error(`Run \x1b[36mbychat --list-models\x1b[0m to see available models.`);
     process.exit(1);
   }
 
   if (args.verbose) {
-    console.error(`\x1b[2m── mydev CLI ──\x1b[0m`);
+    console.error(`\x1b[2m── bychat CLI ──\x1b[0m`);
     console.error(`\x1b[2mConfig:    ${getUserDataDir()}\x1b[0m`);
     console.error(`\x1b[2mProvider:  ${settings.provider}\x1b[0m`);
     console.error(`\x1b[2mBase URL:  ${baseUrl}\x1b[0m`);

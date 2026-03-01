@@ -106,7 +106,7 @@ function buildMenu(): void {
       label: 'Help',
       submenu: [
         {
-          label: 'About mydev.bychat.io',
+          label: 'About bychat',
           click: () => { /* placeholder */ },
         },
       ],

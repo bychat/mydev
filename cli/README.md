@@ -1,6 +1,6 @@
 # cli/
 
-Command-line interface for mydev. No Electron required — runs in any Node.js ≥ 18 environment and shares the same AI settings, prompts, and models configured in the desktop app.
+Command-line interface for bychat. No Electron required — runs in any Node.js ≥ 18 environment and shares the same AI settings, prompts, and models configured in the desktop app.
 
 ## Usage
 
@@ -11,19 +11,19 @@ npm run agent -- "add input validation to the signup form"
 npm run chat  -- "what is the difference between REST and GraphQL"
 
 # Via globally-installed binary
-mydev "explain the auth flow"
-mydev -m agent "add dark mode support"
-mydev -m agent -w ./other-project "refactor the utils folder"
-echo "summarize this project" | mydev
+bychat ask "explain the auth flow"
+bychat agent "add dark mode support"
+bychat agent -w ./other-project "refactor the utils folder"
+echo "summarize this project" | bychat agent
 ```
 
-## Modes
+## Commands
 
-| Mode | Flag | Description |
-|------|------|-------------|
-| **ask** | `-m ask` (default) | Answers questions about the codebase with full workspace context |
-| **agent** | `-m agent` | Multi-step agent: research → plan → SEARCH/REPLACE edits → verify |
-| **chat** | `-m chat` | General conversation — no workspace scanning |
+| Command | Description |
+|---------|-------------|
+| **ask** | Answers questions about the codebase with full workspace context (default) |
+| **agent** | Multi-step agent: research → plan → SEARCH/REPLACE edits → verify |
+| **chat** | General conversation — no workspace scanning |
 
 ## How It Works
 
@@ -46,9 +46,8 @@ All steps use the shared prompt builders from `core/chat.ts`.
 
 | Flag | Description |
 |------|-------------|
-| `-m, --mode <mode>` | `ask`, `agent`, or `chat` |
 | `-w, --workspace <path>` | Workspace directory (default: `cwd`) |
-| `--model <name>` | Model override (or `MYDEV_MODEL` env var) |
+| `--model <name>` | Model override (or `BYCHAT_MODEL` env var) |
 | `--base-url <url>` | API base URL (or `OPENAI_BASE_URL`) |
 | `--api-key <key>` | API key (or `OPENAI_API_KEY`) |
 | `-s, --system <prompt>` | Custom system prompt |
@@ -68,14 +67,14 @@ The CLI reads settings from the **same** data directory as the desktop app (`cor
 
 Configure once in the desktop UI → use everywhere (desktop, web, CLI).
 
-Override at runtime via environment variables: `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `MYDEV_MODEL`.
+Override at runtime via environment variables: `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `BYCHAT_MODEL`.
 
 ## Global Install
 
 ```bash
 npm run build:cli
 npm link
-mydev "explain the auth flow"
+bychat ask "explain the auth flow"
 ```
 
 ## Files

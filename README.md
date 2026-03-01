@@ -1,6 +1,6 @@
-# mydev.bychat.io
+# bychat
 
-An open-source AI-powered developer workspace — runs as an Electron desktop app, a CLI, or an enterprise cloud server.
+An open-source AI-powered developer workspace — runs as an Electron desktop app, a CLI, or an enterprise cloud server. The core app for [bychat.io](https://bychat.io).
 
 ## Prerequisites
 
@@ -107,30 +107,29 @@ The Express server (`npm run server:dev`) exposes the same connector operations 
 
 ### CLI
 
-The command-line interface (`cli/index.ts`) lets you use mydev from the terminal — no Electron required. It reads your workspace, builds context, and talks to any OpenAI-compatible API.
+The command-line interface (`cli/index.ts`) lets you use bychat from the terminal — no Electron required. It reads your workspace, builds context, and talks to any OpenAI-compatible API.
 
 ## CLI
 
 ```
-mydev [options] "your message"
-echo "your message" | mydev [options]
+bychat <command> [options] "your message"
+echo "your message" | bychat agent [options]
 ```
 
-### Modes
+### Commands
 
-| Mode | Flag | Description |
-|------|------|-------------|
-| **ask** | `-m ask` | Answer questions about the codebase (default) |
-| **agent** | `-m agent` | Plan and describe file changes with SEARCH/REPLACE blocks |
-| **chat** | `-m chat` | General conversation — no workspace context |
+| Command | Description |
+|---------|-------------|
+| **ask** | Answer questions about the codebase (default) |
+| **agent** | Plan and describe file changes with SEARCH/REPLACE blocks |
+| **chat** | General conversation — no workspace context |
 
 ### Options
 
 | Flag | Description |
 |------|-------------|
-| `-m, --mode <mode>` | `ask`, `agent`, or `chat` (default: `ask`) |
 | `-w, --workspace <path>` | Workspace directory (default: current directory) |
-| `--model <name>` | Model to use (or set `MYDEV_MODEL` env var) |
+| `--model <name>` | Model to use (or set `BYCHAT_MODEL` env var) |
 | `--base-url <url>` | OpenAI-compatible API URL (or set `OPENAI_BASE_URL`) |
 | `--api-key <key>` | API key (or set `OPENAI_API_KEY`) |
 | `-s, --system <prompt>` | Custom system prompt |
@@ -143,25 +142,25 @@ echo "your message" | mydev [options]
 
 ```bash
 # Ask about a codebase
-mydev "explain the auth flow"
+bychat ask "explain the auth flow"
 
 # Agent mode — get code changes
-mydev -m agent "add input validation to the signup form"
+bychat agent "add input validation to the signup form"
 
 # Point at a different workspace
-mydev -m ask -w ./my-project "what testing framework is used?"
+bychat ask -w ./my-project "what testing framework is used?"
 
 # Use a specific model and API key
-mydev --model gpt-4o --api-key sk-... "refactor the utils folder"
+bychat ask --model gpt-4o --api-key sk-... "refactor the utils folder"
 
 # Pipe input
-echo "summarize this project" | mydev
+echo "summarize this project" | bychat agent
 
 # List available models
-mydev --list-models
+bychat --list-models
 
 # Save response to a file
-mydev -m agent -o changes.md "add dark mode support"
+bychat agent -o changes.md "add dark mode support"
 ```
 
 ### Environment Variables
@@ -171,15 +170,53 @@ mydev -m agent -o changes.md "add dark mode support"
 | `OPENAI_API_KEY` | API key for the AI provider |
 | `OPENAI_BASE_URL` | Base URL for the AI provider |
 | `OLLAMA_BASE_URL` | Base URL for Ollama (fallback) |
-| `MYDEV_MODEL` | Default model name |
+| `BYCHAT_MODEL` | Default model name |
 
 ### Global Install
 
 ```bash
 npm run build:cli
 npm link
-# Now use "mydev" from anywhere:
-mydev -w ~/projects/my-app "explain the auth flow"
+# Now use "bychat" from anywhere:
+bychat ask -w ~/projects/my-app "explain the auth flow"
+```
+
+## Docker
+
+Build the CLI Docker image:
+
+```bash
+npm run docker:build
+# or: docker build -t bychat .
+```
+
+### Mount your workspace at runtime
+
+```bash
+docker run --rm -it \
+  -e OPENAI_API_KEY="sk-..." \
+  -e OPENAI_BASE_URL="https://api.openai.com/v1" \
+  -v $(pwd):/workspace \
+  bychat agent -w /workspace "add input validation"
+```
+
+### Embed a workspace into the image
+
+```bash
+docker build -t bychat-project --build-arg EMBED_WORKSPACE=./my-project .
+docker run --rm -it \
+  -e OPENAI_API_KEY="sk-..." \
+  bychat-project agent -w /workspace "add tests"
+```
+
+### Persist data between runs
+
+```bash
+docker run --rm -it \
+  -v bychat-data:/data \
+  -v $(pwd):/workspace \
+  -e OPENAI_API_KEY="sk-..." \
+  bychat agent -w /workspace "refactor utils"
 ```
 
 ## Project Structure
@@ -453,7 +490,7 @@ npm run web:prod
 | Environment Variable | Description |
 |---------------------|-------------|
 | `PORT` | Server port (default: `3001`) |
-| `MYDEV_DATA_DIR` | Override the data directory (shared between desktop/CLI/server) |
+| `BYCHAT_DATA_DIR` | Override the data directory (shared between desktop/CLI/server) |
 
 ## License
 

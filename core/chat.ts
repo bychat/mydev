@@ -101,7 +101,7 @@ export function buildSystemContext(
 ): ChatMessage {
   const sorted = [...fileList].sort();
   const lines = [
-    `You are an expert coding assistant inside the "mydev.bychat.io" desktop IDE.`,
+    `You are an expert coding assistant inside the "bychat" desktop IDE (bychat.io).`,
     ``,
     `## Workspace`,
     `- **Directory**: ${folderPath ?? 'No project open'}`,

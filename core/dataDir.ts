@@ -16,19 +16,19 @@ let _dataDir: string | null = null;
  * Returns the user-data directory (equivalent to Electron's `app.getPath('userData')`).
  *
  * Resolution order:
- *  1. `MYDEV_DATA_DIR` environment variable (explicit override).
+ *  1. `BYCHAT_DATA_DIR` environment variable (explicit override).
  *  2. Electron `app.getPath('userData')` (if running inside Electron).
  *  3. Platform default matching Electron's convention:
- *     - macOS:   ~/Library/Application Support/mydev
- *     - Linux:   ~/.config/mydev
- *     - Windows: %APPDATA%/mydev
+ *     - macOS:   ~/Library/Application Support/bychat
+ *     - Linux:   ~/.config/bychat
+ *     - Windows: %APPDATA%/bychat
  */
 export function getUserDataDir(): string {
   if (_dataDir) return _dataDir;
 
   // 1. Env override
-  if (process.env.MYDEV_DATA_DIR) {
-    _dataDir = process.env.MYDEV_DATA_DIR;
+  if (process.env.BYCHAT_DATA_DIR) {
+    _dataDir = process.env.BYCHAT_DATA_DIR;
     return _dataDir!;
   }
 
@@ -46,7 +46,7 @@ export function getUserDataDir(): string {
 
   // 3. Platform default
   const platform = os.platform();
-  const appName = 'mydev-bychat-io';
+  const appName = 'bychat';
 
   if (platform === 'darwin') {
     _dataDir = path.join(os.homedir(), 'Library', 'Application Support', appName);

@@ -1,10 +1,10 @@
 {
-  "name": "mydev-bychat-io",
+  "name": "bychat",
   "version": "1.0.0",
-  "description": "mydev.bychat.io — AI-powered developer workspace (Desktop, Web, CLI)",
+  "description": "bychat.io — AI-powered developer workspace (Desktop, Web, CLI)",
   "main": "dist-main/main/index.js",
   "bin": {
-    "mydev": "./dist-cli/cli/index.js"
+    "bychat": "./dist-cli/cli/index.js"
   },
   "scripts": {
     "//── Desktop (Electron) ──": "",
@@ -35,11 +35,15 @@
     "server:dev": "tsx watch server/index.ts",
 
     "//── Test ──": "",
-    "test:server": "bash scripts/test-server.sh"
+    "test:server": "bash scripts/test-server.sh",
+
+    "//── Docker ──": "",
+    "docker:build": "docker build -t bychat .",
+    "docker:run": "docker run --rm -it -v $(pwd):/workspace bychat"
   },
   "build": {
-    "appId": "io.bychat.mydev",
-    "productName": "mydev.bychat.io",
+    "appId": "io.bychat.app",
+    "productName": "bychat",
     "directories": {
       "output": "dist"
     },

@@ -195,7 +195,7 @@ wss.on('connection', (ws: WebSocket) => {
 // ─── Start Server ───
 
 server.listen(PORT, () => {
-  console.log(`\n🚀 mydev Server running on http://localhost:${PORT}`);
+  console.log(`\n🚀 bychat Server running on http://localhost:${PORT}`);
   console.log(`   ${registry.listConnectors().length} connectors registered`);
   console.log(`   REST API:  http://localhost:${PORT}/api`);
   console.log(`   WebSocket: ws://localhost:${PORT}/ws`);

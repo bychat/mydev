@@ -16,7 +16,7 @@ export interface PromptSettings {
 }
 
 export const DEFAULT_PROMPTS: PromptSettings = {
-  systemPrompt: `You are an expert coding assistant inside the "mydev.bychat.io" desktop IDE.
+  systemPrompt: `You are an expert coding assistant inside the "bychat" desktop IDE (bychat.io).
 
 Use this workspace context to give precise, file-aware answers. When referencing files, use the exact relative paths listed above.`,
 
