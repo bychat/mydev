@@ -4,23 +4,37 @@
 # Build:
 #   docker build -t bychat .
 #
-# Run (mount your workspace as /workspace):
+# Run with local Ollama (macOS Docker Desktop):
+#   docker run --rm -it \
+#     --add-host=host.docker.internal:host-gateway \
+#     -v $(pwd):/workspace \
+#     bychat agent -w /workspace \
+#       --base-url http://host.docker.internal:11434/v1 \
+#       --model gpt-oss:120b-cloud \
+#       "your prompt here"
+#
+# Run with local Ollama (Linux — host networking):
+#   docker run --rm -it --network host \
+#     -v $(pwd):/workspace \
+#     bychat agent -w /workspace \
+#       --base-url http://localhost:11434/v1 \
+#       --model gpt-oss:120b-cloud \
+#       "your prompt here"
+#
+# Run with OpenAI / remote provider:
 #   docker run --rm -it \
 #     -e OPENAI_API_KEY="sk-..." \
-#     -e OPENAI_BASE_URL="https://api.openai.com/v1" \
 #     -v $(pwd):/workspace \
-#     bychat agent -w /workspace "your prompt here"
+#     bychat agent -w /workspace --base-url https://api.openai.com/v1 "your prompt"
 #
-# Run with embedded workspace (copy files into the image):
+# Embed workspace at build time:
 #   docker build -t bychat-project --build-arg EMBED_WORKSPACE=./my-project .
 #   docker run --rm -it \
-#     -e OPENAI_API_KEY="sk-..." \
-#     bychat-project agent -w /workspace "add tests"
-#
-# Examples:
-#   docker run --rm -it -v $(pwd):/workspace bychat ask -w /workspace "explain the auth flow"
-#   docker run --rm -it -v $(pwd):/workspace bychat agent -w /workspace "add input validation"
-#   docker run --rm -it bychat chat "what is the difference between REST and GraphQL"
+#     --add-host=host.docker.internal:host-gateway \
+#     bychat-project agent -w /workspace \
+#       --base-url http://host.docker.internal:11434/v1 \
+#       --model gpt-oss:120b-cloud \
+#       "add tests"
 # ──────────────────────────────────────────────────────────
 
 FROM node:20-slim AS builder
@@ -60,6 +74,7 @@ COPY --from=builder /app/dist-main/ ./dist-main/
 # Create default data dir and workspace mount point
 RUN mkdir -p /data /workspace
 ENV BYCHAT_DATA_DIR=/data
+VOLUME ["/workspace"]
 
 # Optionally embed a workspace at build time
 ARG EMBED_WORKSPACE=""
