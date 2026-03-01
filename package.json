@@ -1,25 +1,41 @@
 {
   "name": "mydev-bychat-io",
   "version": "1.0.0",
-  "description": "mydev.bychat.io - Electron desktop application",
+  "description": "mydev.bychat.io — AI-powered developer workspace (Desktop, Web, CLI)",
   "main": "dist-main/main/index.js",
   "bin": {
     "mydev": "./dist-cli/cli/index.js"
   },
   "scripts": {
-    "build:main": "tsc",
-    "build:cli": "tsc --project cli/tsconfig.json",
+    "//── Desktop (Electron) ──": "",
     "dev": "npm run build:main && concurrently \"npm run dev:renderer\" \"npm run dev:electron\"",
     "dev:renderer": "vite",
     "dev:electron": "wait-on http://localhost:5173 && electron .",
     "start": "npm run build:main && vite build && electron .",
+
+    "//── Web App ──": "",
+    "web": "concurrently -n ui,api -c cyan,green \"vite\" \"tsx watch server/index.ts\"",
+    "web:prod": "vite build && tsx server/index.ts",
+
+    "//── CLI ──": "",
+    "ask": "tsx cli/index.ts",
+    "agent": "tsx cli/index.ts -m agent",
+    "chat": "tsx cli/index.ts -m chat",
+
+    "//── Build ──": "",
     "build": "npm run build:main && vite build && electron-builder",
+    "build:main": "tsc",
+    "build:cli": "tsc --project cli/tsconfig.json",
     "build:mac": "npm run build:main && vite build && electron-builder --mac",
     "build:win": "npm run build:main && vite build && electron-builder --win",
     "build:linux": "npm run build:main && vite build && electron-builder --linux",
+
+    "//── Server (standalone) ──": "",
     "server": "tsx server/index.ts",
     "server:dev": "tsx watch server/index.ts",
-    "cli": "tsx cli/index.ts"
+
+    "//── Test ──": "",
+    "test:server": "bash scripts/test-server.sh"
   },
   "build": {
     "appId": "io.bychat.mydev",
@@ -61,6 +77,7 @@
     "@types/node": "^25.3.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^4.3.0",
     "concurrently": "^9.0.0",
     "electron": "^33.0.0",
@@ -81,6 +98,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-markdown": "^10.1.0",
-    "remark-gfm": "^4.0.1"
+    "remark-gfm": "^4.0.1",
+    "ws": "^8.19.0"
   }
 }

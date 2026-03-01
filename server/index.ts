@@ -2,8 +2,8 @@
  * Enterprise Cloud Server
  * 
  * This is the server-side entrypoint for the cloud/enterprise version.
- * It exposes the same connector operations as the Electron main process,
- * but over HTTP REST endpoints instead of IPC.
+ * It exposes the same operations as the Electron main process,
+ * but over HTTP REST endpoints + WebSocket instead of IPC.
  * 
  * Run with: npx tsx server/index.ts
  * 
@@ -15,21 +15,40 @@
  *                                   │  │  Registry    │ │
  *                                   │  └──────────────┘ │
  *                                   │  ┌──────────────┐ │
- *                                   │  │  Auth / RBAC │ │
+ *                                   │  │  REST + WS   │ │
+ *                                   │  │   Routes     │ │
  *                                   │  └──────────────┘ │
  *                                   └──────────────────┘
  */
 
 import express from 'express';
 import cors from 'cors';
+import http from 'http';
+import path from 'path';
+import { WebSocketServer, WebSocket } from 'ws';
 import { getConnectorRegistry } from '../core/connector';
 import { registerBuiltInConnectors } from '../connectors';
+import apiRoutes from './routes';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+
+// ─── Request logging ───
+
+app.use((req, _res, next) => {
+  if (req.path.startsWith('/api')) {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  }
+  next();
+});
+
+// ─── Serve static SPA in production / web mode ───
+
+const rendererDist = path.resolve(__dirname, '..', 'renderer', 'dist');
+app.use(express.static(rendererDist));
 
 // ─── Bootstrap ───
 
@@ -41,21 +60,24 @@ const registry = getConnectorRegistry();
 // In enterprise mode, you'd add JWT/OAuth middleware here:
 // app.use('/api', authMiddleware);
 
-// ─── Connector REST API ───
+// ─── Mount REST API routes ───
 
-/**
- * GET /api/connectors
- * List all registered connectors (metadata only).
- */
+app.use('/api', apiRoutes);
+
+// ─── Global error handler ───
+
+app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error(`[Server Error] ${err.message}`, err.stack);
+  res.status(500).json({ success: false, error: err.message ?? 'Internal server error' });
+});
+
+// ─── Connector REST API (kept for backward compat) ───
+
 app.get('/api/connectors', (_req, res) => {
   const connectors = registry.listConnectors();
   res.json({ connectors });
 });
 
-/**
- * GET /api/connectors/:id
- * Get full details for a connector (config fields, actions, state).
- */
 app.get('/api/connectors/:id', (req, res) => {
   const connector = registry.get(req.params.id);
   if (!connector) {
@@ -69,11 +91,6 @@ app.get('/api/connectors/:id', (req, res) => {
   });
 });
 
-/**
- * POST /api/connectors/:id/test
- * Test a connector's connection with provided config.
- * Body: { config: { ... } }
- */
 app.post('/api/connectors/:id/test', async (req, res) => {
   try {
     const result = await registry.testConnection(req.params.id, req.body.config);
@@ -83,30 +100,16 @@ app.post('/api/connectors/:id/test', async (req, res) => {
   }
 });
 
-/**
- * POST /api/connectors/:id/config
- * Save connector configuration.
- * Body: { config: { ... } }
- */
 app.post('/api/connectors/:id/config', (req, res) => {
   registry.setConfig(req.params.id, req.body.config);
   res.json({ success: true });
 });
 
-/**
- * GET /api/connectors/:id/config
- * Load saved connector configuration.
- */
 app.get('/api/connectors/:id/config', (req, res) => {
   const config = registry.getConfig(req.params.id);
   res.json({ config: config ?? null });
 });
 
-/**
- * POST /api/connectors/:id/actions/:actionId
- * Execute a connector action.
- * Body: { params: { ... } }
- */
 app.post('/api/connectors/:id/actions/:actionId', async (req, res) => {
   try {
     const result = await registry.executeAction(
@@ -131,29 +134,79 @@ app.get('/api/health', (_req, res) => {
   });
 });
 
-// ─── AI Proxy (enterprise: centralized AI gateway) ───
+// ─── HTTP + WebSocket Server ───
 
-app.post('/api/ai/chat', async (req, res) => {
-  // In enterprise mode, this would route through your AI gateway
-  // with usage metering, rate limiting, and model access controls.
-  // For now, proxy to the configured AI provider.
-  const { baseUrl, apiKey, model, messages } = req.body;
-  
-  try {
-    const { chatComplete } = await import('../main/ai');
-    const reply = await chatComplete(baseUrl, apiKey, model, messages);
-    res.json({ success: true, reply });
-  } catch (err) {
-    res.status(500).json({ success: false, error: (err as Error).message });
-  }
+const server = http.createServer(app);
+const wss = new WebSocketServer({ server, path: '/ws' });
+
+wss.on('connection', (ws: WebSocket) => {
+  console.log('[WS] Client connected');
+
+  ws.on('message', (raw: Buffer | string) => {
+    try {
+      const msg = JSON.parse(raw.toString());
+      const { event, args } = msg;
+
+      switch (event) {
+        case 'terminal-input':
+          // In a full implementation, pipe to a pty process
+          console.log('[WS] terminal-input', args?.[0]);
+          break;
+
+        case 'terminal-resize':
+          console.log('[WS] terminal-resize', args);
+          break;
+
+        case 'ai-chat-stream':
+          // In a full implementation, stream AI chunks back via WS
+          (async () => {
+            try {
+              const { chatCompleteStream } = await import('../main/ai');
+              const { baseUrl, apiKey, model, messages } = args?.[0] ?? {};
+              const onChunk = (chunk: string) => {
+                if (ws.readyState === WebSocket.OPEN) {
+                  ws.send(JSON.stringify({ event: 'ai-chat-chunk', args: [chunk] }));
+                }
+              };
+              await chatCompleteStream(baseUrl, apiKey, model, messages, onChunk);
+              if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ event: 'ai-chat-chunk-done', args: [] }));
+              }
+            } catch (err) {
+              console.error('[WS] ai-chat-stream error:', err);
+              if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ event: 'ai-chat-chunk-done', args: [] }));
+              }
+            }
+          })();
+          break;
+
+        default:
+          console.log('[WS] Unknown event:', event);
+      }
+    } catch {
+      /* ignore non-JSON */
+    }
+  });
+
+  ws.on('close', () => console.log('[WS] Client disconnected'));
 });
 
 // ─── Start Server ───
 
-app.listen(PORT, () => {
-  console.log(`\n🚀 mydev Enterprise Server running on http://localhost:${PORT}`);
+server.listen(PORT, () => {
+  console.log(`\n🚀 mydev Server running on http://localhost:${PORT}`);
   console.log(`   ${registry.listConnectors().length} connectors registered`);
-  console.log(`   API: http://localhost:${PORT}/api/connectors\n`);
+  console.log(`   REST API:  http://localhost:${PORT}/api`);
+  console.log(`   WebSocket: ws://localhost:${PORT}/ws`);
+  console.log(`   Health:    http://localhost:${PORT}/api/health`);
+  console.log(`   UI:        http://localhost:${PORT}/\n`);
+});
+
+// ─── SPA fallback — serve index.html for all non-API routes ───
+
+app.get('/{*splat}', (_req, res) => {
+  res.sendFile(path.join(rendererDist, 'index.html'));
 });
 
 export default app;

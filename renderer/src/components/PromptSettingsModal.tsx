@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { PromptSettings } from '../types';
 import { DEFAULT_PROMPTS } from '../types';
+import { useBackend } from '../context/BackendContext';
 
 interface PromptSettingsModalProps {
   isOpen: boolean;
@@ -39,6 +40,7 @@ const PROMPT_LABELS: Record<keyof PromptSettings, { label: string; description: 
 };
 
 export default function PromptSettingsModal({ isOpen, onClose }: PromptSettingsModalProps) {
+  const backend = useBackend();
   const [prompts, setPrompts] = useState<PromptSettings>(DEFAULT_PROMPTS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -54,7 +56,7 @@ export default function PromptSettingsModal({ isOpen, onClose }: PromptSettingsM
   const loadPrompts = async () => {
     setLoading(true);
     try {
-      const loaded = await window.electronAPI.promptsLoad();
+      const loaded = await backend.promptsLoad();
       setPrompts(loaded);
       setHasChanges(false);
     } catch (err) {
@@ -66,7 +68,7 @@ export default function PromptSettingsModal({ isOpen, onClose }: PromptSettingsM
   const handleSave = async () => {
     setSaving(true);
     try {
-      await window.electronAPI.promptsSave(prompts);
+      await backend.promptsSave(prompts);
       setHasChanges(false);
     } catch (err) {
       console.error('Failed to save prompts:', err);
@@ -78,7 +80,7 @@ export default function PromptSettingsModal({ isOpen, onClose }: PromptSettingsM
     if (!confirm('Reset all prompts to defaults? This cannot be undone.')) return;
     setLoading(true);
     try {
-      const defaults = await window.electronAPI.promptsReset();
+      const defaults = await backend.promptsReset();
       setPrompts(defaults);
       setHasChanges(false);
     } catch (err) {

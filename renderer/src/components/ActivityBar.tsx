@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useWorkspace } from '../context/WorkspaceContext';
+import { useBackend } from '../context/BackendContext';
 import type { SidePanel } from '../types';
 import PromptSettingsModal from './PromptSettingsModal';
 import {
@@ -46,11 +47,12 @@ interface ActivityBarProps {
 
 export default function ActivityBar({ onToggleTerminal, terminalVisible }: ActivityBarProps) {
   const { activePanel, setActivePanel, hasGit, npmProjects, gitSplitChanges, openAgentsTab } = useWorkspace();
+  const backend = useBackend();
   const [promptSettingsOpen, setPromptSettingsOpen] = useState(false);
 
   // Listen for menu-triggered open prompts
   useEffect(() => {
-    const cleanup = window.electronAPI.onOpenPrompts(() => {
+    const cleanup = backend.onOpenPrompts(() => {
       setPromptSettingsOpen(true);
     });
     return cleanup;
@@ -58,9 +60,9 @@ export default function ActivityBar({ onToggleTerminal, terminalVisible }: Activ
 
   // Listen for menu-triggered open debug
   useEffect(() => {
-    const cleanup = window.electronAPI.onOpenDebug(async () => {
+    const cleanup = backend.onOpenDebug(async () => {
       try {
-        await window.electronAPI.debugOpen();
+        await backend.debugOpen();
       } catch (err) {
         console.error('Failed to open debug window:', err);
       }
@@ -70,7 +72,7 @@ export default function ActivityBar({ onToggleTerminal, terminalVisible }: Activ
 
   // Listen for menu-triggered open agents
   useEffect(() => {
-    const cleanup = window.electronAPI.onOpenAgents(() => {
+    const cleanup = backend.onOpenAgents(() => {
       openAgentsTab();
     });
     return cleanup;
@@ -78,7 +80,7 @@ export default function ActivityBar({ onToggleTerminal, terminalVisible }: Activ
 
   const handleNewWindow = async () => {
     try {
-      await window.electronAPI.newWindow();
+      await backend.newWindow();
     } catch (err) {
       console.error('Failed to open new window:', err);
     }

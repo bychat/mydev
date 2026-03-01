@@ -3,6 +3,7 @@
  */
 import { useState, useEffect } from 'react';
 import { useWorkspace } from '../context/WorkspaceContext';
+import { useBackend } from '../context/BackendContext';
 import type { SupabaseUser } from '../types/supabase.types';
 import { SupabaseIcon } from './icons';
 
@@ -28,6 +29,7 @@ function formatUsersAsContext(users: SupabaseUser[]): string {
 
 export default function SupabaseUsersTab() {
   const { supabaseConfig, setTabData } = useWorkspace();
+  const backend = useBackend();
   const [users, setUsers] = useState<SupabaseUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -43,7 +45,7 @@ export default function SupabaseUsersTab() {
     setError(null);
     
     try {
-      const result = await window.electronAPI.supabaseGetUsers(
+      const result = await backend.supabaseGetUsers(
         supabaseConfig.projectUrl,
         supabaseConfig.serviceRoleKey
       );

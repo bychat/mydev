@@ -3,6 +3,7 @@ import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import '@xterm/xterm/css/xterm.css';
 import { useWorkspace } from '../context/WorkspaceContext';
+import { useBackend } from '../context/BackendContext';
 
 interface TerminalTab {
   id: string;
@@ -23,13 +24,14 @@ interface RunCommandEvent extends CustomEvent {
 
 export default function TerminalPanel({ visible, onClose }: Props) {
   const { folderPath } = useWorkspace();
+  const backend = useBackend();
   const [tabs, setTabs] = useState<TerminalTab[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const cleanupRefs = useRef<Map<string, () => void>>(new Map());
 
   const createTerminalWithCommand = useCallback(async (cwd: string, command?: string, label?: string) => {
-    const { id, shell } = await window.electronAPI.terminalCreate(cwd);
+    const { id, shell } = await backend.terminalCreate(cwd);
 
     const terminal = new Terminal({
       fontSize: 13,
@@ -66,16 +68,16 @@ export default function TerminalPanel({ visible, onClose }: Props) {
 
     // Listen for user input → send to pty
     terminal.onData((data: string) => {
-      window.electronAPI.terminalInput(id, data);
+      backend.terminalInput(id, data);
     });
 
     // Listen for pty output → write to xterm
-    const removeDataListener = window.electronAPI.onTerminalData((termId: string, data: string) => {
+    const removeDataListener = backend.onTerminalData((termId: string, data: string) => {
       if (termId === id) terminal.write(data);
     });
 
     // Listen for exit
-    const removeExitListener = window.electronAPI.onTerminalExit((termId: string) => {
+    const removeExitListener = backend.onTerminalExit((termId: string) => {
       if (termId === id) {
         terminal.write('\r\n\x1b[90m[Process exited]\x1b[0m\r\n');
       }
@@ -94,7 +96,7 @@ export default function TerminalPanel({ visible, onClose }: Props) {
     // Send command after a short delay to let terminal initialize
     if (command) {
       setTimeout(() => {
-        window.electronAPI.terminalInput(id, command + '\n');
+        backend.terminalInput(id, command + '\n');
       }, 100);
     }
 
@@ -135,9 +137,9 @@ export default function TerminalPanel({ visible, onClose }: Props) {
     observer.observe(el);
 
     // Send initial size
-    window.electronAPI.terminalResize(tab.id, tab.terminal.cols, tab.terminal.rows);
+    backend.terminalResize(tab.id, tab.terminal.cols, tab.terminal.rows);
     tab.terminal.onResize(({ cols, rows }) => {
-      window.electronAPI.terminalResize(tab.id, cols, rows);
+      backend.terminalResize(tab.id, cols, rows);
     });
 
     tab.terminal.focus();
@@ -153,7 +155,7 @@ export default function TerminalPanel({ visible, onClose }: Props) {
   }, [visible, folderPath]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const killTab = useCallback(async (id: string) => {
-    await window.electronAPI.terminalKill(id);
+    await backend.terminalKill(id);
     const cleanup = cleanupRefs.current.get(id);
     if (cleanup) { cleanup(); cleanupRefs.current.delete(id); }
     setTabs(prev => {

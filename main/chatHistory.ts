@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
-import { app } from 'electron';
+import { getUserDataDir } from '../core/dataDir';
 
 // ── Types ──
 
@@ -65,7 +65,7 @@ export interface AppHistory {
 const CACHE_VERSION = 1;
 
 function getCacheDir(): string {
-  return path.join(app.getPath('userData'), '_cache');
+  return path.join(getUserDataDir(), '_cache');
 }
 
 function getWorkspacesIndexPath(): string {

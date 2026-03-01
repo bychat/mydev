@@ -14,24 +14,33 @@ Install dependencies:
 npm install
 ```
 
-Start the desktop app in development mode:
+### Desktop App (Electron)
 
 ```bash
 npm run dev
 ```
 
-Start the enterprise cloud server:
+### Web App
 
 ```bash
-npm run server:dev
+npm run web
+# → UI at http://localhost:5173, API at http://localhost:3001
 ```
 
-Use the CLI:
+### CLI
 
 ```bash
-npm run cli -- "explain the auth flow"
-npm run cli -- -m agent "add dark mode support"
-npm run cli -- -m ask -w ./my-project "what testing framework is used?"
+# Ask a question about the current directory
+npm run ask -- "explain the auth flow"
+
+# Agent mode — plan & apply code changes
+npm run agent -- "add input validation to the signup form"
+
+# General chat (no workspace context)
+npm run chat -- "explain the difference between REST and GraphQL"
+
+# Point at a different workspace
+npm run ask -- -w ./my-project "what testing framework is used?"
 ```
 
 ## Build for Production
@@ -175,10 +184,29 @@ mydev -w ~/projects/my-app "explain the auth flow"
 
 ## Project Structure
 
+Each major directory has its own `README.md` with detailed docs:
+
+| Directory | README | Description |
+|-----------|--------|-------------|
+| [`core/`](core/README.md) | ✅ | Framework-agnostic shared modules (connector system, chat logic, data dir) |
+| [`connectors/`](connectors/README.md) | ✅ | Connector plugins (GitHub, Jira, Supabase) |
+| [`main/`](main/README.md) | ✅ | Electron main process (IPC handlers, AI, git, terminal) |
+| [`server/`](server/README.md) | ✅ | Express + WebSocket cloud server |
+| [`cli/`](cli/README.md) | ✅ | Command-line interface |
+| [`renderer/`](renderer/README.md) | ✅ | React frontend (Vite) |
+| [`renderer/src/backend/`](renderer/src/backend/README.md) | ✅ | Backend abstraction layer (Electron IPC vs HTTP) |
+| [`renderer/src/components/`](renderer/src/components/README.md) | ✅ | UI components |
+| [`renderer/src/context/`](renderer/src/context/README.md) | ✅ | React context providers |
+| [`renderer/src/hooks/`](renderer/src/hooks/README.md) | ✅ | Custom React hooks |
+| [`renderer/src/types/`](renderer/src/types/README.md) | ✅ | TypeScript type definitions |
+| [`renderer/src/utils/`](renderer/src/utils/README.md) | ✅ | Utility functions |
+
 ```
-core/                        # Framework-agnostic core (shared by desktop & cloud)
+core/                        # Framework-agnostic core (shared by desktop, CLI & cloud)
   connector.ts               #   Connector interface, Registry, events
   backend-adapter.ts         #   BackendAdapter interface (IPC vs HTTP)
+  chat.ts                    #   Shared prompt builders, SEARCH/REPLACE utils, types
+  dataDir.ts                 #   Shared user-data directory resolver
 
 connectors/                  # Connector plugins
   index.ts                   #   Auto-registers all built-in connectors
@@ -202,18 +230,29 @@ main/                        # Electron main process
   debugWindow.ts             #   AI debug window
 
 server/                      # Enterprise cloud server
-  index.ts                   #   Express REST API entrypoint
-  tsconfig.json              #   TypeScript config for server build
+  index.ts                   #   Express + WebSocket entrypoint
+  routes.ts                  #   REST API routes (mirrors Electron IPC 1:1)
 
 cli/                         # Command-line interface
   index.ts                   #   CLI entrypoint (no Electron dependency)
   tsconfig.json              #   TypeScript config for CLI build
 
+scripts/                     # Development & CI scripts
+  test-server.sh             #   Server integration tests
+
 renderer/                    # React frontend (Vite)
   src/
     App.tsx                  #   Root app component
+    main.tsx                 #   Entry — wraps App with BackendProvider
+    backend/                 #   Backend abstraction layer
+      types.ts               #     BackendAPI interface
+      electron-adapter.ts    #     Electron IPC adapter
+      http-adapter.ts        #     HTTP/WS adapter (web mode)
+      index.ts               #     Auto-detect & singleton export
     components/              #   UI components (chat, panels, editor, etc.)
     context/                 #   React context providers
+      BackendContext.tsx      #     useBackend() hook — all components use this
+      WorkspaceContext.tsx    #     Workspace state (file tree, git, etc.)
     hooks/                   #   Custom hooks
     types/                   #   TypeScript type definitions
     utils/                   #   Utility functions
@@ -309,18 +348,35 @@ export const builtInConnectors: Connector<any>[] = [
 
 ## API Reference
 
-### REST API (Cloud Mode)
+### REST API (Cloud / Web Mode)
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/connectors` | List all connectors |
-| `GET` | `/api/connectors/:id` | Get connector details (config fields, actions, state) |
-| `POST` | `/api/connectors/:id/test` | Test connection with `{ config: { ... } }` |
-| `POST` | `/api/connectors/:id/config` | Save config with `{ config: { ... } }` |
-| `GET` | `/api/connectors/:id/config` | Load saved config |
-| `POST` | `/api/connectors/:id/actions/:actionId` | Execute action with `{ params: { ... } }` |
-| `POST` | `/api/ai/chat` | AI chat completion |
-| `GET` | `/api/health` | Health check |
+All routes are mounted at `/api`. See [`server/README.md`](server/README.md) for the complete endpoint table.
+
+| Category | Endpoints | Description |
+|----------|-----------|-------------|
+| File System | `/api/fs/*` | Open folder, read/write files, create, delete, rename |
+| Git | `/api/git/*` | Status, diff, stage, commit, branch, push, pull |
+| AI | `/api/ai/*` | Chat completion, model listing, settings |
+| Prompts | `/api/prompts` | Load, save, reset agent prompts |
+| Chat History | `/api/history/*` | Workspaces, conversations CRUD |
+| Supabase | `/api/supabase/*` | Users, storage, tables, SQL queries |
+| GitHub | `/api/github/*` | Workflows, runs, jobs, logs, issues |
+| Atlassian | `/api/atlassian/*` | Connections, projects, issues |
+| Connectors | `/api/connectors/*` | Generic connector plugin CRUD & execute |
+| Health | `/api/health` | Status, uptime, connector count |
+
+### WebSocket (Cloud / Web Mode)
+
+WebSocket endpoint: `ws://localhost:3001/ws`
+
+| Event | Direction | Description |
+|-------|-----------|-------------|
+| `ai-chat-stream` | client → server | Start streaming AI response |
+| `ai-chat-chunk` | server → client | Individual AI response token |
+| `ai-chat-chunk-done` | server → client | Stream complete |
+| `terminal-input` | client → server | Send keystrokes to PTY |
+| `terminal-data` | server → client | Terminal output |
+| `terminal-exit` | server → client | Terminal process exited |
 
 ### IPC Channels (Desktop Mode)
 
@@ -348,19 +404,61 @@ The server version (`server/index.ts`) is designed to be extended with:
 
 ## Scripts
 
+### Run
+
 | Script | Description |
 |--------|-------------|
-| `npm run dev` | Start desktop app (Electron + Vite dev server) |
-| `npm run cli -- "msg"` | Run CLI directly via tsx |
-| `npm run server` | Start enterprise cloud server |
-| `npm run server:dev` | Start enterprise cloud server with hot-reload |
-| `npm run build` | Build for current platform |
+| `npm run dev` | Desktop app (Electron + Vite) |
+| `npm run web` | Web app (Vite + Express, hot-reload) |
+| `npm run web:prod` | Web app (production build, single server) |
+| `npm run ask -- "msg"` | CLI — ask about the codebase |
+| `npm run agent -- "msg"` | CLI — agent mode (plans & applies changes) |
+| `npm run chat -- "msg"` | CLI — general chat (no workspace) |
+
+### Build
+
+| Script | Description |
+|--------|-------------|
+| `npm run build` | Desktop app for current platform |
+| `npm run build:main` | Compile Electron main process TS |
 | `npm run build:cli` | Compile CLI to `dist-cli/` (for `npm link`) |
-| `npm run build:mac` | Build macOS dmg (x64 + arm64) |
-| `npm run build:win` | Build Windows installer |
-| `npm run build:linux` | Build Linux AppImage |
-| `npm run build:main` | Compile Electron main process TypeScript |
+| `npm run build:mac` | macOS dmg (x64 + arm64) |
+| `npm run build:win` | Windows installer |
+| `npm run build:linux` | Linux AppImage |
+
+### Other
+
+| Script | Description |
+|--------|-------------|
+| `npm run server` | Express API only (no UI) |
+| `npm run server:dev` | Express API with hot-reload |
+| `npm run test:server` | Integration tests (21 endpoints) |
+
+## Web Mode
+
+The same React UI runs in a browser with no Electron required. In web mode the frontend talks to the Express server over REST + WebSocket instead of IPC.
+
+```bash
+# Development (hot-reload on both UI and API)
+npm run web
+# → UI: http://localhost:5173   API: http://localhost:3001
+
+# Production (pre-built UI served by Express)
+npm run web:prod
+# → http://localhost:3001
+```
+
+### Configuration
+
+| Environment Variable | Description |
+|---------------------|-------------|
+| `PORT` | Server port (default: `3001`) |
+| `MYDEV_DATA_DIR` | Override the data directory (shared between desktop/CLI/server) |
 
 ## License
 
 MIT
+
+---
+
+Made with ❤️ by [bychat.io](https://bychat.io)

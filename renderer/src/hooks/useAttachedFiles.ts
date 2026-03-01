@@ -1,4 +1,5 @@
 import { useState, useCallback, type DragEvent, type ChangeEvent } from 'react';
+import { getBackend } from '../backend';
 
 export interface AttachedFile {
   name: string;
@@ -54,7 +55,7 @@ export function useAttachedFiles(): UseAttachedFilesReturn {
         if (attachedFiles.some(a => a.path === filePath)) continue;
 
         try {
-          const result = await window.electronAPI.readFile(filePath);
+          const result = await getBackend().readFile(filePath);
           setAttachedFiles(prev => [
             ...prev,
             { name, path: filePath, content: result.success ? result.content : undefined },
@@ -82,7 +83,7 @@ export function useAttachedFiles(): UseAttachedFilesReturn {
 
       // Otherwise, read from filesystem
       try {
-        const result = await window.electronAPI.readFile(path);
+        const result = await getBackend().readFile(path);
         setAttachedFiles(prev => [
           ...prev,
           { name, path, content: result.success ? result.content : undefined },
@@ -116,7 +117,7 @@ export function useAttachedFiles(): UseAttachedFilesReturn {
         if (attachedFiles.some(a => a.path === filePath)) continue;
 
         try {
-          const result = await window.electronAPI.readFile(filePath);
+          const result = await getBackend().readFile(filePath);
           setAttachedFiles(prev => [
             ...prev,
             { name, path: filePath, content: result.success ? result.content : undefined },

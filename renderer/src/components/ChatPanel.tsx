@@ -1,49 +1,35 @@
 /**
- * ChatPanel - Main chat interface component with hooks, utilities, and sub-components
+ * ChatPanel - Main chat interface component.
+ * Orchestrates hooks and renders sub-components.
  */
 import { useState, useRef, useCallback, useMemo, type ChangeEvent, type KeyboardEvent } from 'react';
-import type { ChatMessage, FileActionPlan, FileActionProgress } from '../types';
+import type { ChatMessage } from '../types';
 import SettingsModal from './SettingsModal';
-import Markdown, { flattenTree } from './Markdown';
+import { flattenTree } from './Markdown';
 import { useWorkspace } from '../context/WorkspaceContext';
+import { useBackend } from '../context/BackendContext';
 import ChatHistorySidebar from './ChatHistorySidebar';
 
-// Import hooks and utilities
 import {
   useAttachedFiles,
   useChatHistory,
   useAISettings,
   useScrollToBottom,
+  useAgentPipeline,
+  useMessageStream,
 } from '../hooks';
 import {
   getFileIcon,
-  stripMarkdownFences,
-  parseSearchReplaceBlocks,
-  applySearchReplaceBlocks,
-  findLastIdx,
-  buildSystemContext,
-  buildResearchPrompt,
-  parseResearchResponse,
-  buildCheckAgentPrompt,
-  parseCheckAgentResponse,
-  buildActionPlanPrompt,
-  parseActionPlanResponse,
-  buildFileChangePrompt,
-  buildVerifyPrompt,
-  parseVerifyResponse,
 } from '../utils';
-import { ChatHeader, ChatWelcome, ChatMessages, AgentActionRow, type DisplayMessage } from './chat';
+import { ChatHeader, ChatWelcome, ChatMessages } from './chat';
 import {
-  HistoryIcon,
-  PlusIcon,
-  CollapseIcon,
+  AddFileIcon,
   SendIcon,
   StopIcon,
   MicrophoneIcon,
   ClockIcon,
   KeyboardIcon,
   FolderIcon,
-  AddFileIcon,
 } from './icons';
 
 type ChatMode = 'Agent' | 'Chat' | 'Edit';
@@ -54,6 +40,7 @@ interface ChatPanelProps {
 
 export default function ChatPanel({ onCollapse }: ChatPanelProps) {
   const { openTabs, activeTabPath, tree, folderPath, openFile, setActivePanel, gitIgnoredPaths } = useWorkspace();
+  const backend = useBackend();
   
   // Use extracted hooks
   const {
@@ -110,6 +97,15 @@ export default function ChatPanel({ onCollapse }: ChatPanelProps) {
   // ── Workspace file paths for clickable file references ──
   const workspaceFiles = useMemo(() => flattenTree(tree), [tree]);
 
+  // ── Agent pipeline & streaming hooks ──
+  const agentPipeline = useAgentPipeline({
+    folderPath, workspaceFiles, gitIgnoredPaths,
+    scrollToBottom, setMessages, setHistory,
+  });
+  const { streamResponse, stopMessage } = useMessageStream({
+    scrollToBottom, setMessages, setHistory, setLoading,
+  });
+
   // ── Suggested files from open editor tabs ──
   const suggestedFiles = openTabs
     .filter(t => !t.path.startsWith('diff:') && !attachedFiles.some(a => a.path === t.path))
@@ -122,8 +118,6 @@ export default function ChatPanel({ onCollapse }: ChatPanelProps) {
   });
 
   const addSuggestedFile = useCallback(async (name: string, path: string, content?: string) => {
-    // For special tabs (like supabase:users), pass the content directly
-    // For regular files, let addFile read from filesystem
     const isSpecialTab = path.startsWith('supabase:');
     await addFile(name, path, isSpecialTab ? content : undefined);
     textareaRef.current?.focus();
@@ -137,130 +131,6 @@ export default function ChatPanel({ onCollapse }: ChatPanelProps) {
     setActivePanel('explorer');
   }, [folderPath, openFile, setActivePanel]);
 
-  // ── Read multiple files for context ──
-  const readFilesForContext = useCallback(async (relativePaths: string[]) => {
-    if (!folderPath) return [];
-    const results: Array<{ name: string; path: string; content?: string }> = [];
-    for (const rel of relativePaths) {
-      const fullPath = `${folderPath}/${rel}`;
-      const name = rel.split('/').pop() ?? rel;
-      try {
-        const result = await window.electronAPI.readFile(fullPath);
-        if (result.success && result.content) {
-          results.push({ name: rel, path: fullPath, content: result.content });
-        }
-      } catch { /* skip */ }
-    }
-    return results;
-  }, [folderPath]);
-
-  // ── Execute file actions ──
-  const executeFileActions = useCallback(async (
-    actions: FileActionPlan[],
-    userRequest: string,
-    chatHistory: ChatMessage[],
-    model: string,
-    baseUrl: string,
-    apiKey: string,
-    statusMsgIndex: number,
-  ): Promise<FileActionProgress[]> => {
-    const progressList: FileActionProgress[] = actions.map(a => ({
-      plan: a,
-      status: 'pending' as const,
-    }));
-
-    const updateProgress = (statusText: string, list: FileActionProgress[]) => {
-      setMessages(prev => {
-        const updated = [...prev];
-        if (statusMsgIndex < updated.length) {
-          updated[statusMsgIndex] = {
-            text: statusText,
-            sender: 'system',
-            isAgentProgress: true,
-            agentActions: [...list],
-          };
-        }
-        return updated;
-      });
-      scrollToBottom();
-    };
-
-    for (let i = 0; i < actions.length; i++) {
-      const plan = actions[i];
-      const fullPath = folderPath ? `${folderPath}/${plan.file}` : plan.file;
-
-      // Reading phase
-      progressList[i] = { ...progressList[i], status: 'reading' };
-      updateProgress(`🔧 Applying changes (${i + 1}/${actions.length})…`, progressList);
-
-      let currentContent: string | null = null;
-      if (plan.action !== 'create') {
-        try {
-          const result = await window.electronAPI.readFile(fullPath);
-          if (result.success) currentContent = result.content ?? null;
-        } catch { /* file might not exist */ }
-      }
-
-      // Updating phase
-      progressList[i] = { ...progressList[i], status: 'updating' };
-      updateProgress(`🔧 Applying changes (${i + 1}/${actions.length})…`, progressList);
-
-      if (plan.action === 'delete') {
-        progressList[i] = {
-          ...progressList[i],
-          status: 'done',
-          diff: { before: currentContent ?? '', after: '(deleted)' },
-        };
-        updateProgress(`🔧 Applying changes (${i + 1}/${actions.length})…`, progressList);
-        continue;
-      }
-
-      try {
-        const changeMessages = buildFileChangePrompt(plan, currentContent, userRequest, chatHistory);
-        const changeResult = await window.electronAPI.aiChat(baseUrl, apiKey, model, changeMessages);
-
-        if (changeResult.success && changeResult.reply) {
-          let newContent: string;
-
-          if (plan.action === 'create') {
-            newContent = stripMarkdownFences(changeResult.reply);
-          } else {
-            const blocks = parseSearchReplaceBlocks(changeResult.reply);
-            if (blocks.length > 0 && currentContent !== null) {
-              newContent = applySearchReplaceBlocks(currentContent, blocks);
-            } else {
-              newContent = stripMarkdownFences(changeResult.reply);
-            }
-          }
-
-          await window.electronAPI.saveFile(fullPath, newContent);
-
-          progressList[i] = {
-            ...progressList[i],
-            status: 'done',
-            diff: { before: currentContent ?? '', after: newContent },
-          };
-        } else {
-          progressList[i] = {
-            ...progressList[i],
-            status: 'error',
-            error: changeResult.error ?? 'AI failed to generate changes',
-          };
-        }
-      } catch (err: unknown) {
-        progressList[i] = {
-          ...progressList[i],
-          status: 'error',
-          error: (err as Error).message,
-        };
-      }
-
-      updateProgress(`🔧 Applying changes (${i + 1}/${actions.length})…`, progressList);
-    }
-
-    return progressList;
-  }, [folderPath, scrollToBottom, setMessages]);
-
   // ── Send message ──
   const sendMessage = useCallback(async () => {
     const text = input.trim();
@@ -271,10 +141,10 @@ export default function ChatPanel({ onCollapse }: ChatPanelProps) {
     await ensureConversation();
 
     const currentFiles = [...attachedFiles];
-    setMessages(prev => [...prev, { 
-      text, 
-      sender: 'user', 
-      files: currentFiles.length > 0 ? currentFiles : undefined 
+    setMessages(prev => [...prev, {
+      text,
+      sender: 'user',
+      files: currentFiles.length > 0 ? currentFiles : undefined,
     }]);
     setInput('');
     clearFiles();
@@ -283,71 +153,16 @@ export default function ChatPanel({ onCollapse }: ChatPanelProps) {
     const isFirstMessage = history.length === 0;
     setLoading(true);
 
+    const ai = { baseUrl: settings.baseUrl, apiKey: settings.apiKey, model };
     let researchedFiles: Array<{ name: string; path: string; content?: string }> = [];
 
     // Step 1: Research Agent (first message only)
     if (isFirstMessage && folderPath && workspaceFiles.size > 0) {
-      setMessages(prev => [...prev, {
-        text: '🔍 Researching your codebase…',
-        sender: 'system',
-        isResearchStatus: true,
-      }]);
-      scrollToBottom();
-
-      try {
-        const researchMessages = buildResearchPrompt(text, folderPath, workspaceFiles, gitIgnoredPaths);
-        const researchResult = await window.electronAPI.aiChat(
-          settings.baseUrl, settings.apiKey, model, researchMessages
-        );
-
-        if (researchResult.success && researchResult.reply) {
-          const chosenFiles = parseResearchResponse(researchResult.reply, workspaceFiles);
-
-          if (chosenFiles.length > 0) {
-            setMessages(prev => {
-              const updated = [...prev];
-              const statusIdx = findLastIdx(updated, m => !!m.isResearchStatus);
-              if (statusIdx >= 0) {
-                updated[statusIdx] = {
-                  text: `📂 Reading ${chosenFiles.length} relevant file${chosenFiles.length > 1 ? 's' : ''}…`,
-                  sender: 'system',
-                  isResearchStatus: true,
-                };
-              }
-              return updated;
-            });
-            scrollToBottom();
-
-            researchedFiles = await readFilesForContext(chosenFiles);
-
-            setMessages(prev => {
-              const updated = [...prev];
-              const statusIdx = findLastIdx(updated, m => !!m.isResearchStatus);
-              if (statusIdx >= 0) {
-                updated[statusIdx] = {
-                  text: `📎 Added ${researchedFiles.length} file${researchedFiles.length > 1 ? 's' : ''} as context`,
-                  sender: 'system',
-                  files: researchedFiles,
-                  isResearchStatus: false,
-                };
-              }
-              return updated;
-            });
-            scrollToBottom();
-          } else {
-            setMessages(prev => prev.filter(m => !m.isResearchStatus));
-          }
-        } else {
-          setMessages(prev => prev.filter(m => !m.isResearchStatus));
-        }
-      } catch {
-        setMessages(prev => prev.filter(m => !m.isResearchStatus));
-      }
+      researchedFiles = await agentPipeline.runResearchStep(text, ai);
     }
 
     // Step 2: Build chat messages
     const allContextFiles = [...currentFiles, ...researchedFiles];
-
     let contextPrefix = '';
     if (allContextFiles.length > 0) {
       contextPrefix = allContextFiles
@@ -362,7 +177,7 @@ export default function ChatPanel({ onCollapse }: ChatPanelProps) {
     }
 
     const userContent = contextPrefix + text;
-    const systemContext = buildSystemContext(folderPath, workspaceFiles, gitIgnoredPaths);
+    const systemContext = agentPipeline.getSystemContext();
 
     const newHistory: ChatMessage[] = isFirstMessage
       ? [systemContext, { role: 'user', content: userContent, displayText: text }]
@@ -370,249 +185,26 @@ export default function ChatPanel({ onCollapse }: ChatPanelProps) {
 
     setHistory(newHistory);
 
-    // Step 2.5: Check Agent (follow-up messages in Agent mode)
+    // Step 2.5: Check Agent (follow-up in Agent mode)
     const isFollowUp = !isFirstMessage && mode === 'Agent' && folderPath && workspaceFiles.size > 0;
     let needsFileChanges = false;
 
     if (isFollowUp) {
-      setMessages(prev => [...prev, {
-        text: '🧠 Analyzing your request…',
-        sender: 'system',
-        isResearchStatus: true,
-      }]);
-      scrollToBottom();
-
-      try {
-        const checkMessages = buildCheckAgentPrompt(text, newHistory);
-        const checkResult = await window.electronAPI.aiChat(
-          settings.baseUrl, settings.apiKey, model, checkMessages
-        );
-
-        if (checkResult.success && checkResult.reply) {
-          needsFileChanges = parseCheckAgentResponse(checkResult.reply);
-        }
-      } catch { /* proceed without file changes */ }
-
-      setMessages(prev => prev.filter(m => !m.isResearchStatus));
+      needsFileChanges = await agentPipeline.runCheckStep(text, newHistory, ai);
     }
 
     // Step 2.6: File Action Agent
     if (needsFileChanges) {
-      setMessages(prev => {
-        return [...prev, {
-          text: '📋 Planning file changes…',
-          sender: 'system' as const,
-          isAgentProgress: true,
-          agentActions: [],
-        }];
-      });
-      scrollToBottom();
-
-      await new Promise(r => setTimeout(r, 0));
-      const progressMsgIdx = await new Promise<number>(resolve => {
-        setMessages(prev => {
-          resolve(prev.length - 1);
-          return prev;
-        });
-      });
-
-      let actionPlan: FileActionPlan[] = [];
-      try {
-        const planMessages = buildActionPlanPrompt(text, newHistory, folderPath, workspaceFiles, gitIgnoredPaths);
-        const planResult = await window.electronAPI.aiChat(
-          settings.baseUrl, settings.apiKey, model, planMessages
-        );
-
-        if (planResult.success && planResult.reply) {
-          actionPlan = parseActionPlanResponse(planResult.reply);
-        }
-      } catch { /* no plan */ }
-
-      if (actionPlan.length > 0) {
-        let completedProgress: FileActionProgress[] = [];
-        let attempt = 0;
-        const MAX_ATTEMPTS = 3;
-        let currentPlan = actionPlan;
-
-        while (attempt < MAX_ATTEMPTS && currentPlan.length > 0) {
-          attempt++;
-
-          completedProgress = await executeFileActions(
-            currentPlan, text, newHistory, model,
-            settings.baseUrl, settings.apiKey, progressMsgIdx,
-          );
-
-          // Verify changes
-          setMessages(prev => {
-            const updated = [...prev];
-            if (progressMsgIdx < updated.length) {
-              updated[progressMsgIdx] = {
-                text: `✅ Verifying changes… (attempt ${attempt}/${MAX_ATTEMPTS})`,
-                sender: 'system',
-                isAgentProgress: true,
-                agentActions: completedProgress,
-                verifyAttempt: attempt,
-              };
-            }
-            return updated;
-          });
-          scrollToBottom();
-
-          const changedForVerify = completedProgress
-            .filter(p => p.status === 'done')
-            .map(p => ({
-              file: p.plan.file,
-              action: p.plan.action,
-              diff: p.diff,
-            }));
-
-          if (changedForVerify.length === 0) break;
-
-          try {
-            const verifyMessages = buildVerifyPrompt(text, changedForVerify);
-            const verifyResult = await window.electronAPI.aiChat(
-              settings.baseUrl, settings.apiKey, model, verifyMessages
-            );
-
-            if (verifyResult.success && verifyResult.reply) {
-              const verification = parseVerifyResponse(verifyResult.reply);
-
-              if (verification.satisfied || verification.missingChanges.length === 0) {
-                break;
-              }
-
-              currentPlan = verification.missingChanges;
-            } else {
-              break;
-            }
-          } catch {
-            break;
-          }
-        }
-
-        // Finalize progress
-        const successCount = completedProgress.filter(p => p.status === 'done').length;
-        const errorCount = completedProgress.filter(p => p.status === 'error').length;
-        setMessages(prev => {
-          const updated = [...prev];
-          if (progressMsgIdx < updated.length) {
-            updated[progressMsgIdx] = {
-              text: `✅ Applied ${successCount} file change${successCount !== 1 ? 's' : ''}${errorCount > 0 ? ` (${errorCount} error${errorCount !== 1 ? 's' : ''})` : ''}`,
-              sender: 'system',
-              isAgentProgress: true,
-              agentActions: completedProgress,
-            };
-          }
-          return updated;
-        });
-        scrollToBottom();
-
-        const changeSummary = completedProgress
-          .filter(p => p.status === 'done')
-          .map(p => `- ${p.plan.action.toUpperCase()} ${p.plan.file}: ${p.plan.description}`)
-          .join('\n');
-
-        if (changeSummary) {
-          setHistory(prev => [...prev, {
-            role: 'assistant',
-            content: `I've made the following file changes:\n${changeSummary}`,
-          }]);
-        }
-      } else {
-        setMessages(prev => prev.filter(m => !m.isAgentProgress));
-      }
+      await agentPipeline.runFileChangeStep(text, newHistory, ai);
     }
 
     // Step 3: Stream the response
-    setMessages(prev => [...prev, { text: '', sender: 'bot' }]);
-    scrollToBottom();
-
-    let streamedText = '';
-
-    const cleanupChunk = window.electronAPI.onAiChatChunk((chunk: string) => {
-      streamedText += chunk;
-      const currentText = streamedText;
-      setMessages(prev => {
-        const updated = [...prev];
-        updated[updated.length - 1] = { text: currentText, sender: 'bot' };
-        return updated;
-      });
-      scrollToBottom();
-    });
-
-    try {
-      const result = await window.electronAPI.aiChatStream(settings.baseUrl, settings.apiKey, model, newHistory);
-      cleanupChunk();
-
-      if (result.success && result.reply) {
-        setMessages(prev => {
-          const updated = [...prev];
-          updated[updated.length - 1] = { text: result.reply!, sender: 'bot' };
-          return updated;
-        });
-        setHistory(prev => [...prev, { role: 'assistant', content: result.reply! }]);
-      } else if (result.error === 'aborted') {
-        if (streamedText) {
-          setMessages(prev => {
-            const updated = [...prev];
-            updated[updated.length - 1] = { text: streamedText + '\n\n⏹ *Response stopped.*', sender: 'bot' };
-            return updated;
-          });
-          setHistory(prev => [...prev, { role: 'assistant', content: streamedText }]);
-        } else {
-          setMessages(prev => {
-            const updated = [...prev];
-            updated[updated.length - 1] = { text: '⏹ Response stopped.', sender: 'bot' };
-            return updated;
-          });
-        }
-      } else {
-        setMessages(prev => {
-          const updated = [...prev];
-          updated[updated.length - 1] = { text: `⚠️ ${result.error ?? 'Unknown error'}`, sender: 'bot' };
-          return updated;
-        });
-      }
-    } catch (err: unknown) {
-      cleanupChunk();
-      const msg = (err as Error).message;
-      if (msg?.includes('abort')) {
-        if (streamedText) {
-          setMessages(prev => {
-            const updated = [...prev];
-            updated[updated.length - 1] = { text: streamedText + '\n\n⏹ *Response stopped.*', sender: 'bot' };
-            return updated;
-          });
-          setHistory(prev => [...prev, { role: 'assistant', content: streamedText }]);
-        } else {
-          setMessages(prev => {
-            const updated = [...prev];
-            updated[updated.length - 1] = { text: '⏹ Response stopped.', sender: 'bot' };
-            return updated;
-          });
-        }
-      } else {
-        setMessages(prev => {
-          const updated = [...prev];
-          updated[updated.length - 1] = { text: `⚠️ ${msg}`, sender: 'bot' };
-          return updated;
-        });
-      }
-    } finally {
-      setLoading(false);
-      scrollToBottom();
-    }
+    await streamResponse(settings.baseUrl, settings.apiKey, model, newHistory);
   }, [
     input, loading, settings, selectedModel, history, attachedFiles, scrollToBottom,
-    folderPath, workspaceFiles, mode, gitIgnoredPaths, setMessages, setHistory, 
-    ensureConversation, clearFiles, readFilesForContext, executeFileActions, setSettingsOpen
+    folderPath, workspaceFiles, mode, gitIgnoredPaths, setMessages, setHistory,
+    ensureConversation, clearFiles, agentPipeline, streamResponse, setSettingsOpen,
   ]);
-
-  const stopMessage = useCallback(async () => {
-    try {
-      await window.electronAPI.aiChatAbort();
-    } catch { /* ignore */ }
-  }, []);
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
@@ -653,7 +245,7 @@ export default function ChatPanel({ onCollapse }: ChatPanelProps) {
           historySidebarOpen={historySidebarOpen}
           onToggleHistory={() => setHistorySidebarOpen(!historySidebarOpen)}
           onNewChat={handleNewChat}
-          onDebugOpen={() => window.electronAPI.debugOpen()}
+          onDebugOpen={() => backend.debugOpen()}
           onClearChat={clearChat}
           onOpenSettings={() => setSettingsOpen(true)}
           onCollapse={onCollapse}

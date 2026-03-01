@@ -3,6 +3,7 @@
  */
 import { useState, useEffect } from 'react';
 import { useWorkspace } from '../context/WorkspaceContext';
+import { useBackend } from '../context/BackendContext';
 import { DatabaseIcon, PlayIcon } from './icons';
 import type { SqlQueryResult } from '../types/supabase.types';
 
@@ -46,6 +47,7 @@ function formatResultsAsContext(query: string, result: SqlQueryResult): string {
 
 export default function SqlQueryResultTab({ queryId }: SqlQueryResultTabProps) {
   const { supabaseConfig, openTabs, setTabData } = useWorkspace();
+  const backend = useBackend();
   const [result, setResult] = useState<SqlQueryResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
@@ -90,7 +92,7 @@ export default function SqlQueryResultTab({ queryId }: SqlQueryResultTabProps) {
     setLoading(true);
     
     try {
-      const queryResult = await window.electronAPI.supabaseExecuteQuery(
+      const queryResult = await backend.supabaseExecuteQuery(
         supabaseConfig.projectUrl,
         supabaseConfig.serviceRoleKey,
         queryToRun

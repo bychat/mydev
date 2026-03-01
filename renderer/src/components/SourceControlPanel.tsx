@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useWorkspace } from '../context/WorkspaceContext';
+import { useBackend } from '../context/BackendContext';
 import { getFileIcon } from '../utils/fileIcons';
 import type { AISettings } from '../types';
 
@@ -50,6 +51,7 @@ function buildUnifiedDiff(oldContent: string, newContent: string): string {
 }
 
 export default function SourceControlPanel() {
+  const backend = useBackend();
   const {
     gitSplitChanges, folderPath, refreshGitStatus, openDiff,
     stageFile, unstageFile, stageAll, unstageAll, discardFile, gitCommit,
@@ -124,12 +126,12 @@ export default function SourceControlPanel() {
     setError(null);
     try {
       // Load AI settings
-      const settings: AISettings = await window.electronAPI.aiLoadSettings();
+      const settings: AISettings = await backend.aiLoadSettings();
 
       // Resolve the model — fall back to first available if none saved
       let model = settings.selectedModel;
       if (!model) {
-        const list = await window.electronAPI.aiListModels(settings.baseUrl, settings.apiKey);
+        const list = await backend.aiListModels(settings.baseUrl, settings.apiKey);
         if (list.length === 0) {
           setError('Configure an AI model in Settings first');
           setGenerating(false);
@@ -143,7 +145,7 @@ export default function SourceControlPanel() {
         allChanges.map(async (c) => {
           const fullPath = c.file.startsWith('/') ? c.file : `${folderPath}/${c.file}`;
           try {
-            const diff = await window.electronAPI.gitDiff(folderPath, fullPath);
+            const diff = await backend.gitDiff(folderPath, fullPath);
             return {
               file: c.file,
               status: STATUS_WORD[c.status] ?? c.status,
@@ -166,7 +168,7 @@ Return ONLY the commit message text, nothing else — no markdown fences, no exp
 Changed files and diffs:
 ${payload}`;
 
-      const result = await window.electronAPI.aiChat(
+      const result = await backend.aiChat(
         settings.baseUrl, settings.apiKey, model,
         [{ role: 'user', content: prompt }],
       );

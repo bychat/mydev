@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { AISettings } from '../types';
+import { useBackend } from '../context/BackendContext';
 
 interface Props {
   open: boolean;
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export default function SettingsModal({ open, onClose, onSaved }: Props) {
+  const backend = useBackend();
   const [provider, setProvider] = useState<'ollama' | 'openai'>('ollama');
   const [baseUrl, setBaseUrl] = useState('http://localhost:11434/v1');
   const [apiKey, setApiKey] = useState('ollama');
@@ -23,14 +25,14 @@ export default function SettingsModal({ open, onClose, onSaved }: Props) {
     if (!open) return;
     (async () => {
       try {
-        const settings = await window.electronAPI.aiLoadSettings();
+        const settings = await backend.aiLoadSettings();
         setProvider(settings.provider);
         setBaseUrl(settings.baseUrl);
         setApiKey(settings.apiKey);
         setSelectedModel(settings.selectedModel);
       } catch { /* use defaults */ }
 
-      const available = await window.electronAPI.aiCheckOllama();
+      const available = await backend.aiCheckOllama();
       setOllamaAvailable(available);
     })();
   }, [open]);
@@ -40,7 +42,7 @@ export default function SettingsModal({ open, onClose, onSaved }: Props) {
     setLoadingModels(true);
     setError('');
     try {
-      const list = await window.electronAPI.aiListModels(baseUrl, apiKey);
+      const list = await backend.aiListModels(baseUrl, apiKey);
       setModels(list);
       if (list.length > 0 && !list.includes(selectedModel)) {
         setSelectedModel(list[0]);
@@ -80,7 +82,7 @@ export default function SettingsModal({ open, onClose, onSaved }: Props) {
     }
     setSaving(true);
     const settings: AISettings = { provider, baseUrl, apiKey, selectedModel };
-    await window.electronAPI.aiSaveSettings(settings);
+    await backend.aiSaveSettings(settings);
     setSaving(false);
     onSaved(settings);
     onClose();

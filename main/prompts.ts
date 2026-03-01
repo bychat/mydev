@@ -1,6 +1,9 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import { app } from 'electron';
+/**
+ * Prompt templates and defaults.
+ *
+ * This module defines the shape and default values of prompt settings.
+ * Persistence (load/save/reset) lives in `main/storage.ts`.
+ */
 
 export interface PromptSettings {
   systemPrompt: string;
@@ -11,8 +14,6 @@ export interface PromptSettings {
   verificationPrompt: string;
   commitMessagePrompt: string;
 }
-
-const PROMPTS_FILE = (): string => path.join(app.getPath('userData'), 'prompt-settings.json');
 
 export const DEFAULT_PROMPTS: PromptSettings = {
   systemPrompt: `You are an expert coding assistant inside the "mydev.bychat.io" desktop IDE.
@@ -73,23 +74,3 @@ Follow the Conventional Commits format: type(scope): description
 Keep it under 72 characters for the subject line. If needed, add a blank line then a short body (2-3 bullet points max).
 Return ONLY the commit message text, nothing else — no markdown fences, no explanation.`,
 };
-
-export function loadPrompts(): PromptSettings {
-  try {
-    const data = fs.readFileSync(PROMPTS_FILE(), 'utf-8');
-    const saved = JSON.parse(data);
-    // Merge with defaults in case new prompts are added
-    return { ...DEFAULT_PROMPTS, ...saved };
-  } catch {
-    return { ...DEFAULT_PROMPTS };
-  }
-}
-
-export function savePrompts(prompts: PromptSettings): void {
-  fs.writeFileSync(PROMPTS_FILE(), JSON.stringify(prompts, null, 2), 'utf-8');
-}
-
-export function resetPrompts(): PromptSettings {
-  fs.writeFileSync(PROMPTS_FILE(), JSON.stringify(DEFAULT_PROMPTS, null, 2), 'utf-8');
-  return { ...DEFAULT_PROMPTS };
-}

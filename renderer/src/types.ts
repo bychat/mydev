@@ -35,6 +35,7 @@ export type {
   FileActionPlan,
   FileActionStatus,
   FileActionProgress,
+  DisplayMessage,
 } from './types/ai.types';
 
 // History types
@@ -47,6 +48,9 @@ export type {
 // Prompt types
 export type { PromptSettings } from './types/prompts.types';
 export { DEFAULT_PROMPTS } from './types/prompts.types';
+
+// Supabase types
+export type { SupabaseConfig } from './types/supabase.types';
 
 // UI types
 export type { SidePanel, ChatMode } from './types/ui.types';

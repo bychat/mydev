@@ -10,6 +10,7 @@
  */
 import { useState, useEffect, useMemo } from 'react';
 import { useWorkspace } from '../context/WorkspaceContext';
+import { useBackend } from '../context/BackendContext';
 import { 
   DatabaseIcon, 
   ChevronDownIcon, 
@@ -85,6 +86,7 @@ function findSqlFiles(tree: Array<{ name: string; path: string; type: string; ch
 
 export default function DatabasePanel() {
   const { tree, folderPath, openFile, supabaseConfig, openSqlQueryTab } = useWorkspace();
+  const backend = useBackend();
   const [selectedDb, setSelectedDb] = useState<DatabaseType>('none');
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(['connection', 'sql-files']));
   const [tables, setTables] = useState<TableInfo[]>([]);
@@ -122,7 +124,7 @@ export default function DatabasePanel() {
 
     try {
       // Use the IPC handler to fetch tables
-      const result = await window.electronAPI.supabaseGetTables(
+      const result = await backend.supabaseGetTables(
         supabaseConfig.projectUrl,
         supabaseConfig.serviceRoleKey
       );

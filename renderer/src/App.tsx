@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { WorkspaceProvider, useWorkspace } from './context/WorkspaceContext';
+import { useBackend } from './context/BackendContext';
 import StatusBar from './components/StatusBar';
 import ActivityBar from './components/ActivityBar';
 import Sidebar from './components/Sidebar';
@@ -18,6 +19,7 @@ const CHAT_DEFAULT = 320;
 
 function AppLayout() {
   const { openTabs, folderPath } = useWorkspace();
+  const backend = useBackend();
   const [terminalVisible, setTerminalVisible] = useState(false);
 
   // ── Panel widths & collapsed state ──
@@ -38,7 +40,7 @@ function AppLayout() {
 
   // Listen for menu-triggered toggle
   useEffect(() => {
-    const cleanup = window.electronAPI.onToggleTerminal(toggleTerminal);
+    const cleanup = backend.onToggleTerminal(toggleTerminal);
     return cleanup;
   }, [toggleTerminal]);
 

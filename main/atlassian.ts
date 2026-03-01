@@ -1,11 +1,10 @@
 /**
  * Atlassian/Jira API integration module
  * Uses Jira REST API v3 with token-based authentication (API token + email)
+ *
+ * This module is a pure API client — it does NOT know where connections
+ * are stored. Persistence lives in `main/storage.ts`.
  */
-
-import * as fs from 'fs';
-import * as path from 'path';
-import { app } from 'electron';
 
 export interface AtlassianConnection {
   domain: string;    // e.g. "mycompany.atlassian.net"
@@ -50,27 +49,6 @@ export interface AtlassianIssuesResult {
 export interface AtlassianConnectionResult {
   success: boolean;
   error?: string;
-}
-
-const CONNECTIONS_FILE = (): string => path.join(app.getPath('userData'), 'atlassian-connections.json');
-
-/**
- * Load saved Atlassian connections
- */
-export function loadConnections(): AtlassianConnection[] {
-  try {
-    const data = fs.readFileSync(CONNECTIONS_FILE(), 'utf-8');
-    return JSON.parse(data);
-  } catch {
-    return [];
-  }
-}
-
-/**
- * Save Atlassian connections
- */
-export function saveConnections(connections: AtlassianConnection[]): void {
-  fs.writeFileSync(CONNECTIONS_FILE(), JSON.stringify(connections, null, 2), 'utf-8');
 }
 
 /**

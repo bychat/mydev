@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import type { AISettings } from '../types';
+import { getBackend } from '../backend';
 
 interface UseAISettingsReturn {
   settings: AISettings | null;
@@ -25,10 +26,10 @@ export function useAISettings(): UseAISettingsReturn {
 
   const loadSettings = useCallback(async () => {
     try {
-      const s = await window.electronAPI.aiLoadSettings();
+      const s = await getBackend().aiLoadSettings();
       setSettings(s);
       setSelectedModel(s.selectedModel);
-      const list = await window.electronAPI.aiListModels(s.baseUrl, s.apiKey);
+      const list = await getBackend().aiListModels(s.baseUrl, s.apiKey);
       setModels(list);
       if (list.length > 0) {
         setReady(true);
@@ -44,7 +45,7 @@ export function useAISettings(): UseAISettingsReturn {
   const handleSettingsSaved = useCallback(async (s: AISettings) => {
     setSettings(s);
     setSelectedModel(s.selectedModel);
-    const list = await window.electronAPI.aiListModels(s.baseUrl, s.apiKey);
+    const list = await getBackend().aiListModels(s.baseUrl, s.apiKey);
     setModels(list);
     setReady(list.length > 0 && !!s.selectedModel);
   }, []);

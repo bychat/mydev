@@ -38,3 +38,14 @@ export interface FileActionProgress {
   diff?: { before: string; after: string };
   error?: string;
 }
+
+/** A message displayed in the chat UI */
+export interface DisplayMessage {
+  text: string;
+  sender: 'user' | 'bot' | 'system';
+  files?: Array<{ name: string; path: string; content?: string }>;
+  isResearchStatus?: boolean;
+  isAgentProgress?: boolean;
+  agentActions?: FileActionProgress[];
+  verifyAttempt?: number;
+}

@@ -3,6 +3,7 @@
  */
 import { useState, useEffect } from 'react';
 import type { AtlassianConnection, AtlassianProject, AtlassianIssue } from '../types/atlassian.types';
+import { useBackend } from '../context/BackendContext';
 import { ChevronDownIcon, ChevronRightIcon, RefreshIcon } from './icons';
 
 // Atlassian logo icon
@@ -32,6 +33,7 @@ const StatusBadge = ({ status, category }: { status: string; category: string })
 };
 
 export default function AtlassianPanel() {
+  const backend = useBackend();
   const [connections, setConnections] = useState<AtlassianConnection[]>([]);
   const [activeConnection, setActiveConnection] = useState<AtlassianConnection | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -50,7 +52,7 @@ export default function AtlassianPanel() {
   // Load saved connections on mount
   useEffect(() => {
     (async () => {
-      const saved = await window.electronAPI.atlassianLoadConnections();
+      const saved = await backend.atlassianLoadConnections();
       setConnections(saved);
       if (saved.length > 0) {
         setActiveConnection(saved[0]);
@@ -72,7 +74,7 @@ export default function AtlassianPanel() {
     setLoadingProjects(true);
     setError(null);
     try {
-      const result = await window.electronAPI.atlassianFetchProjects(activeConnection);
+      const result = await backend.atlassianFetchProjects(activeConnection);
       if (result.success) {
         setProjects(result.projects);
       } else {
@@ -89,7 +91,7 @@ export default function AtlassianPanel() {
     if (!activeConnection || issuesCache[projectKey]) return;
     setLoadingIssues(projectKey);
     try {
-      const result = await window.electronAPI.atlassianFetchIssues(activeConnection, projectKey);
+      const result = await backend.atlassianFetchIssues(activeConnection, projectKey);
       if (result.success) {
         setIssuesCache(prev => ({ ...prev, [projectKey]: result.issues }));
       }
@@ -125,7 +127,7 @@ export default function AtlassianPanel() {
     const connection: AtlassianConnection = { domain, email, apiToken: token };
 
     try {
-      const result = await window.electronAPI.atlassianTestConnection(connection);
+      const result = await backend.atlassianTestConnection(connection);
       if (!result.success) {
         setFormError(result.error || 'Connection failed. Check your credentials.');
         setFormTesting(false);
@@ -139,7 +141,7 @@ export default function AtlassianPanel() {
 
     const updated = [...connections, connection];
     setConnections(updated);
-    await window.electronAPI.atlassianSaveConnections(updated);
+    await backend.atlassianSaveConnections(updated);
     setActiveConnection(connection);
     setShowAddForm(false);
     setFormDomain('');
@@ -152,7 +154,7 @@ export default function AtlassianPanel() {
   const removeConnection = async (index: number) => {
     const updated = connections.filter((_, i) => i !== index);
     setConnections(updated);
-    await window.electronAPI.atlassianSaveConnections(updated);
+    await backend.atlassianSaveConnections(updated);
     if (activeConnection === connections[index]) {
       setActiveConnection(updated.length > 0 ? updated[0] : null);
       setProjects([]);
@@ -163,7 +165,7 @@ export default function AtlassianPanel() {
 
   const openIssueInBrowser = (issueKey: string) => {
     if (!activeConnection) return;
-    window.electronAPI.shellOpenExternal(`https://${activeConnection.domain}/browse/${issueKey}`);
+    backend.shellOpenExternal(`https://${activeConnection.domain}/browse/${issueKey}`);
   };
 
   const refreshAll = () => {

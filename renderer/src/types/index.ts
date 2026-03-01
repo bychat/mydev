@@ -32,6 +32,7 @@ export type {
   FileActionPlan,
   FileActionStatus,
   FileActionProgress,
+  DisplayMessage,
 } from './ai.types';
 
 // History types

@@ -16,7 +16,6 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import * as os from 'os';
 import OpenAI from 'openai';
 import {
   type ChatMessage,
@@ -33,79 +32,10 @@ import {
   buildVerifyPrompt,
   parseVerifyResponse,
 } from '../core/chat';
-
-// ─── Shared Config Path (same as Electron app.getPath('userData')) ───
-
-const APP_NAME = 'mydev-bychat-io';
-
-function getUserDataDir(): string {
-  switch (process.platform) {
-    case 'darwin':
-      return path.join(os.homedir(), 'Library', 'Application Support', APP_NAME);
-    case 'win32':
-      return path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), APP_NAME);
-    default:
-      return path.join(process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config'), APP_NAME);
-  }
-}
-
-// ─── Load AI Settings (mirrors main/ai.ts loadSettings) ───
-
-interface AISettings {
-  provider: 'ollama' | 'openai';
-  baseUrl: string;
-  apiKey: string;
-  selectedModel: string;
-}
-
-const DEFAULT_SETTINGS: AISettings = {
-  provider: 'ollama',
-  baseUrl: 'http://localhost:11434/v1',
-  apiKey: 'ollama',
-  selectedModel: '',
-};
-
-function loadAISettings(): AISettings {
-  try {
-    const data = fs.readFileSync(path.join(getUserDataDir(), 'ai-settings.json'), 'utf-8');
-    return { ...DEFAULT_SETTINGS, ...JSON.parse(data) };
-  } catch {
-    return { ...DEFAULT_SETTINGS };
-  }
-}
-
-// ─── Load Prompts (mirrors main/prompts.ts loadPrompts) ───
-
-interface PromptSettings {
-  systemPrompt: string;
-  researchAgentPrompt: string;
-  checkAgentPrompt: string;
-  actionPlannerPrompt: string;
-  codeEditorPrompt: string;
-  verificationPrompt: string;
-  commitMessagePrompt: string;
-}
-
-const DEFAULT_SYSTEM_PROMPT = `You are an expert coding assistant inside the "mydev.bychat.io" IDE.
-
-Use this workspace context to give precise, file-aware answers. When referencing files, use the exact relative paths listed above.`;
-
-function loadPrompts(): PromptSettings {
-  try {
-    const data = fs.readFileSync(path.join(getUserDataDir(), 'prompt-settings.json'), 'utf-8');
-    return JSON.parse(data);
-  } catch {
-    return {
-      systemPrompt: DEFAULT_SYSTEM_PROMPT,
-      researchAgentPrompt: '',
-      checkAgentPrompt: '',
-      actionPlannerPrompt: '',
-      codeEditorPrompt: '',
-      verificationPrompt: '',
-      commitMessagePrompt: '',
-    };
-  }
-}
+import { getUserDataDir } from '../core/dataDir';
+import { loadAISettings, loadPromptSettings } from '../main/storage';
+import type { AISettings } from '../main/ai';
+import type { PromptSettings } from '../main/prompts';
 
 // ─── Argument Parsing ───
 
@@ -501,7 +431,7 @@ async function main(): Promise<void> {
   if (args.showVersion) { showVersion(); return; }
 
   const settings = loadAISettings();
-  const prompts = loadPrompts();
+  const prompts = loadPromptSettings();
 
   const baseUrl = args.baseUrlOverride || settings.baseUrl;
   const apiKey = args.apiKeyOverride || settings.apiKey;

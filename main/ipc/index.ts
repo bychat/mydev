@@ -1,0 +1,9 @@
+/**
+ * IPC handler barrel — assembles all domain-specific IPC registrations.
+ */
+export { registerFsIpc } from './fs.ipc';
+export { registerAiIpc } from './ai.ipc';
+export { registerHistoryIpc } from './history.ipc';
+export { registerPromptsIpc } from './prompts.ipc';
+export { registerIntegrationsIpc } from './integrations.ipc';
+export { registerWindowIpc } from './window.ipc';

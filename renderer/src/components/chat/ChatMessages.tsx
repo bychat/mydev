@@ -2,22 +2,14 @@ import { type RefObject } from 'react';
 import Markdown from '../Markdown';
 import AgentActionRow from './AgentActionRow';
 import { getFileIcon } from '../../utils/fileIcons';
-import type { FileActionProgress } from '../../types';
+import type { FileActionProgress, DisplayMessage } from '../../types';
+
+export type { DisplayMessage };
 
 export interface AttachedFile {
   name: string;
   path: string;
   content?: string;
-}
-
-export interface DisplayMessage {
-  text: string;
-  sender: 'user' | 'bot' | 'system';
-  files?: AttachedFile[];
-  isResearchStatus?: boolean;
-  isAgentProgress?: boolean;
-  agentActions?: FileActionProgress[];
-  verifyAttempt?: number;
 }
 
 interface ChatMessagesProps {

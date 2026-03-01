@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useWorkspace } from '../context/WorkspaceContext';
+import { useBackend } from '../context/BackendContext';
 import type { WorkspaceHistory } from '../types';
 
 function formatRelativeTime(isoString: string): string {
@@ -19,13 +20,14 @@ function formatRelativeTime(isoString: string): string {
 
 export default function Welcome() {
   const { importFolder } = useWorkspace();
+  const backend = useBackend();
   const [recentWorkspaces, setRecentWorkspaces] = useState<WorkspaceHistory[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        const workspaces = await window.electronAPI.historyGetRecentWorkspaces(8);
+        const workspaces = await backend.historyGetRecentWorkspaces(8);
         setRecentWorkspaces(workspaces);
       } catch (err) {
         console.error('[Welcome] Failed to load recent workspaces:', err);
@@ -40,7 +42,7 @@ export default function Welcome() {
     // For now, show a message that they need to use "Import" - we'll enhance this
     try {
       // Register the workspace as opened
-      await window.electronAPI.historyOpenWorkspace(folderPath);
+      await backend.historyOpenWorkspace(folderPath);
       // Trigger a custom event or use another mechanism
       // For now, we'll need to modify the importFolder to accept a path
       window.dispatchEvent(new CustomEvent('open-workspace', { detail: { folderPath } }));
@@ -52,7 +54,7 @@ export default function Welcome() {
   const removeWorkspace = useCallback(async (e: React.MouseEvent, folderPath: string) => {
     e.stopPropagation();
     try {
-      await window.electronAPI.historyRemoveWorkspace(folderPath);
+      await backend.historyRemoveWorkspace(folderPath);
       setRecentWorkspaces(prev => prev.filter(w => w.folderPath !== folderPath));
     } catch (err) {
       console.error('[Welcome] Failed to remove workspace:', err);

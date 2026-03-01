@@ -3,6 +3,7 @@
  */
 import { useState, useEffect } from 'react';
 import { useWorkspace } from '../context/WorkspaceContext';
+import { useBackend } from '../context/BackendContext';
 import type { 
   GitHubWorkflow, 
   GitHubWorkflowRun, 
@@ -46,6 +47,7 @@ const IssueIcon = ({ state }: { state: string }) => {
 
 export default function GitHubActionsTab() {
   const { folderPath } = useWorkspace();
+  const backend = useBackend();
   const [repoInfo, setRepoInfo] = useState<{ owner: string; repo: string } | null>(null);
   const [workflows, setWorkflows] = useState<GitHubWorkflow[]>([]);
   const [runs, setRuns] = useState<GitHubWorkflowRun[]>([]);
@@ -76,11 +78,11 @@ export default function GitHubActionsTab() {
       }
       
       try {
-        const result = await window.electronAPI.readFile(`${folderPath}/.git/config`);
+        const result = await backend.readFile(`${folderPath}/.git/config`);
         if (result.success && result.content) {
           const remoteMatch = result.content.match(/\[remote "origin"\][\s\S]*?url = (.+)/);
           if (remoteMatch) {
-            const info = await window.electronAPI.githubExtractRepoInfo(remoteMatch[1].trim());
+            const info = await backend.githubExtractRepoInfo(remoteMatch[1].trim());
             if (info) {
               setRepoInfo(info);
               return;
@@ -111,12 +113,12 @@ export default function GitHubActionsTab() {
     setError(null);
     
     try {
-      const workflowsResult = await window.electronAPI.githubListWorkflows(repoInfo.owner, repoInfo.repo);
+      const workflowsResult = await backend.githubListWorkflows(repoInfo.owner, repoInfo.repo);
       if (workflowsResult.success) {
         setWorkflows(workflowsResult.workflows);
       }
       
-      const runsResult = await window.electronAPI.githubListWorkflowRuns(repoInfo.owner, repoInfo.repo, undefined, 20);
+      const runsResult = await backend.githubListWorkflowRuns(repoInfo.owner, repoInfo.repo, undefined, 20);
       if (runsResult.success) {
         setRuns(runsResult.runs);
         if (runsResult.runs.length > 0) {
@@ -137,7 +139,7 @@ export default function GitHubActionsTab() {
     
     setIssuesLoading(true);
     try {
-      const result = await window.electronAPI.githubListIssues(repoInfo.owner, repoInfo.repo, 'open', 20);
+      const result = await backend.githubListIssues(repoInfo.owner, repoInfo.repo, 'open', 20);
       if (result.success) {
         setIssues(result.issues);
       }
@@ -152,7 +154,7 @@ export default function GitHubActionsTab() {
     if (!repoInfo || jobsCache[runId]) return;
     
     try {
-      const result = await window.electronAPI.githubListRunJobs(repoInfo.owner, repoInfo.repo, runId);
+      const result = await backend.githubListRunJobs(repoInfo.owner, repoInfo.repo, runId);
       if (result.success) {
         setJobsCache(prev => ({ ...prev, [runId]: result.jobs }));
       }
@@ -195,14 +197,14 @@ export default function GitHubActionsTab() {
   };
 
   const openInBrowser = (url: string) => {
-    window.electronAPI.shellOpenExternal(url);
+    backend.shellOpenExternal(url);
   };
 
   const viewLogs = async (job: GitHubJob) => {
     if (!repoInfo) return;
     
     try {
-      const result = await window.electronAPI.githubGetJobLogs(repoInfo.owner, repoInfo.repo, job.id);
+      const result = await backend.githubGetJobLogs(repoInfo.owner, repoInfo.repo, job.id);
       if (result.success) {
         const event = new CustomEvent('open-github-logs-tab', {
           detail: { jobName: job.name, jobId: job.id, logs: result.logs }

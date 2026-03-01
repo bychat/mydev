@@ -3,6 +3,7 @@
  */
 import { useState, useEffect } from 'react';
 import { useWorkspace } from '../context/WorkspaceContext';
+import { useBackend } from '../context/BackendContext';
 import type { SupabaseBucket } from '../types/supabase.types';
 import { SupabaseIcon } from './icons';
 
@@ -26,6 +27,7 @@ function formatStorageAsContext(buckets: SupabaseBucket[]): string {
 
 export default function SupabaseStorageTab() {
   const { supabaseConfig, setTabData } = useWorkspace();
+  const backend = useBackend();
   const [buckets, setBuckets] = useState<SupabaseBucket[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +43,7 @@ export default function SupabaseStorageTab() {
     setError(null);
     
     try {
-      const result = await window.electronAPI.supabaseGetStorage(
+      const result = await backend.supabaseGetStorage(
         supabaseConfig.projectUrl,
         supabaseConfig.serviceRoleKey
       );

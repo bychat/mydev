@@ -1,17 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { ChatMessage, Conversation, WorkspaceHistory } from '../types';
+import type { ChatMessage, Conversation, WorkspaceHistory, DisplayMessage } from '../types';
+import { useBackend } from '../context/BackendContext';
 
 type ChatMode = 'Agent' | 'Chat' | 'Edit';
-
-interface DisplayMessage {
-  text: string;
-  sender: 'user' | 'bot' | 'system';
-  files?: Array<{ name: string; path: string; content?: string }>;
-  isResearchStatus?: boolean;
-  isAgentProgress?: boolean;
-  agentActions?: any[];
-  verifyAttempt?: number;
-}
 
 interface UseChatHistoryReturn {
   workspaceHistory: WorkspaceHistory | null;
@@ -35,6 +26,7 @@ export function useChatHistory(
   folderPath: string | null,
   mode: ChatMode
 ): UseChatHistoryReturn {
+  const backend = useBackend();
   const [workspaceHistory, setWorkspaceHistory] = useState<WorkspaceHistory | null>(null);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
@@ -50,12 +42,12 @@ export function useChatHistory(
 
     (async () => {
       try {
-        const ws = await window.electronAPI.historyOpenWorkspace(folderPath);
+        const ws = await backend.historyOpenWorkspace(folderPath);
         setWorkspaceHistory(ws);
 
         // Load active conversation if exists
         if (ws.activeConversationId) {
-          const conv = await window.electronAPI.historyGetConversation(
+          const conv = await backend.historyGetConversation(
             folderPath,
             ws.activeConversationId
           );
@@ -84,7 +76,7 @@ export function useChatHistory(
 
     const timeout = setTimeout(async () => {
       try {
-        const updated = await window.electronAPI.historyUpdateConversation(
+        const updated = await backend.historyUpdateConversation(
           folderPath,
           activeConversationId,
           history,
@@ -112,7 +104,7 @@ export function useChatHistory(
   const handleNewChat = useCallback(async () => {
     if (!folderPath) return;
     try {
-      const conv = await window.electronAPI.historyCreateConversation(folderPath, mode);
+      const conv = await backend.historyCreateConversation(folderPath, mode);
       setActiveConversationId(conv.id);
       setMessages([]);
       setHistory([]);
@@ -133,12 +125,12 @@ export function useChatHistory(
     async (conversationId: string) => {
       if (!folderPath) return;
       try {
-        const conv = await window.electronAPI.historyGetConversation(
+        const conv = await backend.historyGetConversation(
           folderPath,
           conversationId
         );
         if (conv) {
-          await window.electronAPI.historySetActiveConversation(folderPath, conversationId);
+          await backend.historySetActiveConversation(folderPath, conversationId);
           setActiveConversationId(conv.id);
           // Restore messages
           const displayMsgs: DisplayMessage[] = conv.messages
@@ -162,7 +154,7 @@ export function useChatHistory(
     async (conversationId: string) => {
       if (!folderPath) return;
       try {
-        await window.electronAPI.historyDeleteConversation(folderPath, conversationId);
+        await backend.historyDeleteConversation(folderPath, conversationId);
         if (workspaceHistory) {
           const newConvs = workspaceHistory.conversations.filter(
             c => c.id !== conversationId
@@ -200,7 +192,7 @@ export function useChatHistory(
     async (conversationId: string, newTitle: string) => {
       if (!folderPath) return;
       try {
-        await window.electronAPI.historyRenameConversation(
+        await backend.historyRenameConversation(
           folderPath,
           conversationId,
           newTitle
@@ -224,7 +216,7 @@ export function useChatHistory(
     if (activeConversationId) return activeConversationId;
 
     try {
-      const conv = await window.electronAPI.historyCreateConversation(folderPath, mode);
+      const conv = await backend.historyCreateConversation(folderPath, mode);
       setActiveConversationId(conv.id);
       if (workspaceHistory) {
         setWorkspaceHistory({

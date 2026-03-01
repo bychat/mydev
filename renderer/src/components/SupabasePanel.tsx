@@ -3,6 +3,7 @@
  */
 import { useState } from 'react';
 import { useWorkspace } from '../context/WorkspaceContext';
+import { useBackend } from '../context/BackendContext';
 import { SupabaseIcon, ChevronDownIcon, ChevronRightIcon } from './icons';
 
 interface AccordionSectionProps {
@@ -30,6 +31,7 @@ function AccordionSection({ title, icon, isOpen, onToggle, children }: Accordion
 
 export default function SupabasePanel() {
   const { supabaseConfig, folderPath, openSupabaseTab } = useWorkspace();
+  const backend = useBackend();
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(['project']));
 
   const toggleSection = (section: string) => {
@@ -59,14 +61,14 @@ export default function SupabasePanel() {
           <div className="supabase-actions" style={{ marginTop: '16px' }}>
             <button 
               className="supabase-action-btn"
-              onClick={() => window.electronAPI.shellOpenExternal('https://supabase.com/docs')}
+              onClick={() => backend.shellOpenExternal('https://supabase.com/docs')}
               title="Open Supabase Docs"
             >
               <span>📚</span> Documentation
             </button>
             <button 
               className="supabase-action-btn"
-              onClick={() => window.electronAPI.shellOpenExternal('https://supabase.com/dashboard')}
+              onClick={() => backend.shellOpenExternal('https://supabase.com/dashboard')}
               title="Open Supabase Dashboard"
             >
               <span>🔗</span> Supabase Dashboard
@@ -85,7 +87,7 @@ export default function SupabasePanel() {
 
   const openDashboardSection = (section: string) => {
     if (projectRef) {
-      window.electronAPI.shellOpenExternal(`https://supabase.com/dashboard/project/${projectRef}/${section}`);
+      backend.shellOpenExternal(`https://supabase.com/dashboard/project/${projectRef}/${section}`);
     }
   };
 
@@ -123,7 +125,7 @@ export default function SupabasePanel() {
           )}
           <button 
             className="supabase-action-btn"
-            onClick={() => window.electronAPI.shellOpenExternal(dashboardUrl)}
+            onClick={() => backend.shellOpenExternal(dashboardUrl)}
           >
             <span>🔗</span> Open Dashboard
           </button>
@@ -293,7 +295,7 @@ export default function SupabasePanel() {
         <div className="sb-docs-link">
           <button 
             className="supabase-action-btn"
-            onClick={() => window.electronAPI.shellOpenExternal('https://supabase.com/docs')}
+            onClick={() => backend.shellOpenExternal('https://supabase.com/docs')}
           >
             <span>📚</span> Documentation
           </button>

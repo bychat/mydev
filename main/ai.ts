@@ -1,35 +1,10 @@
 import OpenAI from 'openai';
-import * as fs from 'fs';
-import * as path from 'path';
-import { app } from 'electron';
 
 export interface AISettings {
   provider: 'ollama' | 'openai';
   baseUrl: string;
   apiKey: string;
   selectedModel: string;
-}
-
-const SETTINGS_FILE = (): string => path.join(app.getPath('userData'), 'ai-settings.json');
-
-const DEFAULT_OLLAMA: AISettings = {
-  provider: 'ollama',
-  baseUrl: 'http://localhost:11434/v1',
-  apiKey: 'ollama',
-  selectedModel: '',
-};
-
-export function loadSettings(): AISettings {
-  try {
-    const data = fs.readFileSync(SETTINGS_FILE(), 'utf-8');
-    return JSON.parse(data);
-  } catch {
-    return { ...DEFAULT_OLLAMA };
-  }
-}
-
-export function saveSettings(settings: AISettings): void {
-  fs.writeFileSync(SETTINGS_FILE(), JSON.stringify(settings, null, 2), 'utf-8');
 }
 
 export async function checkOllama(): Promise<boolean> {
