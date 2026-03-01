@@ -9,10 +9,6 @@ import {
   AddFileIcon,
   SendIcon,
   StopIcon,
-  FolderIcon,
-  KeyboardIcon,
-  ClockIcon,
-  MicrophoneIcon,
 } from '../icons';
 
 type ChatMode = 'Agent' | 'Chat' | 'Edit';
@@ -207,20 +203,6 @@ export default function ChatComposer({
         </div>
 
         <div className="composer-toolbar-right">
-          {/* Tool icons */}
-          <button className="composer-icon-btn" title="Tools">
-            <FolderIcon />
-          </button>
-          <button className="composer-icon-btn" title="Keyboard shortcuts">
-            <KeyboardIcon />
-          </button>
-          <button className="composer-icon-btn" title="History">
-            <ClockIcon />
-          </button>
-          <button className="composer-icon-btn" title="Voice input">
-            <MicrophoneIcon />
-          </button>
-
           {/* Send / Stop */}
           {loading ? (
             <button
