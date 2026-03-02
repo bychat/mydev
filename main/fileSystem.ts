@@ -547,7 +547,7 @@ export function searchFiles(folderPath: string, options: SearchOptions): SearchR
               fileName,
               matchType: 'content',
               lineNumber: lineIdx + 1,
-              lineContent: line.substring(Math.max(0, matchPos - 40), matchPos + query.length + 40),
+              lineContent: line.substring(Math.max(0, matchPos - 40), Math.min(line.length, matchPos + query.length + 40)),
               matchStart: matchPos,
               matchEnd: matchPos + query.length,
             });

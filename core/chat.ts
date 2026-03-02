@@ -133,7 +133,12 @@ export function buildResearchPrompt(
       const topMatches = sr.matches.slice(0, 5);
       return [
         `### Search: "${sr.query}"`,
-        ...topMatches.map(m => `  - ${m.filePath}${m.lineContent ? `: ${m.lineContent.trim().substring(0, 60)}...` : ''}`),
+        ...topMatches.map(m => {
+          if (!m.lineContent) return `  - ${m.filePath}`;
+          const trimmed = m.lineContent.trim();
+          const preview = trimmed.length > 60 ? trimmed.substring(0, 60) + '...' : trimmed;
+          return `  - ${m.filePath}: ${preview}`;
+        }),
       ].join('\n');
     });
     searchContext = [

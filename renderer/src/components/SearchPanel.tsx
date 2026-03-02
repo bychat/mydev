@@ -196,7 +196,8 @@ export default function SearchPanel() {
 }
 
 /**
- * Highlight matching text in search results
+ * Highlight matching text in search results.
+ * Limits to first 3 highlights per line for performance.
  */
 function highlightMatch(text: string, query: string): React.ReactNode {
   if (!query.trim()) return text;
@@ -207,8 +208,10 @@ function highlightMatch(text: string, query: string): React.ReactNode {
   let lastIdx = 0;
   let searchStart = 0;
   let key = 0;
+  let highlightCount = 0;
+  const MAX_HIGHLIGHTS = 3;
   
-  while (searchStart < lowerText.length) {
+  while (searchStart < lowerText.length && highlightCount < MAX_HIGHLIGHTS) {
     const matchIdx = lowerText.indexOf(lowerQuery, searchStart);
     if (matchIdx === -1) break;
     
@@ -222,6 +225,7 @@ function highlightMatch(text: string, query: string): React.ReactNode {
     );
     lastIdx = matchIdx + query.length;
     searchStart = lastIdx;
+    highlightCount++;
   }
   
   if (lastIdx < text.length) {

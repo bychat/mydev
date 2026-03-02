@@ -87,13 +87,21 @@ export function extractSearchKeywords(text: string): string[] {
     }
   }
   
-  // Extract camelCase or PascalCase words (likely function/class names)
-  const camelCaseMatches = text.match(/\b[a-z]+(?:[A-Z][a-z]+)+\b|\b[A-Z][a-z]+(?:[A-Z][a-z]+)+\b/g);
+  // Extract camelCase words (e.g., searchFiles, buildResearchPrompt)
+  // Pattern: lowercase letters followed by one or more (uppercase + lowercase) groups
+  const camelCaseMatches = text.match(/\b[a-z]+(?:[A-Z][a-z]+)+\b/g);
   if (camelCaseMatches) {
     keywords.push(...camelCaseMatches);
   }
   
-  // Extract snake_case words
+  // Extract PascalCase words (e.g., SearchPanel, ChatMessage)
+  // Pattern: uppercase letter + lowercase letters, repeated one or more times
+  const pascalCaseMatches = text.match(/\b[A-Z][a-z]+(?:[A-Z][a-z]+)+\b/g);
+  if (pascalCaseMatches) {
+    keywords.push(...pascalCaseMatches);
+  }
+  
+  // Extract snake_case words (e.g., search_files, git_ignored_paths)
   const snakeCaseMatches = text.match(/\b[a-z]+(?:_[a-z]+)+\b/g);
   if (snakeCaseMatches) {
     keywords.push(...snakeCaseMatches);
