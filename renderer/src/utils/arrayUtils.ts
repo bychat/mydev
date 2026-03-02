@@ -68,3 +68,62 @@ export function chunk<T>(arr: T[], size: number): T[][] {
   }
   return chunks;
 }
+
+/**
+ * Extract search keywords from a user's question.
+ * Looks for potential function names, class names, variable names, or quoted strings.
+ */
+export function extractSearchKeywords(text: string): string[] {
+  const keywords: string[] = [];
+  
+  // Extract quoted strings (e.g., "functionName" or 'className')
+  const quotedMatches = text.match(/["'`]([^"'`]+)["'`]/g);
+  if (quotedMatches) {
+    for (const match of quotedMatches) {
+      const content = match.slice(1, -1).trim();
+      if (content.length >= 3 && content.length <= 50) {
+        keywords.push(content);
+      }
+    }
+  }
+  
+  // Extract camelCase words (e.g., searchFiles, buildResearchPrompt)
+  // Pattern: lowercase letters followed by one or more (uppercase + lowercase) groups
+  const camelCaseMatches = text.match(/\b[a-z]+(?:[A-Z][a-z]+)+\b/g);
+  if (camelCaseMatches) {
+    keywords.push(...camelCaseMatches);
+  }
+  
+  // Extract PascalCase words (e.g., SearchPanel, ChatMessage)
+  // Pattern: uppercase letter + lowercase letters, repeated one or more times
+  const pascalCaseMatches = text.match(/\b[A-Z][a-z]+(?:[A-Z][a-z]+)+\b/g);
+  if (pascalCaseMatches) {
+    keywords.push(...pascalCaseMatches);
+  }
+  
+  // Extract snake_case words (e.g., search_files, git_ignored_paths)
+  const snakeCaseMatches = text.match(/\b[a-z]+(?:_[a-z]+)+\b/g);
+  if (snakeCaseMatches) {
+    keywords.push(...snakeCaseMatches);
+  }
+  
+  // Extract words that look like code identifiers (all lowercase, 4+ chars, no common words)
+  const commonWords = new Set([
+    'what', 'where', 'when', 'which', 'that', 'this', 'these', 'those',
+    'with', 'from', 'have', 'will', 'would', 'could', 'should', 'does',
+    'make', 'made', 'code', 'file', 'find', 'help', 'want', 'need',
+    'function', 'class', 'method', 'variable', 'component',
+  ]);
+  
+  const words = text.toLowerCase().match(/\b[a-z]{4,}\b/g);
+  if (words) {
+    for (const word of words) {
+      if (!commonWords.has(word) && !keywords.some(k => k.toLowerCase() === word)) {
+        keywords.push(word);
+      }
+    }
+  }
+  
+  // Remove duplicates and limit
+  return [...new Set(keywords)].slice(0, 5);
+}

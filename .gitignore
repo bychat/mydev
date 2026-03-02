@@ -3,6 +3,7 @@ dist/
 dist-main/
 dist-cli/
 dist-server/
+renderer/dist/
 out/
 .DS_Store
 *.log

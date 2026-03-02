@@ -123,4 +123,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   githubListIssues: (owner, repo, state, perPage) => ipcRenderer.invoke('github-list-issues', owner, repo, state, perPage),
   // Shell
   shellOpenExternal: (url) => ipcRenderer.invoke('shell-open-external', url),
+  // Search
+  searchFiles: (folderPath, options) => ipcRenderer.invoke('search-files', folderPath, options),
 });

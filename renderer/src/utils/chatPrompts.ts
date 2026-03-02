@@ -60,9 +60,10 @@ export function buildResearchPrompt(
   folderPath: string | null,
   workspaceFiles: Set<string>,
   gitIgnoredPaths: string[],
+  searchResults?: { query: string; matches: Array<{ filePath: string; lineContent?: string }> }[],
 ): ChatMessage[] {
   const fileList = filterFiles(folderPath, workspaceFiles, gitIgnoredPaths);
-  return _buildResearchPrompt(userQuestion, folderPath, fileList);
+  return _buildResearchPrompt(userQuestion, folderPath, fileList, searchResults);
 }
 
 export function buildActionPlanPrompt(

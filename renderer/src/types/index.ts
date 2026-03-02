@@ -65,5 +65,12 @@ export type {
 // UI types
 export type { SidePanel, ChatMode } from './ui.types';
 
+// Search types
+export type {
+  SearchOptions,
+  SearchMatch,
+  SearchResult,
+} from './search.types';
+
 // Electron API types
 export type { ElectronAPI } from './electron.types';
