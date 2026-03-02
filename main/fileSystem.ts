@@ -403,3 +403,167 @@ export function renameFileOrFolder(oldPath: string, newPath: string): { success:
     return { success: false, error: (err as Error).message };
   }
 }
+
+// ── Search Types ──
+
+export interface SearchOptions {
+  query: string;
+  searchFileNames: boolean;
+  searchFileContents: boolean;
+  respectGitignore: boolean;
+  maxResults?: number;
+}
+
+export interface SearchMatch {
+  filePath: string;          // Relative path from folder root
+  fileName: string;
+  matchType: 'filename' | 'content';
+  lineNumber?: number;       // For content matches
+  lineContent?: string;      // Line containing the match
+  matchStart?: number;       // Start position in line
+  matchEnd?: number;         // End position in line
+}
+
+export interface SearchResult {
+  success: boolean;
+  matches: SearchMatch[];
+  searchedFiles: number;
+  error?: string;
+}
+
+// Binary file extensions to skip during content search
+const BINARY_EXTENSIONS = new Set([
+  '.png', '.jpg', '.jpeg', '.gif', '.ico', '.webp', '.bmp', '.svg',
+  '.mp3', '.mp4', '.wav', '.avi', '.mov', '.wmv',
+  '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
+  '.zip', '.tar', '.gz', '.rar', '.7z',
+  '.exe', '.dll', '.so', '.dylib',
+  '.woff', '.woff2', '.ttf', '.eot', '.otf',
+  '.lock', '.bin', '.dat',
+]);
+
+/**
+ * Check if a file should be skipped during content search
+ */
+function isBinaryFile(filePath: string): boolean {
+  const ext = path.extname(filePath).toLowerCase();
+  return BINARY_EXTENSIONS.has(ext);
+}
+
+/**
+ * Get list of all files in a directory recursively
+ */
+function getAllFiles(dirPath: string, basePath: string, gitIgnoredPaths: Set<string>, respectGitignore: boolean): string[] {
+  const result: string[] = [];
+  
+  try {
+    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+    
+    for (const entry of entries) {
+      const fullPath = path.join(dirPath, entry.name);
+      const relativePath = basePath ? `${basePath}/${entry.name}` : entry.name;
+      
+      // Skip common non-useful directories
+      if (SKIP_DIRS.includes(entry.name)) continue;
+      
+      // Skip gitignored paths if requested
+      if (respectGitignore && gitIgnoredPaths.has(fullPath)) continue;
+      
+      if (entry.isDirectory()) {
+        result.push(...getAllFiles(fullPath, relativePath, gitIgnoredPaths, respectGitignore));
+      } else {
+        result.push(relativePath);
+      }
+    }
+  } catch {
+    // Directory not accessible
+  }
+  
+  return result;
+}
+
+/**
+ * Search for text in files (both file names and file contents)
+ */
+export function searchFiles(folderPath: string, options: SearchOptions): SearchResult {
+  const { query, searchFileNames, searchFileContents, respectGitignore, maxResults = 100 } = options;
+  
+  if (!query.trim()) {
+    return { success: true, matches: [], searchedFiles: 0 };
+  }
+  
+  const matches: SearchMatch[] = [];
+  const queryLower = query.toLowerCase();
+  
+  // Get gitignored paths if needed
+  let gitIgnoredSet = new Set<string>();
+  if (respectGitignore) {
+    const ignoredPaths = getGitIgnoredPaths(folderPath);
+    gitIgnoredSet = new Set(ignoredPaths);
+  }
+  
+  // Get all files
+  const allFiles = getAllFiles(folderPath, '', gitIgnoredSet, respectGitignore);
+  let searchedFiles = 0;
+  
+  for (const relativePath of allFiles) {
+    if (matches.length >= maxResults) break;
+    
+    const fileName = path.basename(relativePath);
+    const fullPath = path.join(folderPath, relativePath);
+    
+    // Search file names
+    if (searchFileNames && fileName.toLowerCase().includes(queryLower)) {
+      matches.push({
+        filePath: relativePath,
+        fileName,
+        matchType: 'filename',
+      });
+      if (matches.length >= maxResults) break;
+    }
+    
+    // Search file contents
+    if (searchFileContents && !isBinaryFile(relativePath)) {
+      try {
+        const stats = fs.statSync(fullPath);
+        // Skip files larger than 1MB
+        if (stats.size > 1024 * 1024) continue;
+        
+        const content = fs.readFileSync(fullPath, 'utf-8');
+        const lines = content.split('\n');
+        searchedFiles++;
+        
+        for (let lineIdx = 0; lineIdx < lines.length && matches.length < maxResults; lineIdx++) {
+          const line = lines[lineIdx];
+          const lineLower = line.toLowerCase();
+          let searchStart = 0;
+          
+          while (searchStart < lineLower.length && matches.length < maxResults) {
+            const matchPos = lineLower.indexOf(queryLower, searchStart);
+            if (matchPos === -1) break;
+            
+            matches.push({
+              filePath: relativePath,
+              fileName,
+              matchType: 'content',
+              lineNumber: lineIdx + 1,
+              lineContent: line.substring(Math.max(0, matchPos - 40), matchPos + query.length + 40),
+              matchStart: matchPos,
+              matchEnd: matchPos + query.length,
+            });
+            
+            searchStart = matchPos + 1;
+          }
+        }
+      } catch {
+        // File not readable
+      }
+    }
+  }
+  
+  return {
+    success: true,
+    matches,
+    searchedFiles,
+  };
+}

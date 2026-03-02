@@ -124,5 +124,8 @@ export function createElectronAdapter(): BackendAPI {
 
     // ── Shell ──
     shellOpenExternal: (u) => api.shellOpenExternal(u),
+
+    // ── Search ──
+    searchFiles: (f, o) => api.searchFiles(f, o),
   };
 }

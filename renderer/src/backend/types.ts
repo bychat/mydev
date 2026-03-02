@@ -37,6 +37,7 @@ import type {
   GitHubIssuesResult,
   GitHubIssueFilterState,
 } from '../types/github.types';
+import type { SearchOptions, SearchResult } from '../types/search.types';
 
 // ─── Runtime mode ───────────────────────────────────────────────────────────
 
@@ -174,4 +175,7 @@ export interface BackendAPI {
 
   // ── Shell ──
   shellOpenExternal(url: string): Promise<void>;
+
+  // ── Search ──
+  searchFiles(folderPath: string, options: SearchOptions): Promise<SearchResult>;
 }

@@ -38,4 +38,5 @@ export {
   uniqueBy,
   sortBy,
   chunk,
+  extractSearchKeywords,
 } from './arrayUtils';

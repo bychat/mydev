@@ -25,6 +25,7 @@ import {
   buildFileChangePrompt,
   buildVerifyPrompt,
   parseVerifyResponse,
+  extractSearchKeywords,
 } from '../utils';
 
 type SetMessages = React.Dispatch<React.SetStateAction<DisplayMessage[]>>;
@@ -186,7 +187,64 @@ export function useAgentPipeline(deps: AgentPipelineDeps) {
     scrollToBottom();
 
     try {
-      const researchMessages = buildResearchPrompt(text, folderPath, workspaceFiles, gitIgnoredPaths);
+      // Extract potential keywords from the user's question for search
+      // Look for function names, class names, variable names, or quoted strings
+      const keywords = extractSearchKeywords(text);
+      let searchResults: { query: string; matches: Array<{ filePath: string; lineContent?: string }> }[] = [];
+      
+      // Perform searches for each keyword
+      if (keywords.length > 0) {
+        setMessages(prev => {
+          const updated = [...prev];
+          const statusIdx = findLastIdx(updated, m => !!m.isResearchStatus);
+          if (statusIdx >= 0) {
+            updated[statusIdx] = {
+              text: `🔍 Searching for: ${keywords.join(', ')}…`,
+              sender: 'system',
+              isResearchStatus: true,
+            };
+          }
+          return updated;
+        });
+        scrollToBottom();
+
+        for (const keyword of keywords.slice(0, 3)) { // Limit to 3 keywords
+          try {
+            const result = await backend.searchFiles(folderPath, {
+              query: keyword,
+              searchFileNames: true,
+              searchFileContents: true,
+              respectGitignore: true,
+              maxResults: 10,
+            });
+            if (result.success && result.matches.length > 0) {
+              searchResults.push({
+                query: keyword,
+                matches: result.matches.map(m => ({
+                  filePath: m.filePath,
+                  lineContent: m.lineContent,
+                })),
+              });
+            }
+          } catch { /* ignore search failures */ }
+        }
+      }
+
+      setMessages(prev => {
+        const updated = [...prev];
+        const statusIdx = findLastIdx(updated, m => !!m.isResearchStatus);
+        if (statusIdx >= 0) {
+          updated[statusIdx] = {
+            text: '🧠 Analyzing codebase…',
+            sender: 'system',
+            isResearchStatus: true,
+          };
+        }
+        return updated;
+      });
+      scrollToBottom();
+
+      const researchMessages = buildResearchPrompt(text, folderPath, workspaceFiles, gitIgnoredPaths, searchResults);
       const researchResult = await backend.aiChat(ai.baseUrl, ai.apiKey, ai.model, researchMessages);
 
       if (researchResult.success && researchResult.reply) {

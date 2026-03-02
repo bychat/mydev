@@ -248,5 +248,8 @@ export function createHttpAdapter(): BackendAPI {
 
     // ── Shell ──
     shellOpenExternal: async (url) => { window.open(url, '_blank'); },
+
+    // ── Search ──
+    searchFiles: (f, o) => post('/api/search', { folderPath: f, options: o }),
   };
 }

@@ -116,13 +116,35 @@ export function buildSystemContext(
 
 /**
  * Build research agent prompt to pick relevant files.
+ * Now includes optional search results to help find files by content.
  */
 export function buildResearchPrompt(
   userQuestion: string,
   folderPath: string | null,
   fileList: string[],
+  searchResults?: { query: string; matches: Array<{ filePath: string; lineContent?: string }> }[],
 ): ChatMessage[] {
   const sorted = [...fileList].sort();
+  
+  // Build search context if available
+  let searchContext = '';
+  if (searchResults && searchResults.length > 0) {
+    const searchSections = searchResults.map(sr => {
+      const topMatches = sr.matches.slice(0, 5);
+      return [
+        `### Search: "${sr.query}"`,
+        ...topMatches.map(m => `  - ${m.filePath}${m.lineContent ? `: ${m.lineContent.trim().substring(0, 60)}...` : ''}`),
+      ].join('\n');
+    });
+    searchContext = [
+      ``,
+      `## Search Results (based on user query)`,
+      `The following files contain relevant keywords from the user's question:`,
+      ...searchSections,
+      ``,
+    ].join('\n');
+  }
+  
   const system: ChatMessage = {
     role: 'system',
     content: [
@@ -131,9 +153,10 @@ export function buildResearchPrompt(
       `## Workspace: ${folderPath ?? 'unknown'}`,
       `## Files (${sorted.length} total):`,
       ...sorted.map(f => `- ${f}`),
-      ``,
+      searchContext,
       `## Instructions`,
       `Based on the user's question below, choose between 4 and 9 files that are most relevant to answering it.`,
+      `If search results are provided, prioritize files that appear in the search results for keywords mentioned in the question.`,
       `Return ONLY a valid JSON array of relative file paths. No explanation, no markdown fences, just the JSON array.`,
       `Example: ["src/index.ts", "package.json", "README.md", "src/utils/helper.ts"]`,
     ].join('\n'),

@@ -26,6 +26,8 @@ import {
   createFolder,
   deleteFileOrFolder,
   renameFileOrFolder,
+  searchFiles,
+  type SearchOptions,
 } from '../fileSystem';
 import { openFolder } from '../workspace';
 
@@ -110,4 +112,9 @@ export function registerFsIpc(): void {
   ipcMain.handle('git-create-branch', async (_event, folderPath: string, branch: string) => gitCreateBranch(folderPath, branch));
   ipcMain.handle('git-pull', async (_event, folderPath: string) => gitPull(folderPath));
   ipcMain.handle('git-push', async (_event, folderPath: string) => gitPush(folderPath));
+
+  // ── Search ──
+  ipcMain.handle('search-files', async (_event, folderPath: string, options: SearchOptions) => {
+    return searchFiles(folderPath, options);
+  });
 }

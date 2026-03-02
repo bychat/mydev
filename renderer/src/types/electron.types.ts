@@ -11,6 +11,7 @@ import type { PromptSettings } from './prompts.types';
 import type { SupabaseConfig, SupabaseUsersResult, SupabaseStorageResult, SupabaseTablesResult, SqlQueryResult } from './supabase.types';
 import type { AtlassianConnection, AtlassianProjectsResult, AtlassianIssuesResult, AtlassianConnectionResult } from './atlassian.types';
 import type { GitHubRepoInfo, GitHubWorkflowsResult, GitHubRunsResult, GitHubJobsResult, GitHubLogsResult, GitHubIssuesResult, GitHubIssueFilterState } from './github.types';
+import type { SearchOptions, SearchResult } from './search.types';
 
 export interface ElectronAPI {
   // Window management
@@ -104,6 +105,8 @@ export interface ElectronAPI {
   githubListIssues: (owner: string, repo: string, state?: GitHubIssueFilterState, perPage?: number) => Promise<GitHubIssuesResult>;
   // Shell
   shellOpenExternal: (url: string) => Promise<void>;
+  // Search
+  searchFiles: (folderPath: string, options: SearchOptions) => Promise<SearchResult>;
 }
 
 declare global {
