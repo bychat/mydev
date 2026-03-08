@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import type { ChatMessage, Conversation, WorkspaceHistory, DisplayMessage } from '../types';
 import { useBackend } from '../context/BackendContext';
 
-type ChatMode = 'Agent' | 'Chat' | 'Edit';
+type ChatMode = 'Agent' | 'Chat' | 'Edit' | 'Copilot';
 
 interface UseChatHistoryReturn {
   workspaceHistory: WorkspaceHistory | null;

@@ -67,3 +67,6 @@ export type {
 
 // Electron API types
 export type { ElectronAPI } from './types/electron.types';
+
+// GitHub CLI types
+export type { GhCliStatus, GhCopilotChatResult } from './types/ghCli.types';

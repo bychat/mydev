@@ -132,4 +132,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
   mcpDisconnectServer: (serverId) => ipcRenderer.invoke('mcp-disconnect-server', serverId),
   mcpCallTool: (serverId, toolName, args) => ipcRenderer.invoke('mcp-call-tool', serverId, toolName, args),
   mcpReadResource: (serverId, uri) => ipcRenderer.invoke('mcp-read-resource', serverId, uri),
+  // GitHub Copilot CLI
+  ghCliDetect: () => ipcRenderer.invoke('gh-cli-detect'),
+  ghCliInstallCopilot: () => ipcRenderer.invoke('gh-cli-install-copilot'),
+  ghCopilotChat: (prompt, model) => ipcRenderer.invoke('gh-copilot-chat', prompt, model),
+  ghCopilotChatStream: (prompt, model) => ipcRenderer.invoke('gh-copilot-chat-stream', prompt, model),
+  onGhCopilotChatChunk: (cb) => {
+    const listener = (_event, chunk) => cb(chunk);
+    ipcRenderer.on('gh-copilot-chat-chunk', listener);
+    return () => ipcRenderer.removeListener('gh-copilot-chat-chunk', listener);
+  },
+  onGhCopilotChatChunkDone: (cb) => {
+    const listener = () => cb();
+    ipcRenderer.on('gh-copilot-chat-chunk-done', listener);
+    return () => ipcRenderer.removeListener('gh-copilot-chat-chunk-done', listener);
+  },
+  ghCopilotChatAbort: () => ipcRenderer.invoke('gh-copilot-chat-abort'),
 });

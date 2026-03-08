@@ -1,8 +1,9 @@
 /**
  * ChatPanel - Main chat interface component.
  * Orchestrates hooks and renders sub-components.
+ * Supports Local AI and Copilot CLI modes with model selection.
  */
-import { useState, useRef, useCallback, useMemo, type ChangeEvent, type KeyboardEvent } from 'react';
+import { useState, useRef, useCallback, useMemo, useEffect, type ChangeEvent, type KeyboardEvent } from 'react';
 import type { ChatMessage } from '../types';
 import SettingsModal from './SettingsModal';
 import { flattenTree } from './Markdown';
@@ -31,8 +32,9 @@ import {
   KeyboardIcon,
   FolderIcon,
 } from './icons';
+import type { GhCliStatus } from '../types/ghCli.types';
 
-type ChatMode = 'Agent' | 'Chat' | 'Edit';
+type ChatMode = 'Agent' | 'Chat' | 'Edit' | 'Copilot';
 
 interface ChatPanelProps {
   onCollapse?: () => void;
@@ -59,7 +61,13 @@ export default function ChatPanel({ onCollapse }: ChatPanelProps) {
   const [modeMenuOpen, setModeMenuOpen] = useState(false);
   const [historySidebarOpen, setHistorySidebarOpen] = useState(false);
   const [input, setInput] = useState('');
+  const [planMode, setPlanMode] = useState(false);
   
+  // ── Copilot CLI state ──
+  const [copilotStatus, setCopilotStatus] = useState<GhCliStatus | null>(null);
+  const [copilotModel, setCopilotModel] = useState('');
+  const [copilotDetecting, setCopilotDetecting] = useState(false);
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const inputBoxRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -93,6 +101,27 @@ export default function ChatPanel({ onCollapse }: ChatPanelProps) {
   } = useAttachedFiles();
 
   const { endRef, scrollToBottom } = useScrollToBottom();
+
+  // ── Detect Copilot CLI on mount ──
+  useEffect(() => {
+    let cancelled = false;
+    setCopilotDetecting(true);
+    backend.ghCliDetect().then(status => {
+      if (cancelled) return;
+      setCopilotStatus(status);
+      // Auto-select first model
+      if (status.installed && status.models.length > 0 && !copilotModel) {
+        // Default to sonnet for speed per docs recommendation
+        const defaultModel = status.models.find(m => m.toLowerCase().includes('sonnet')) || status.models[0];
+        setCopilotModel(defaultModel);
+      }
+    }).catch(() => {
+      if (!cancelled) setCopilotStatus({ installed: false, version: null, models: [] });
+    }).finally(() => {
+      if (!cancelled) setCopilotDetecting(false);
+    });
+    return () => { cancelled = true; };
+  }, [backend]);
 
   // ── Workspace file paths for clickable file references ──
   const workspaceFiles = useMemo(() => flattenTree(tree), [tree]);
@@ -134,7 +163,80 @@ export default function ChatPanel({ onCollapse }: ChatPanelProps) {
   // ── Send message ──
   const sendMessage = useCallback(async () => {
     const text = input.trim();
-    if (!text || loading || !settings) return;
+    if (!text || loading) return;
+
+    // Copilot CLI mode
+    if (mode === 'Copilot') {
+      if (!copilotStatus?.installed) return;
+
+      await ensureConversation();
+
+      // Prepend /plan prefix if plan mode is active
+      const prompt = planMode ? `/plan ${text}` : text;
+
+      setMessages(prev => [...prev, {
+        text,
+        sender: 'user',
+        isCopilotCli: true,
+        ...(planMode ? { badge: '📋 Plan' } : {}),
+      }]);
+      setInput('');
+      clearFiles();
+      scrollToBottom();
+      setLoading(true);
+
+      // Add a placeholder for the bot response
+      setMessages(prev => [...prev, { text: '', sender: 'bot', isCopilotCli: true }]);
+
+      let fullResponse = '';
+      const chunkUnsub = backend.onGhCopilotChatChunk((chunk: string) => {
+        fullResponse += chunk;
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[updated.length - 1] = { text: fullResponse, sender: 'bot', isCopilotCli: true };
+          return updated;
+        });
+        scrollToBottom();
+      });
+      const doneUnsub = backend.onGhCopilotChatChunkDone(() => {
+        setLoading(false);
+        chunkUnsub();
+        doneUnsub();
+      });
+
+      try {
+        const result = await backend.ghCopilotChatStream(prompt, copilotModel || undefined);
+        if (!result.success) {
+          setMessages(prev => {
+            const updated = [...prev];
+            updated[updated.length - 1] = {
+              text: `⚠️ Copilot CLI Error: ${result.error || 'Unknown error'}.\n\nMake sure the \`copilot\` CLI is installed and authenticated.`,
+              sender: 'bot',
+            };
+            return updated;
+          });
+          setLoading(false);
+          chunkUnsub();
+          doneUnsub();
+        }
+      } catch (err: any) {
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[updated.length - 1] = {
+            text: `⚠️ Error: ${err.message}`,
+            sender: 'bot',
+          };
+          return updated;
+        });
+        setLoading(false);
+        chunkUnsub();
+        doneUnsub();
+      }
+      return;
+    }
+
+    // ── Local AI modes (Agent / Chat / Edit) ──
+    if (!settings) return;
     const model = selectedModel || settings.selectedModel;
     if (!model) { setSettingsOpen(true); return; }
 
@@ -203,11 +305,17 @@ export default function ChatPanel({ onCollapse }: ChatPanelProps) {
   }, [
     input, loading, settings, selectedModel, history, attachedFiles, scrollToBottom,
     folderPath, workspaceFiles, mode, gitIgnoredPaths, setMessages, setHistory,
-    ensureConversation, clearFiles, agentPipeline, streamResponse, setSettingsOpen,
+    ensureConversation, clearFiles, agentPipeline, streamResponse, setSettingsOpen, backend,
+    copilotStatus, copilotModel, planMode,
   ]);
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    // Shift+Tab toggles plan mode in Copilot mode (matching CLI behavior)
+    if (e.key === 'Tab' && e.shiftKey && mode === 'Copilot') {
+      e.preventDefault();
+      setPlanMode(prev => !prev);
+    }
   };
 
   const handleInput = (e: ChangeEvent<HTMLTextAreaElement>) => {
@@ -223,6 +331,15 @@ export default function ChatPanel({ onCollapse }: ChatPanelProps) {
   };
 
   const handleAddContext = () => fileInputRef.current?.click();
+
+  // Whether the Copilot CLI is available
+  const copilotAvailable = copilotStatus?.installed === true;
+  const copilotModels = copilotStatus?.models ?? [];
+
+  // Current model display name
+  const currentModelDisplay = mode === 'Copilot'
+    ? (copilotModel || 'Select model')
+    : (selectedModel || 'Select model');
 
   return (
     <div className="chat-panel-container">
@@ -256,9 +373,18 @@ export default function ChatPanel({ onCollapse }: ChatPanelProps) {
         {messages.length === 0 ? (
           <div className="chat-messages">
             <ChatWelcome
-              ready={ready}
-              selectedModel={selectedModel}
-              onOpenSettings={() => setSettingsOpen(true)}
+              ready={mode === 'Copilot' ? copilotAvailable : ready}
+              selectedModel={currentModelDisplay}
+              onOpenSettings={() => {
+                if (mode === 'Copilot') {
+                  // Navigate to the copilot panel for install help
+                  setActivePanel('copilot');
+                } else {
+                  setSettingsOpen(true);
+                }
+              }}
+              isCopilotMode={mode === 'Copilot'}
+              copilotInstalled={copilotAvailable}
             />
           </div>
         ) : (
@@ -279,6 +405,15 @@ export default function ChatPanel({ onCollapse }: ChatPanelProps) {
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
+          {/* Plan mode indicator */}
+          {mode === 'Copilot' && planMode && (
+            <div className="composer-plan-indicator">
+              <span>📋 Plan Mode</span>
+              <span className="plan-hint">Copilot will create a plan before coding. Press Shift+Tab to toggle.</span>
+              <button className="plan-exit-btn" onClick={() => setPlanMode(false)}>×</button>
+            </div>
+          )}
+
           {/* File chips */}
           {attachedFiles.length > 0 && (
             <div className="composer-files">
@@ -318,12 +453,16 @@ export default function ChatPanel({ onCollapse }: ChatPanelProps) {
           <textarea
             ref={textareaRef}
             className="composer-textarea"
-            placeholder={ready ? 'Ask anything, @ to mention…' : 'Configure AI first…'}
+            placeholder={
+              mode === 'Copilot'
+                ? (planMode ? 'Describe what to plan…' : 'Ask Copilot CLI anything…')
+                : (ready ? 'Ask anything, @ to mention…' : 'Configure AI first…')
+            }
             rows={1}
             value={input}
             onChange={handleInput}
             onKeyDown={handleKeyDown}
-            disabled={!ready || loading}
+            disabled={mode === 'Copilot' ? (!copilotAvailable || loading) : (!ready || loading)}
           />
 
           {/* Bottom toolbar */}
@@ -332,16 +471,58 @@ export default function ChatPanel({ onCollapse }: ChatPanelProps) {
               {/* Mode dropdown */}
               <div className="composer-dropdown-wrap">
                 <button className="composer-dropdown-btn" onClick={() => setModeMenuOpen(p => !p)}>
+                  {mode === 'Copilot' && <span className="mode-copilot-dot" />}
                   {mode} <span className="caret">▾</span>
                 </button>
                 {modeMenuOpen && (
-                  <div className="composer-dropdown-menu">
+                  <div className="composer-dropdown-menu grouped-mode-menu">
+                    {/* ── Copilot CLI section ── */}
+                    {copilotAvailable && (
+                      <>
+                        <div className="mode-group-label">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 4, opacity: 0.7 }}>
+                            <path d="M9.75 14a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0v-1.5a.75.75 0 0 1 .75-.75Zm4.5 0a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0v-1.5a.75.75 0 0 1 .75-.75Z"/>
+                          </svg>
+                          Copilot CLI
+                          <span className="mode-group-version">{copilotStatus?.version ? `v${copilotStatus.version}` : ''}</span>
+                        </div>
+                        <button 
+                          className={`composer-dropdown-item ${mode === 'Copilot' && !planMode ? 'active' : ''}`} 
+                          onClick={() => { setMode('Copilot'); setPlanMode(false); setModeMenuOpen(false); }}
+                        >
+                          <span className="mode-item-icon">✦</span> Copilot Chat
+                        </button>
+                        <button 
+                          className={`composer-dropdown-item ${mode === 'Copilot' && planMode ? 'active' : ''}`} 
+                          onClick={() => { setMode('Copilot'); setPlanMode(true); setModeMenuOpen(false); }}
+                        >
+                          <span className="mode-item-icon">📋</span> Copilot Plan
+                        </button>
+                        <div className="mode-group-divider" />
+                      </>
+                    )}
+                    {!copilotAvailable && !copilotDetecting && (
+                      <>
+                        <div className="mode-group-label mode-group-disabled">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: 4, opacity: 0.35 }}>
+                            <path d="M9.75 14a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0v-1.5a.75.75 0 0 1 .75-.75Zm4.5 0a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0v-1.5a.75.75 0 0 1 .75-.75Z"/>
+                          </svg>
+                          Copilot CLI — not detected
+                        </div>
+                        <div className="mode-group-divider" />
+                      </>
+                    )}
+                    {/* ── Local models section ── */}
+                    <div className="mode-group-label">Local AI</div>
                     {(['Agent', 'Chat', 'Edit'] as ChatMode[]).map(m => (
                       <button 
                         key={m} 
                         className={`composer-dropdown-item ${m === mode ? 'active' : ''}`} 
                         onClick={() => { setMode(m); setModeMenuOpen(false); }}
                       >
+                        <span className="mode-item-icon">
+                          {m === 'Agent' ? '🤖' : m === 'Chat' ? '💬' : '✏️'}
+                        </span>
                         {m}
                       </button>
                     ))}
@@ -349,17 +530,42 @@ export default function ChatPanel({ onCollapse }: ChatPanelProps) {
                 )}
               </div>
 
-              {/* Model dropdown */}
-              {models.length > 0 && (
-                <div className="composer-dropdown-wrap">
-                  <select 
-                    className="composer-model-select" 
-                    value={selectedModel} 
-                    onChange={e => setSelectedModel(e.target.value)}
-                  >
-                    {models.map(m => <option key={m} value={m}>{m}</option>)}
-                  </select>
-                </div>
+              {/* ── Model dropdown — split Local vs Copilot CLI ── */}
+              {mode === 'Copilot' ? (
+                copilotModels.length > 0 && (
+                  <div className="composer-dropdown-wrap">
+                    <select 
+                      className="composer-model-select copilot-model-select" 
+                      value={copilotModel} 
+                      onChange={e => setCopilotModel(e.target.value)}
+                    >
+                      {copilotModels.map(m => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                  </div>
+                )
+              ) : (
+                models.length > 0 && (
+                  <div className="composer-dropdown-wrap">
+                    <select 
+                      className="composer-model-select" 
+                      value={selectedModel} 
+                      onChange={e => setSelectedModel(e.target.value)}
+                    >
+                      {models.map(m => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                  </div>
+                )
+              )}
+
+              {/* Plan mode toggle for Copilot */}
+              {mode === 'Copilot' && (
+                <button
+                  className={`composer-plan-toggle ${planMode ? 'active' : ''}`}
+                  onClick={() => setPlanMode(p => !p)}
+                  title="Toggle Plan Mode (Shift+Tab)"
+                >
+                  📋
+                </button>
               )}
             </div>
 
@@ -378,11 +584,18 @@ export default function ChatPanel({ onCollapse }: ChatPanelProps) {
               </button>
               {/* Send / Stop */}
               {loading ? (
-                <button className="composer-stop-btn" onClick={stopMessage} title="Stop generating">
+                <button className="composer-stop-btn" onClick={() => {
+                  if (mode === 'Copilot') {
+                    backend.ghCopilotChatAbort();
+                    setLoading(false);
+                  } else {
+                    stopMessage();
+                  }
+                }} title="Stop generating">
                   <StopIcon />
                 </button>
               ) : (
-                <button className="composer-send-btn" onClick={sendMessage} disabled={!ready} title="Send">
+                <button className="composer-send-btn" onClick={sendMessage} disabled={mode === 'Copilot' ? !copilotAvailable : !ready} title="Send">
                   <SendIcon />
                   <span className="caret">▾</span>
                 </button>

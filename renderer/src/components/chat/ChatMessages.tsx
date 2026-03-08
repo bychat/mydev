@@ -32,9 +32,29 @@ export default function ChatMessages({
 }: ChatMessagesProps) {
   return (
     <div className="chat-messages">
-      {messages.map((msg, i) => (
-        <div key={i} className={`chat-msg ${msg.sender}`}>
-          <div className="bubble">
+      {messages.map((msg, i) => {
+        const isLastBot = msg.sender === 'bot' && i === messages.length - 1;
+        const isStreaming = isLastBot && loading;
+        return (
+        <div key={i} className={`chat-msg ${msg.sender}${msg.isCopilotCli ? ' copilot-cli' : ''}${isStreaming && msg.isCopilotCli ? ' cli-streaming' : ''}`}>
+          <div className={`bubble${msg.isCopilotCli && msg.sender === 'bot' ? ' cli-terminal-bubble' : ''}`}>
+            {/* Copilot CLI terminal header */}
+            {msg.isCopilotCli && msg.sender === 'bot' && (
+              <div className="cli-terminal-header">
+                <span className="cli-terminal-dots">
+                  <span className="cli-dot red" />
+                  <span className="cli-dot yellow" />
+                  <span className="cli-dot green" />
+                </span>
+                <span className="cli-terminal-title">GitHub Copilot CLI</span>
+              </div>
+            )}
+
+            {/* Copilot CLI user prompt badge */}
+            {msg.isCopilotCli && msg.sender === 'user' && msg.badge && (
+              <span className="cli-user-badge">{msg.badge}</span>
+            )}
+
             {/* Attached files */}
             {msg.files && msg.files.length > 0 && (
               <div className="bubble-files">
@@ -66,17 +86,22 @@ export default function ChatMessages({
 
             {/* Message content */}
             {msg.sender === 'bot' ? (
-              <div className="md-content">
-                <Markdown workspaceFiles={workspaceFiles} onFileClick={onFileClick}>
-                  {msg.text}
-                </Markdown>
-              </div>
+              msg.isCopilotCli ? (
+                <pre className="cli-terminal-output">{msg.text || '\u00A0'}</pre>
+              ) : (
+                <div className="md-content">
+                  <Markdown workspaceFiles={workspaceFiles} onFileClick={onFileClick}>
+                    {msg.text}
+                  </Markdown>
+                </div>
+              )
             ) : (
               !msg.isAgentProgress && msg.text
             )}
           </div>
         </div>
-      ))}
+        );
+      })}
 
       {/* Loading indicator */}
       {loading &&

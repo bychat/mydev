@@ -30,11 +30,21 @@ const AtlassianIcon = ({ size = 16 }: { size?: number }) => (
   </svg>
 );
 
-const panels: { id: SidePanel; icon: 'explorer' | 'search' | 'source-control' | 'npm' | 'supabase' | 'database' | 'github' | 'atlassian' | 'mcp'; label: string; gitOnly?: boolean; npmOnly?: boolean }[] = [
+// Copilot Icon component
+const CopilotIconSvg = ({ size = 16 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M9.75 14a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0v-1.5a.75.75 0 0 1 .75-.75Zm4.5 0a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0v-1.5a.75.75 0 0 1 .75-.75Z"/>
+    <path d="M12 2c2.214 0 4.248.657 5.747 1.756.136.099.268.204.397.312.584.235 1.077.546 1.474.952.85.87 1.132 2.037 1.132 3.368 0 .368-.014.733-.052 1.086l.633 1.478.043.022A4.75 4.75 0 0 1 24 15.222v1.028c0 .529-.309.987-.565 1.293-.28.336-.636.653-.966.918-.654.528-1.449.98-2.119 1.211-.36.125-.757.228-1.143.303C18.137 21.303 15.895 22 12 22s-6.137-.697-7.207-2.025a6.126 6.126 0 0 1-1.143-.303c-.67-.23-1.465-.683-2.119-1.211-.33-.265-.686-.582-.966-.918C.309 17.237 0 16.779 0 16.25v-1.028a4.75 4.75 0 0 1 2.626-4.248l.043-.022.633-1.478a10.195 10.195 0 0 1-.052-1.086c0-1.331.282-2.498 1.132-3.368.397-.406.89-.717 1.474-.952.129-.108.261-.213.397-.312C7.752 2.657 9.786 2 12 2Zm-8 9.654v6.669a17.59 17.59 0 0 0 2.073.98c.31.107.596.195.847.253a9.89 9.89 0 0 1-.12-.654c-.104-.676-.177-1.466-.177-2.343v-1.043c-.627-.416-1.073-.836-1.373-1.21-.338-.422-.594-.906-.75-1.35-.087-.25-.153-.503-.2-.702a8.146 8.146 0 0 1-.1-.573Zm16 0-.2.702c-.087.25-.153.503-.2.702-.156.444-.412.928-.75 1.35-.3.374-.746.794-1.373 1.21v1.043c0 .877-.073 1.667-.177 2.343a9.89 9.89 0 0 1-.12.654c.251-.058.537-.146.847-.253a17.59 17.59 0 0 0 2.073-.98v-6.669Z"/>
+  </svg>
+);
+
+
+const panels: { id: SidePanel; icon: 'explorer' | 'search' | 'source-control' | 'npm' | 'supabase' | 'database' | 'github' | 'atlassian' | 'mcp' | 'copilot'; label: string; gitOnly?: boolean; npmOnly?: boolean }[] = [
   { id: 'explorer', icon: 'explorer', label: 'Explorer' },
   { id: 'search', icon: 'search', label: 'Search' },
   { id: 'source-control', icon: 'source-control', label: 'Source Control', gitOnly: true },
   { id: 'npm', icon: 'npm', label: 'NPM Scripts', npmOnly: true },
+  { id: 'copilot', icon: 'copilot', label: 'GitHub Copilot' },
   { id: 'supabase', icon: 'supabase', label: 'Supabase' },
   { id: 'database', icon: 'database', label: 'Database' },
   { id: 'github', icon: 'github', label: 'GitHub Actions', gitOnly: true },
@@ -108,6 +118,8 @@ export default function ActivityBar({ onToggleTerminal, terminalVisible }: Activ
         return <AtlassianIcon />;
       case 'mcp':
         return <McpIcon />;
+      case 'copilot':
+        return <CopilotIconSvg />;
       default:
         return null;
     }

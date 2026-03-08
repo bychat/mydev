@@ -134,5 +134,14 @@ export function createElectronAdapter(): BackendAPI {
     mcpDisconnectServer: (id) => api.mcpDisconnectServer(id),
     mcpCallTool: (id, t, a) => api.mcpCallTool(id, t, a),
     mcpReadResource: (id, u) => api.mcpReadResource(id, u),
+
+    // ── GitHub Copilot CLI ──
+    ghCliDetect: () => api.ghCliDetect(),
+    ghCliInstallCopilot: () => api.ghCliInstallCopilot(),
+    ghCopilotChat: (p, m) => api.ghCopilotChat(p, m),
+    ghCopilotChatStream: (p, m) => api.ghCopilotChatStream(p, m),
+    onGhCopilotChatChunk: (cb) => api.onGhCopilotChatChunk(cb),
+    onGhCopilotChatChunkDone: (cb) => api.onGhCopilotChatChunkDone(cb),
+    ghCopilotChatAbort: () => api.ghCopilotChatAbort(),
   };
 }

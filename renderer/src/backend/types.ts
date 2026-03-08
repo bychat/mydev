@@ -42,6 +42,10 @@ import type {
   McpServersResult,
   McpToolCallResult,
 } from '../types/mcp.types';
+import type {
+  GhCliStatus,
+  GhCopilotChatResult,
+} from '../types/ghCli.types';
 
 // ─── Runtime mode ───────────────────────────────────────────────────────────
 
@@ -131,14 +135,14 @@ export interface BackendAPI {
   historyGetRecentWorkspaces(limit?: number): Promise<WorkspaceHistory[]>;
   historyOpenWorkspace(folderPath: string): Promise<WorkspaceHistory>;
   historyRemoveWorkspace(folderPath: string): Promise<{ success: boolean }>;
-  historyCreateConversation(folderPath: string, mode: 'Agent' | 'Chat' | 'Edit'): Promise<Conversation>;
+  historyCreateConversation(folderPath: string, mode: 'Agent' | 'Chat' | 'Edit' | 'Copilot'): Promise<Conversation>;
   historyGetConversation(folderPath: string, conversationId: string): Promise<Conversation | null>;
   historyGetActiveConversation(folderPath: string): Promise<Conversation | null>;
   historyUpdateConversation(
     folderPath: string,
     conversationId: string,
     messages: ChatMessage[],
-    mode?: 'Agent' | 'Chat' | 'Edit',
+    mode?: 'Agent' | 'Chat' | 'Edit' | 'Copilot',
   ): Promise<Conversation | null>;
   historyDeleteConversation(folderPath: string, conversationId: string): Promise<{ success: boolean; error?: string }>;
   historySetActiveConversation(folderPath: string, conversationId: string): Promise<{ success: boolean; error?: string }>;
@@ -189,4 +193,13 @@ export interface BackendAPI {
   mcpDisconnectServer(serverId: string): Promise<{ success: boolean; error?: string }>;
   mcpCallTool(serverId: string, toolName: string, args: Record<string, unknown>): Promise<{ success: boolean; error?: string; result?: McpToolCallResult }>;
   mcpReadResource(serverId: string, uri: string): Promise<{ success: boolean; error?: string; result?: any }>;
+
+  // ── GitHub Copilot CLI ──
+  ghCliDetect(): Promise<GhCliStatus>;
+  ghCliInstallCopilot(): Promise<{ success: boolean; error?: string }>;
+  ghCopilotChat(prompt: string, model?: string): Promise<GhCopilotChatResult>;
+  ghCopilotChatStream(prompt: string, model?: string): Promise<{ success: boolean; error?: string }>;
+  onGhCopilotChatChunk(cb: (chunk: string) => void): Unsubscribe;
+  onGhCopilotChatChunkDone(cb: () => void): Unsubscribe;
+  ghCopilotChatAbort(): Promise<{ success: boolean }>;
 }

@@ -48,4 +48,7 @@ export interface DisplayMessage {
   isAgentProgress?: boolean;
   agentActions?: FileActionProgress[];
   verifyAttempt?: number;
+  /** True when this message is part of a Copilot CLI session */
+  isCopilotCli?: boolean;
+  badge?: string;
 }

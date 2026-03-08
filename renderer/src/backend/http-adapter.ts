@@ -258,5 +258,14 @@ export function createHttpAdapter(): BackendAPI {
     mcpDisconnectServer: (id) => post('/api/mcp/disconnect', { serverId: id }),
     mcpCallTool: (id, t, a) => post('/api/mcp/call-tool', { serverId: id, toolName: t, args: a }),
     mcpReadResource: (id, u) => post('/api/mcp/read-resource', { serverId: id, uri: u }),
+
+    // ── GitHub Copilot CLI (stubs — only works in Electron) ──
+    ghCliDetect: async () => ({ installed: false, version: null, models: [], error: 'Not available in web mode' }),
+    ghCliInstallCopilot: async () => ({ success: false, error: 'Not available in web mode' }),
+    ghCopilotChat: async () => ({ success: false, response: '', error: 'Not available in web mode' }),
+    ghCopilotChatStream: async () => ({ success: false, error: 'Not available in web mode' }),
+    onGhCopilotChatChunk: () => () => {},
+    onGhCopilotChatChunkDone: () => () => {},
+    ghCopilotChatAbort: async () => ({ success: true }),
   };
 }
