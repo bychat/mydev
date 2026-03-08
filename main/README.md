@@ -9,7 +9,7 @@ Electron main-process modules. These run in Node.js with full system access and 
 | File | Description |
 |------|-------------|
 | **`index.ts`** | App entrypoint — creates `BrowserWindow`, registers IPC, builds menu |
-| **`ipc.ts`** | Registers all `ipcMain.handle()` handlers — the bridge between renderer and backend |
+| **`ipc.ts`** | Legacy IPC registration (still imports from `ipc/` barrel). See `ipc/` directory below |
 | **`ai.ts`** | AI chat completion (OpenAI-compatible). `chatComplete`, `chatCompleteStream`, `loadSettings`, `saveSettings`, `checkOllama`, `listModels` |
 | **`fileSystem.ts`** | File & Git operations — `readDirectoryTree`, `getGitChangedFiles`, `gitStage`, `gitCommit`, `gitPush`, `createFile`, `deleteFileOrFolder`, etc. |
 | **`chatHistory.ts`** | Conversation persistence — `loadAppHistory`, `createConversation`, `updateConversation`, `getRecentWorkspaces` |
@@ -20,6 +20,20 @@ Electron main-process modules. These run in Node.js with full system access and 
 | **`supabase.ts`** | Supabase API — users, storage, tables, SQL execution |
 | **`connectorIpc.ts`** | Connector Registry ↔ IPC bridge for the plugin system |
 | **`debugWindow.ts`** | Opens a secondary window showing AI request/response logs |
+
+## `ipc/` — Modular IPC Handlers
+
+IPC handlers have been split into domain-specific modules. Each file exports a `registerXxxIpc()` function called at startup.
+
+| File | Domain |
+|------|--------|
+| `ipc/index.ts` | Barrel — re-exports all registration functions |
+| `ipc/ai.ipc.ts` | AI chat, settings, models, Ollama check |
+| `ipc/fs.ipc.ts` | File system & Git operations |
+| `ipc/history.ipc.ts` | Chat history & workspaces |
+| `ipc/prompts.ipc.ts` | Agent prompt settings |
+| `ipc/integrations.ipc.ts` | Supabase, GitHub, Atlassian integrations |
+| `ipc/window.ipc.ts` | Window management (new window, folder select) |
 
 ## Data flow
 

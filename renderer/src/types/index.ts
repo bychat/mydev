@@ -65,5 +65,16 @@ export type {
 // UI types
 export type { SidePanel, ChatMode } from './ui.types';
 
+// MCP types
+export type {
+  McpServerConfig,
+  McpServerStatus,
+  McpTool,
+  McpResource,
+  McpToolCallResult,
+  McpRegistryEntry,
+  McpServersResult,
+} from './mcp.types';
+
 // Electron API types
 export type { ElectronAPI } from './electron.types';

@@ -11,6 +11,7 @@ import type { PromptSettings } from './prompts.types';
 import type { SupabaseConfig, SupabaseUsersResult, SupabaseStorageResult, SupabaseTablesResult, SqlQueryResult } from './supabase.types';
 import type { AtlassianConnection, AtlassianProjectsResult, AtlassianIssuesResult, AtlassianConnectionResult } from './atlassian.types';
 import type { GitHubRepoInfo, GitHubWorkflowsResult, GitHubRunsResult, GitHubJobsResult, GitHubLogsResult, GitHubIssuesResult, GitHubIssueFilterState } from './github.types';
+import type { McpServerConfig, McpServersResult, McpToolCallResult } from './mcp.types';
 
 export interface ElectronAPI {
   // Window management
@@ -104,6 +105,15 @@ export interface ElectronAPI {
   githubListIssues: (owner: string, repo: string, state?: GitHubIssueFilterState, perPage?: number) => Promise<GitHubIssuesResult>;
   // Shell
   shellOpenExternal: (url: string) => Promise<void>;
+  // MCP Servers
+  mcpLoadServers: () => Promise<McpServersResult>;
+  mcpSaveServers: (servers: McpServerConfig[]) => Promise<{ success: boolean }>;
+  mcpInstallServer: (config: McpServerConfig) => Promise<{ success: boolean; error?: string; server: McpServerConfig }>;
+  mcpUninstallServer: (serverId: string) => Promise<{ success: boolean; error?: string }>;
+  mcpConnectServer: (serverId: string) => Promise<{ success: boolean; error?: string; server?: McpServerConfig }>;
+  mcpDisconnectServer: (serverId: string) => Promise<{ success: boolean; error?: string }>;
+  mcpCallTool: (serverId: string, toolName: string, args: Record<string, unknown>) => Promise<{ success: boolean; error?: string; result?: McpToolCallResult }>;
+  mcpReadResource: (serverId: string, uri: string) => Promise<{ success: boolean; error?: string; result?: any }>;
 }
 
 declare global {

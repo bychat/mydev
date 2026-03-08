@@ -124,5 +124,15 @@ export function createElectronAdapter(): BackendAPI {
 
     // ── Shell ──
     shellOpenExternal: (u) => api.shellOpenExternal(u),
+
+    // ── MCP Servers ──
+    mcpLoadServers: () => api.mcpLoadServers(),
+    mcpSaveServers: (s) => api.mcpSaveServers(s),
+    mcpInstallServer: (c) => api.mcpInstallServer(c),
+    mcpUninstallServer: (id) => api.mcpUninstallServer(id),
+    mcpConnectServer: (id) => api.mcpConnectServer(id),
+    mcpDisconnectServer: (id) => api.mcpDisconnectServer(id),
+    mcpCallTool: (id, t, a) => api.mcpCallTool(id, t, a),
+    mcpReadResource: (id, u) => api.mcpReadResource(id, u),
   };
 }

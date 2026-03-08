@@ -1,10 +1,14 @@
-import { app, BrowserWindow, Menu } from 'electron';
 import * as path from 'path';
+import dotenv from 'dotenv';
+dotenv.config({ path: path.join(__dirname, '..', '..', '.env') });
+
+import { app, BrowserWindow, Menu } from 'electron';
 import * as fs from 'fs';
 import { registerIpcHandlers } from './ipc';
 import { registerTerminalHandlers, killAllTerminals } from './terminal';
 import { registerBuiltInConnectors } from '../connectors';
 import { registerConnectorIpcHandlers } from './connectorIpc';
+import { killAllMcpServers } from './mcpServers';
 
 // Check if we should use dev server or built files
 // Use built files if they exist and we're not running with VITE_DEV_SERVER env
@@ -131,5 +135,6 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   killAllTerminals();
+  killAllMcpServers();
   if (process.platform !== 'darwin') app.quit();
 });

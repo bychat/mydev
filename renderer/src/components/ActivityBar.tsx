@@ -13,6 +13,7 @@ import {
   SearchIcon,
   SupabaseIcon,
   DatabaseIcon,
+  McpIcon,
 } from './icons';
 
 // GitHub Icon component
@@ -29,7 +30,7 @@ const AtlassianIcon = ({ size = 16 }: { size?: number }) => (
   </svg>
 );
 
-const panels: { id: SidePanel; icon: 'explorer' | 'search' | 'source-control' | 'npm' | 'supabase' | 'database' | 'github' | 'atlassian'; label: string; gitOnly?: boolean; npmOnly?: boolean }[] = [
+const panels: { id: SidePanel; icon: 'explorer' | 'search' | 'source-control' | 'npm' | 'supabase' | 'database' | 'github' | 'atlassian' | 'mcp'; label: string; gitOnly?: boolean; npmOnly?: boolean }[] = [
   { id: 'explorer', icon: 'explorer', label: 'Explorer' },
   { id: 'search', icon: 'search', label: 'Search' },
   { id: 'source-control', icon: 'source-control', label: 'Source Control', gitOnly: true },
@@ -38,6 +39,7 @@ const panels: { id: SidePanel; icon: 'explorer' | 'search' | 'source-control' | 
   { id: 'database', icon: 'database', label: 'Database' },
   { id: 'github', icon: 'github', label: 'GitHub Actions', gitOnly: true },
   { id: 'atlassian', icon: 'atlassian', label: 'Atlassian' },
+  { id: 'mcp', icon: 'mcp', label: 'MCP Servers' },
 ];
 
 interface ActivityBarProps {
@@ -104,6 +106,8 @@ export default function ActivityBar({ onToggleTerminal, terminalVisible }: Activ
         return <GitHubIcon />;
       case 'atlassian':
         return <AtlassianIcon />;
+      case 'mcp':
+        return <McpIcon />;
       default:
         return null;
     }

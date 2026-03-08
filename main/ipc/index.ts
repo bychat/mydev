@@ -7,3 +7,4 @@ export { registerHistoryIpc } from './history.ipc';
 export { registerPromptsIpc } from './prompts.ipc';
 export { registerIntegrationsIpc } from './integrations.ipc';
 export { registerWindowIpc } from './window.ipc';
+export { registerMcpIpc } from './mcp.ipc';

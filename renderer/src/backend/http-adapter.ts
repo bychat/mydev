@@ -248,5 +248,15 @@ export function createHttpAdapter(): BackendAPI {
 
     // ── Shell ──
     shellOpenExternal: async (url) => { window.open(url, '_blank'); },
+
+    // ── MCP Servers ──
+    mcpLoadServers: () => get('/api/mcp/servers'),
+    mcpSaveServers: (s) => post('/api/mcp/servers', { servers: s }),
+    mcpInstallServer: (c) => post('/api/mcp/install', { config: c }),
+    mcpUninstallServer: (id) => post('/api/mcp/uninstall', { serverId: id }),
+    mcpConnectServer: (id) => post('/api/mcp/connect', { serverId: id }),
+    mcpDisconnectServer: (id) => post('/api/mcp/disconnect', { serverId: id }),
+    mcpCallTool: (id, t, a) => post('/api/mcp/call-tool', { serverId: id, toolName: t, args: a }),
+    mcpReadResource: (id, u) => post('/api/mcp/read-resource', { serverId: id, uri: u }),
   };
 }

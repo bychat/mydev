@@ -37,6 +37,11 @@ import type {
   GitHubIssuesResult,
   GitHubIssueFilterState,
 } from '../types/github.types';
+import type {
+  McpServerConfig,
+  McpServersResult,
+  McpToolCallResult,
+} from '../types/mcp.types';
 
 // ─── Runtime mode ───────────────────────────────────────────────────────────
 
@@ -174,4 +179,14 @@ export interface BackendAPI {
 
   // ── Shell ──
   shellOpenExternal(url: string): Promise<void>;
+
+  // ── MCP Servers ──
+  mcpLoadServers(): Promise<McpServersResult>;
+  mcpSaveServers(servers: McpServerConfig[]): Promise<{ success: boolean }>;
+  mcpInstallServer(config: McpServerConfig): Promise<{ success: boolean; error?: string; server: McpServerConfig }>;
+  mcpUninstallServer(serverId: string): Promise<{ success: boolean; error?: string }>;
+  mcpConnectServer(serverId: string): Promise<{ success: boolean; error?: string; server?: McpServerConfig }>;
+  mcpDisconnectServer(serverId: string): Promise<{ success: boolean; error?: string }>;
+  mcpCallTool(serverId: string, toolName: string, args: Record<string, unknown>): Promise<{ success: boolean; error?: string; result?: McpToolCallResult }>;
+  mcpReadResource(serverId: string, uri: string): Promise<{ success: boolean; error?: string; result?: any }>;
 }

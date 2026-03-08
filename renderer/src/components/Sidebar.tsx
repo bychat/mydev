@@ -7,6 +7,7 @@ import SupabasePanel from './SupabasePanel';
 import DatabasePanel from './DatabasePanel';
 import GitHubActionsTab from './GitHubActionsTab';
 import AtlassianPanel from './AtlassianPanel';
+import McpServersPanel from './McpServersPanel';
 import ExplorerGitControls from './ExplorerGitControls';
 import { ChevronLeftIcon } from './icons';
 
@@ -24,6 +25,7 @@ export default function Sidebar({ onCollapse }: SidebarProps) {
   if (activePanel === 'database') return <aside className="sidebar"><DatabasePanel /></aside>;
   if (activePanel === 'github') return <aside className="sidebar"><GitHubActionsTab /></aside>;
   if (activePanel === 'atlassian') return <aside className="sidebar"><AtlassianPanel /></aside>;
+  if (activePanel === 'mcp') return <aside className="sidebar"><McpServersPanel /></aside>;
 
   return (
     <aside className="sidebar">

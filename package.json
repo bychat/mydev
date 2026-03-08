@@ -12,16 +12,13 @@
     "dev:renderer": "vite",
     "dev:electron": "wait-on http://localhost:5173 && electron .",
     "start": "npm run build:main && vite build && electron .",
-
     "//── Web App ──": "",
     "web": "concurrently -n ui,api -c cyan,green \"vite\" \"tsx watch server/index.ts\"",
     "web:prod": "vite build && tsx server/index.ts",
-
     "//── CLI ──": "",
     "ask": "tsx cli/index.ts",
     "agent": "tsx cli/index.ts -m agent",
     "chat": "tsx cli/index.ts -m chat",
-
     "//── Build ──": "",
     "build": "npm run build:main && vite build && electron-builder",
     "build:main": "tsc",
@@ -29,17 +26,17 @@
     "build:mac": "npm run build:main && vite build && electron-builder --mac",
     "build:win": "npm run build:main && vite build && electron-builder --win",
     "build:linux": "npm run build:main && vite build && electron-builder --linux",
-
     "//── Server (standalone) ──": "",
     "server": "tsx server/index.ts",
     "server:dev": "tsx watch server/index.ts",
-
     "//── Test ──": "",
     "test:server": "bash scripts/test-server.sh",
-
     "//── Docker ──": "",
     "docker:build": "docker build -t bychat .",
-    "docker:run": "docker run --rm -it -v $(pwd):/workspace bychat"
+    "docker:run": "docker run --rm -it -v $(pwd):/workspace bychat",
+    "//── Native rebuild ──": "",
+    "postinstall": "electron-rebuild -f -w node-pty",
+    "rebuild": "electron-rebuild -f -w node-pty"
   },
   "build": {
     "appId": "io.bychat.app",
@@ -96,6 +93,7 @@
     "@xterm/xterm": "^6.0.0",
     "@xyflow/react": "^12.10.1",
     "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "node-pty": "^1.1.0",
     "openai": "^6.22.0",

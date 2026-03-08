@@ -10,6 +10,7 @@ import {
   registerPromptsIpc,
   registerIntegrationsIpc,
   registerWindowIpc,
+  registerMcpIpc,
 } from './ipc/index';
 
 export function registerIpcHandlers(getWindow: () => BW | null): void {
@@ -20,4 +21,5 @@ export function registerIpcHandlers(getWindow: () => BW | null): void {
   registerHistoryIpc();
   registerIntegrationsIpc();
   registerDebugIpc();
+  registerMcpIpc();
 }

@@ -123,4 +123,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   githubListIssues: (owner, repo, state, perPage) => ipcRenderer.invoke('github-list-issues', owner, repo, state, perPage),
   // Shell
   shellOpenExternal: (url) => ipcRenderer.invoke('shell-open-external', url),
+  // MCP Servers
+  mcpLoadServers: () => ipcRenderer.invoke('mcp-load-servers'),
+  mcpSaveServers: (servers) => ipcRenderer.invoke('mcp-save-servers', servers),
+  mcpInstallServer: (config) => ipcRenderer.invoke('mcp-install-server', config),
+  mcpUninstallServer: (serverId) => ipcRenderer.invoke('mcp-uninstall-server', serverId),
+  mcpConnectServer: (serverId) => ipcRenderer.invoke('mcp-connect-server', serverId),
+  mcpDisconnectServer: (serverId) => ipcRenderer.invoke('mcp-disconnect-server', serverId),
+  mcpCallTool: (serverId, toolName, args) => ipcRenderer.invoke('mcp-call-tool', serverId, toolName, args),
+  mcpReadResource: (serverId, uri) => ipcRenderer.invoke('mcp-read-resource', serverId, uri),
 });
