@@ -3,7 +3,7 @@
  */
 import { Router } from 'express';
 import * as ai from '../../main/ai';
-import { loadAISettings, saveAISettings } from '../../main/storage';
+import { loadAISettings, saveAISettings, loadEnvApiKeys } from '../../main/storage';
 import { ok, fail } from '../helpers';
 
 const router = Router();
@@ -37,6 +37,11 @@ router.get('/ai/settings', (_req, res) => {
 
 router.post('/ai/settings', (req, res) => {
   try { saveAISettings(req.body); ok(res, { success: true }); }
+  catch (err) { fail(res, err); }
+});
+
+router.get('/ai/env-keys', (_req, res) => {
+  try { ok(res, loadEnvApiKeys()); }
   catch (err) { fail(res, err); }
 });
 

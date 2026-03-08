@@ -3,7 +3,7 @@
  */
 
 export interface AISettings {
-  provider: 'ollama' | 'openai';
+  provider: 'ollama' | 'openai' | 'anthropic';
   baseUrl: string;
   apiKey: string;
   selectedModel: string;

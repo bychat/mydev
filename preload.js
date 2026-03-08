@@ -45,6 +45,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   aiChatAbort: () => ipcRenderer.invoke('ai-chat-abort'),
   aiLoadSettings: () => ipcRenderer.invoke('ai-load-settings'),
   aiSaveSettings: (settings) => ipcRenderer.invoke('ai-save-settings', settings),
+  aiGetEnvKeys: () => ipcRenderer.invoke('ai-get-env-keys'),
   // Prompt Settings
   promptsLoad: () => ipcRenderer.invoke('prompts-load'),
   promptsSave: (prompts) => ipcRenderer.invoke('prompts-save', prompts),

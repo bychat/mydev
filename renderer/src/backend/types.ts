@@ -111,6 +111,7 @@ export interface BackendAPI {
   aiChatAbort(): Promise<{ success: boolean }>;
   aiLoadSettings(): Promise<AISettings>;
   aiSaveSettings(settings: AISettings): Promise<{ success: boolean }>;
+  aiGetEnvKeys(): Promise<Record<string, { apiKey: string; baseUrl: string }>>;
 
   // ── Prompt settings ──
   promptsLoad(): Promise<PromptSettings>;

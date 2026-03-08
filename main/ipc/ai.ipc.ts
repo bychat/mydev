@@ -3,7 +3,7 @@
  */
 import { ipcMain, type BrowserWindow as BW } from 'electron';
 import { checkOllama, listModels, chatComplete, chatCompleteStream, type AISettings } from '../ai';
-import { loadAISettings, saveAISettings } from '../storage';
+import { loadAISettings, saveAISettings, loadEnvApiKeys } from '../storage';
 import { logRequest, logResult, logStreamingProgress } from '../debugWindow';
 
 /** Active AI chat AbortController — allows the renderer to cancel an in-flight request */
@@ -93,4 +93,6 @@ export function registerAiIpc(getWindow: () => BW | null): void {
     saveAISettings(settings);
     return { success: true };
   });
+
+  ipcMain.handle('ai-get-env-keys', async () => loadEnvApiKeys());
 }

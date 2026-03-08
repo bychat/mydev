@@ -170,6 +170,7 @@ export function createHttpAdapter(): BackendAPI {
     aiChatAbort: () => post('/api/ai/abort'),
     aiLoadSettings: () => get('/api/ai/settings'),
     aiSaveSettings: (s) => post('/api/ai/settings', s),
+    aiGetEnvKeys: () => get('/api/ai/env-keys'),
 
     // ── Prompt settings ──
     promptsLoad: () => get('/api/prompts'),

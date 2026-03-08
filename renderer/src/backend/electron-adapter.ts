@@ -60,6 +60,7 @@ export function createElectronAdapter(): BackendAPI {
     aiChatAbort: () => api.aiChatAbort(),
     aiLoadSettings: () => api.aiLoadSettings(),
     aiSaveSettings: (s) => api.aiSaveSettings(s),
+    aiGetEnvKeys: () => api.aiGetEnvKeys(),
 
     // ── Prompt settings ──
     promptsLoad: () => api.promptsLoad(),

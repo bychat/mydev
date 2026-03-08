@@ -53,6 +53,7 @@ export interface ElectronAPI {
   aiChatAbort: () => Promise<{ success: boolean }>;
   aiLoadSettings: () => Promise<AISettings>;
   aiSaveSettings: (settings: AISettings) => Promise<{ success: boolean }>;
+  aiGetEnvKeys: () => Promise<Record<string, { apiKey: string; baseUrl: string }>>;
   // Prompt Settings
   promptsLoad: () => Promise<PromptSettings>;
   promptsSave: (prompts: PromptSettings) => Promise<{ success: boolean }>;

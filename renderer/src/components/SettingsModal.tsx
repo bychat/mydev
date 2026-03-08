@@ -10,7 +10,7 @@ interface Props {
 
 export default function SettingsModal({ open, onClose, onSaved }: Props) {
   const backend = useBackend();
-  const [provider, setProvider] = useState<'ollama' | 'openai'>('ollama');
+  const [provider, setProvider] = useState<'ollama' | 'openai' | 'anthropic'>('ollama');
   const [baseUrl, setBaseUrl] = useState('http://localhost:11434/v1');
   const [apiKey, setApiKey] = useState('ollama');
   const [selectedModel, setSelectedModel] = useState('');
@@ -20,12 +20,22 @@ export default function SettingsModal({ open, onClose, onSaved }: Props) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
+  // Track the original loaded settings so provider switches can restore env-based keys
+  const [loadedSettings, setLoadedSettings] = useState<AISettings | null>(null);
+  // Cache of env-based API keys per provider (fetched once on open)
+  const [envKeys, setEnvKeys] = useState<Record<string, { apiKey: string; baseUrl: string }>>({});
+
   // Load saved settings on open
   useEffect(() => {
     if (!open) return;
     (async () => {
       try {
-        const settings = await backend.aiLoadSettings();
+        const [settings, keys] = await Promise.all([
+          backend.aiLoadSettings(),
+          backend.aiGetEnvKeys(),
+        ]);
+        setLoadedSettings(settings);
+        setEnvKeys(keys);
         setProvider(settings.provider);
         setBaseUrl(settings.baseUrl);
         setApiKey(settings.apiKey);
@@ -61,18 +71,31 @@ export default function SettingsModal({ open, onClose, onSaved }: Props) {
     fetchModels();
   }, [open, provider, baseUrl, apiKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleProviderChange = (p: 'ollama' | 'openai') => {
+  const handleProviderChange = (p: 'ollama' | 'openai' | 'anthropic') => {
     setProvider(p);
     setModels([]);
     setError('');
-    if (p === 'ollama') {
-      setBaseUrl('http://localhost:11434/v1');
-      setApiKey('ollama');
-    } else {
-      setBaseUrl('https://api.openai.com/v1');
-      setApiKey('');
-    }
     setSelectedModel('');
+
+    // If the loaded/saved settings are for this provider, restore them.
+    if (loadedSettings?.provider === p) {
+      setBaseUrl(loadedSettings.baseUrl);
+      setApiKey(loadedSettings.apiKey);
+      return;
+    }
+
+    // Otherwise, use env-based keys if available; fall back to sensible defaults.
+    const env = envKeys[p];
+    if (p === 'ollama') {
+      setBaseUrl(env?.baseUrl || 'http://localhost:11434/v1');
+      setApiKey('ollama');
+    } else if (p === 'openai') {
+      setBaseUrl(env?.baseUrl || 'https://api.openai.com/v1');
+      setApiKey(env?.apiKey || '');
+    } else if (p === 'anthropic') {
+      setBaseUrl('anthropic');
+      setApiKey(env?.apiKey || '');
+    }
   };
 
   const handleSave = async () => {
@@ -116,6 +139,12 @@ export default function SettingsModal({ open, onClose, onSaved }: Props) {
             >
               🤖 OpenAI
             </button>
+            <button
+              className={`provider-tab ${provider === 'anthropic' ? 'active' : ''}`}
+              onClick={() => handleProviderChange('anthropic')}
+            >
+              🟠 Anthropic
+            </button>
           </div>
 
           {/* Ollama status notice */}
@@ -134,13 +163,17 @@ export default function SettingsModal({ open, onClose, onSaved }: Props) {
           )}
 
           {/* Base URL */}
-          <label className="modal-label">Base URL</label>
-          <input
-            className="modal-input"
-            value={baseUrl}
-            onChange={e => setBaseUrl(e.target.value)}
-            placeholder={provider === 'ollama' ? 'http://localhost:11434/v1' : 'https://api.openai.com/v1'}
-          />
+          {provider !== 'anthropic' && (
+            <>
+              <label className="modal-label">Base URL</label>
+              <input
+                className="modal-input"
+                value={baseUrl}
+                onChange={e => setBaseUrl(e.target.value)}
+                placeholder={provider === 'ollama' ? 'http://localhost:11434/v1' : 'https://api.openai.com/v1'}
+              />
+            </>
+          )}
 
           {/* API Key */}
           <label className="modal-label">API Key</label>
@@ -149,11 +182,19 @@ export default function SettingsModal({ open, onClose, onSaved }: Props) {
             type="password"
             value={apiKey}
             onChange={e => setApiKey(e.target.value)}
-            placeholder={provider === 'ollama' ? 'ollama' : 'sk-...'}
+            placeholder={provider === 'ollama' ? 'ollama' : provider === 'anthropic' ? 'sk-ant-...' : 'sk-...'}
           />
           {provider === 'openai' && !apiKey && (
             <div className="modal-notice warn">
               Enter your OpenAI API key to use OpenAI models.
+            </div>
+          )}
+          {provider === 'anthropic' && !apiKey && (
+            <div className="modal-notice warn">
+              Enter your Anthropic API key to use Claude models.{' '}
+              <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer">
+                Get an API key →
+              </a>
             </div>
           )}
 
