@@ -2,18 +2,11 @@ name: Build & Release
 
 on:
   push:
-    branches: [main, master]
     tags: ['v*']
-  pull_request:
-    branches: [main, master]
   workflow_dispatch:
 
-# ── Shared env ──────────────────────────────────────────────────
-env:
-  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
 jobs:
-  # ── Quick build check (every push & PR – no artifacts) ───────
+  # ── Quick build check ────────────────────────────────────────
   check:
     runs-on: ubuntu-latest
     steps:
@@ -32,21 +25,9 @@ jobs:
       - name: Build renderer (Vite)
         run: npx vite build
 
-  # ── Determine the artifact label (tag name) ──────────────────
-  meta:
-    if: startsWith(github.ref, 'refs/tags/')
-    runs-on: ubuntu-latest
-    outputs:
-      label: ${{ steps.label.outputs.value }}
-    steps:
-      - name: Compute label
-        id: label
-        run: echo "value=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
-
   # ── macOS build (universal – Intel + Apple Silicon) ───────────
   build-mac:
-    if: startsWith(github.ref, 'refs/tags/')
-    needs: meta
+    needs: check
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -72,15 +53,16 @@ jobs:
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: mydev-bychat-io-mac-${{ needs.meta.outputs.label }}
-          path: |
-            dist/*.dmg
+          name: mydev-mac
+          path: dist/*.dmg
           if-no-files-found: error
+          retention-days: 0
+          # 2 hour retention — GitHub rounds up to nearest day minimum,
+          # but the intent is short-lived artifacts for testing.
 
   # ── Windows build (x64 .exe installer) ───────────────────────
   build-win:
-    if: startsWith(github.ref, 'refs/tags/')
-    needs: meta
+    needs: check
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -104,15 +86,14 @@ jobs:
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: mydev-bychat-io-win-x64-${{ needs.meta.outputs.label }}
-          path: |
-            dist/*.exe
+          name: mydev-win-x64
+          path: dist/*.exe
           if-no-files-found: error
+          retention-days: 0
 
   # ── Linux build (x64 AppImage) ───────────────────────────────
   build-linux:
-    if: startsWith(github.ref, 'refs/tags/')
-    needs: meta
+    needs: check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -136,37 +117,7 @@ jobs:
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: mydev-bychat-io-linux-x64-${{ needs.meta.outputs.label }}
-          path: |
-            dist/*.AppImage
+          name: mydev-linux-x64
+          path: dist/*.AppImage
           if-no-files-found: error
-
-  # ── GitHub Release (only on tags) ────────────────────────────
-  release:
-    if: startsWith(github.ref, 'refs/tags/')
-    needs: [meta, build-mac, build-win, build-linux]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: release-assets
-          merge-multiple: true
-
-      - name: List downloaded files
-        run: find release-assets -type f
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ needs.meta.outputs.label }}
-          name: Release ${{ needs.meta.outputs.label }}
-          generate_release_notes: true
-          files: |
-            release-assets/**/*.dmg
-            release-assets/**/*.exe
-            release-assets/**/*.AppImage
+          retention-days: 0
