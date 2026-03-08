@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { WorkspaceProvider, useWorkspace } from './context/WorkspaceContext';
 import { useBackend } from './context/BackendContext';
+import { AgentExecutionProvider } from './context/AgentExecutionContext';
 import StatusBar from './components/StatusBar';
 import ActivityBar from './components/ActivityBar';
 import Sidebar from './components/Sidebar';
@@ -175,7 +176,9 @@ function AppLayout() {
 export default function App() {
   return (
     <WorkspaceProvider>
-      <AppLayout />
+      <AgentExecutionProvider>
+        <AppLayout />
+      </AgentExecutionProvider>
     </WorkspaceProvider>
   );
 }

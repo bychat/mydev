@@ -403,3 +403,110 @@ export function renameFileOrFolder(oldPath: string, newPath: string): { success:
     return { success: false, error: (err as Error).message };
   }
 }
+
+// ── Text Search ──
+
+export interface TextSearchMatch {
+  file: string;       // relative path from folderPath
+  line: number;       // 1-based line number
+  column: number;     // 0-based column of the match
+  text: string;       // the full line text (trimmed)
+  matchLength: number;
+}
+
+export interface TextSearchResult {
+  success: boolean;
+  query: string;
+  matches: TextSearchMatch[];
+  truncated: boolean;
+  error?: string;
+}
+
+/**
+ * Search for a text pattern across all files in a workspace folder.
+ * Uses `grep -rnI` for performance, with a max result limit.
+ */
+export function searchText(
+  folderPath: string,
+  query: string,
+  options?: {
+    caseSensitive?: boolean;
+    maxResults?: number;
+    includePattern?: string;   // glob, e.g. "*.ts"
+    excludeDirs?: string[];
+  },
+): TextSearchResult {
+  const maxResults = options?.maxResults ?? 200;
+  const excludeDirs = options?.excludeDirs ?? ['node_modules', '.git', '__pycache__', 'dist', 'dist-main', '.next', 'build', 'coverage'];
+
+  if (!query || !folderPath) {
+    return { success: false, query, matches: [], truncated: false, error: 'Missing query or folder path' };
+  }
+
+  try {
+    const excludeArgs = excludeDirs.map(d => `--exclude-dir=${d}`).join(' ');
+    const caseFlag = options?.caseSensitive ? '' : '-i';
+    const includeArg = options?.includePattern ? `--include="${options.includePattern}"` : '';
+
+    // -r recursive, -n line numbers, -I skip binary files
+    const cmd = `grep -rnI ${caseFlag} ${includeArg} ${excludeArgs} --max-count=50 -- ${JSON.stringify(query)} . | head -n ${maxResults}`;
+
+    let output: string;
+    try {
+      output = execSync(cmd, {
+        cwd: folderPath,
+        encoding: 'utf-8',
+        maxBuffer: 10 * 1024 * 1024, // 10 MB
+        stdio: ['pipe', 'pipe', 'pipe'],
+        timeout: 15000,
+      });
+    } catch (err: unknown) {
+      // grep returns exit code 1 when no matches found — that's OK
+      const execErr = err as { status?: number; stdout?: string };
+      if (execErr.status === 1) {
+        return { success: true, query, matches: [], truncated: false };
+      }
+      // If there IS stdout (exit code 2 = partial errors), still parse it
+      if (execErr.stdout) {
+        output = execErr.stdout;
+      } else {
+        return { success: false, query, matches: [], truncated: false, error: (err as Error).message };
+      }
+    }
+
+    const lines = output.trim().split('\n').filter(Boolean);
+    const truncated = lines.length >= maxResults;
+    const matches: TextSearchMatch[] = [];
+
+    for (const line of lines) {
+      // Format: ./relative/path:lineNo:lineText
+      const firstColon = line.indexOf(':');
+      if (firstColon === -1) continue;
+      const secondColon = line.indexOf(':', firstColon + 1);
+      if (secondColon === -1) continue;
+
+      let filePart = line.slice(0, firstColon);
+      if (filePart.startsWith('./')) filePart = filePart.slice(2);
+      const lineNum = parseInt(line.slice(firstColon + 1, secondColon), 10);
+      const lineText = line.slice(secondColon + 1);
+
+      if (isNaN(lineNum)) continue;
+
+      const lowerLine = options?.caseSensitive ? lineText : lineText.toLowerCase();
+      const lowerQuery = options?.caseSensitive ? query : query.toLowerCase();
+      const col = lowerLine.indexOf(lowerQuery);
+
+      matches.push({
+        file: filePart,
+        line: lineNum,
+        column: col >= 0 ? col : 0,
+        text: lineText.trim().slice(0, 300),
+        matchLength: query.length,
+      });
+    }
+
+    return { success: true, query, matches, truncated };
+  } catch (err: unknown) {
+    return { success: false, query, matches: [], truncated: false, error: (err as Error).message };
+  }
+}

@@ -188,3 +188,45 @@ export function loadMcpServers(): McpServerConfig[] {
 export function saveMcpServers(servers: McpServerConfig[]): void {
   writeJSON(MCP_SERVERS_FILE(), servers);
 }
+
+// ── Agent Configs ────────────────────────────────────────────────────────────
+
+export interface StoredAgentConfig {
+  id: string;
+  name: string;
+  description: string;
+  nodes: unknown[];
+  edges: unknown[];
+  createdAt: string;
+  updatedAt: string;
+  isDefault?: boolean;
+}
+
+const AGENTS_FILE = () => dataFile('agent-configs.json');
+
+export function loadAgentConfigs(): StoredAgentConfig[] {
+  return readJSON<StoredAgentConfig[]>(AGENTS_FILE(), []);
+}
+
+export function saveAgentConfigs(configs: StoredAgentConfig[]): void {
+  writeJSON(AGENTS_FILE(), configs);
+}
+
+export function saveAgentConfig(config: StoredAgentConfig): void {
+  const all = loadAgentConfigs();
+  const idx = all.findIndex(c => c.id === config.id);
+  if (idx >= 0) {
+    all[idx] = config;
+  } else {
+    all.push(config);
+  }
+  saveAgentConfigs(all);
+}
+
+export function deleteAgentConfig(agentId: string): boolean {
+  const all = loadAgentConfigs();
+  const filtered = all.filter(c => c.id !== agentId);
+  if (filtered.length === all.length) return false;
+  saveAgentConfigs(filtered);
+  return true;
+}

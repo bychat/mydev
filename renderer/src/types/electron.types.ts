@@ -2,7 +2,7 @@
  * Electron API types
  */
 
-import type { FolderResult, FileResult, SaveResult, TreeEntry, Tab } from './file.types';
+import type { FolderResult, FileResult, SaveResult, TreeEntry, Tab, TextSearchResult, TextSearchOptions } from './file.types';
 import type { GitChange, GitFileChange, DiffResult, GitBranchInfo, GitOpResult } from './git.types';
 import type { NpmProject } from './npm.types';
 import type { AISettings, ChatMessage, AIChatResult } from './ai.types';
@@ -28,6 +28,7 @@ export interface ElectronAPI {
   deleteFileOrFolder: (targetPath: string) => Promise<SaveResult>;
   renameFileOrFolder: (oldPath: string, newPath: string) => Promise<SaveResult>;
   refreshTree: (folderPath: string) => Promise<TreeEntry[]>;
+  searchText: (folderPath: string, query: string, options?: TextSearchOptions) => Promise<TextSearchResult>;
   gitStatus: (folderPath: string) => Promise<GitChange[]>;
   gitStatusSplit: (folderPath: string) => Promise<GitFileChange[]>;
   gitDiff: (folderPath: string, filePath: string) => Promise<DiffResult>;
@@ -133,6 +134,10 @@ export interface ElectronAPI {
   onCliProviderChatChunk: (cb: (chunk: string) => void) => () => void;
   onCliProviderChatChunkDone: (cb: () => void) => () => void;
   cliProviderChatAbort: () => Promise<{ success: boolean }>;
+  // Agent Configs
+  agentLoadConfigs: () => Promise<unknown[]>;
+  agentSaveConfig: (config: unknown) => Promise<{ success: boolean }>;
+  agentDeleteConfig: (agentId: string) => Promise<{ success: boolean }>;
 }
 
 declare global {

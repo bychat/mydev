@@ -10,3 +10,5 @@ export { useGitOps } from './useGitOps';
 export { useTabManager } from './useTabManager';
 export { useAgentPipeline } from './useAgentPipeline';
 export { useMessageStream } from './useMessageStream';
+export { useAgentConfigs } from './useAgentConfigs';
+export { useAgentTrace } from './useAgentTrace';

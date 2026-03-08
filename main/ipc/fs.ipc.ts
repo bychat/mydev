@@ -26,6 +26,7 @@ import {
   createFolder,
   deleteFileOrFolder,
   renameFileOrFolder,
+  searchText,
 } from '../fileSystem';
 import { openFolder } from '../workspace';
 
@@ -110,4 +111,14 @@ export function registerFsIpc(): void {
   ipcMain.handle('git-create-branch', async (_event, folderPath: string, branch: string) => gitCreateBranch(folderPath, branch));
   ipcMain.handle('git-pull', async (_event, folderPath: string) => gitPull(folderPath));
   ipcMain.handle('git-push', async (_event, folderPath: string) => gitPush(folderPath));
+
+  // ── Text Search ──
+  ipcMain.handle('search-text', async (
+    _event,
+    folderPath: string,
+    query: string,
+    options?: { caseSensitive?: boolean; maxResults?: number; includePattern?: string; excludeDirs?: string[] },
+  ) => {
+    return searchText(folderPath, query, options);
+  });
 }

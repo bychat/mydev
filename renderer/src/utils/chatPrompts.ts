@@ -10,6 +10,8 @@ import {
   buildSystemContext as _buildSystemContext,
   buildResearchPrompt as _buildResearchPrompt,
   parseResearchResponse,
+  buildSearchDecisionPrompt,
+  parseSearchDecisionResponse,
   buildCheckAgentPrompt,
   parseCheckAgentResponse,
   buildActionPlanPrompt as _buildActionPlanPrompt,
@@ -22,6 +24,8 @@ import {
 // Re-export everything the renderer already imports
 export {
   parseResearchResponse,
+  buildSearchDecisionPrompt,
+  parseSearchDecisionResponse,
   buildCheckAgentPrompt,
   parseCheckAgentResponse,
   parseActionPlanResponse,

@@ -36,3 +36,28 @@ export interface Tab {
   modified: boolean;
   readOnly?: boolean;
 }
+
+// ── Text Search ──
+
+export interface TextSearchMatch {
+  file: string;
+  line: number;
+  column: number;
+  text: string;
+  matchLength: number;
+}
+
+export interface TextSearchOptions {
+  caseSensitive?: boolean;
+  maxResults?: number;
+  includePattern?: string;
+  excludeDirs?: string[];
+}
+
+export interface TextSearchResult {
+  success: boolean;
+  query: string;
+  matches: TextSearchMatch[];
+  truncated: boolean;
+  error?: string;
+}

@@ -35,6 +35,7 @@ import {
   FolderIcon,
 } from './icons';
 import { isCliMode, getCliProviderId, type ChatMode } from '../types/ui.types';
+import { useAgentExecution } from '../context/AgentExecutionContext';
 
 interface ChatPanelProps {
   onCollapse?: () => void;
@@ -129,10 +130,22 @@ export default function ChatPanel({ onCollapse }: ChatPanelProps) {
   // ── Workspace file paths for clickable file references ──
   const workspaceFiles = useMemo(() => flattenTree(tree), [tree]);
 
+  // ── Agent execution context (shared trace state) ──
+  const agentExec = useAgentExecution();
+
   // ── Agent pipeline & streaming hooks ──
+  const traceCallbacks = useMemo(() => ({
+    startTrace: agentExec.startTrace,
+    addStep: agentExec.addStep,
+    completeStep: agentExec.completeStep,
+    failStep: agentExec.failStep,
+    finishTrace: agentExec.finishTrace,
+  }), [agentExec]);
+
   const agentPipeline = useAgentPipeline({
     folderPath, workspaceFiles, gitIgnoredPaths,
     scrollToBottom, setMessages, setHistory,
+    trace: traceCallbacks,
   });
   const { streamResponse, stopMessage } = useMessageStream({
     scrollToBottom, setMessages, setHistory, setLoading,
@@ -262,8 +275,17 @@ export default function ChatPanel({ onCollapse }: ChatPanelProps) {
     const isFirstMessage = history.length === 0;
     setLoading(true);
 
+    // Start a trace for this agent run
+    const isAgentMode = mode === 'Agent';
+    if (isAgentMode) {
+      agentExec.startTrace(agentExec.activeAgentId, agentExec.activeAgent.name, text);
+      // Trace: user input step
+      const inputStepId = agentExec.addStep('user-input', 'User Message', 'entry', 'tool-call', `User: "${text.slice(0, 80)}${text.length > 80 ? '…' : ''}"`, { text, attachedFiles: currentFiles.length });
+      agentExec.completeStep(inputStepId, { text });
+    }
+
     const ai = { baseUrl: settings.baseUrl, apiKey: settings.apiKey, model };
-    let researchedFiles: Array<{ name: string; path: string; content?: string }> = [];
+    let researchedFiles: Array<{ name: string; path: string; content?: string; searchContext?: string }> = [];
 
     if (isFirstMessage && folderPath && workspaceFiles.size > 0) {
       researchedFiles = await agentPipeline.runResearchStep(text, ai);
@@ -272,6 +294,12 @@ export default function ChatPanel({ onCollapse }: ChatPanelProps) {
     const allContextFiles = [...currentFiles, ...researchedFiles];
     let contextPrefix = '';
     if (allContextFiles.length > 0) {
+      // Collect text search context if any
+      const searchContext = researchedFiles
+        .filter((f): f is typeof f & { searchContext: string } => !!f.searchContext)
+        .map(f => f.searchContext)
+        .join('\n');
+
       contextPrefix = allContextFiles
         .filter(f => f.content)
         .map(f => {
@@ -280,7 +308,13 @@ export default function ChatPanel({ onCollapse }: ChatPanelProps) {
             : f.name;
           return `--- File: ${relPath} ---\n${f.content}`;
         })
-        .join('\n\n') + '\n\n';
+        .join('\n\n');
+
+      if (searchContext) {
+        contextPrefix += `\n\n--- Text Search Results ---\n${searchContext}`;
+      }
+
+      contextPrefix += '\n\n';
     }
 
     const userContent = contextPrefix + text;
@@ -303,12 +337,23 @@ export default function ChatPanel({ onCollapse }: ChatPanelProps) {
       await agentPipeline.runFileChangeStep(text, newHistory, ai);
     }
 
+    // Trace: streaming response LLM call
+    const streamStepId = isAgentMode
+      ? agentExec.addStep('chat-response', 'Chat Response', 'output', 'llm-call', 'Streaming response', { model })
+      : undefined;
+
     await streamResponse(settings.baseUrl, settings.apiKey, model, newHistory);
+
+    // Finish trace
+    if (isAgentMode) {
+      if (streamStepId) agentExec.completeStep(streamStepId, { status: 'streamed' }, { stopReason: 'end_turn' });
+      agentExec.finishTrace('success');
+    }
   }, [
     input, loading, settings, selectedModel, history, attachedFiles, scrollToBottom,
     folderPath, workspaceFiles, mode, gitIgnoredPaths, setMessages, setHistory,
     ensureConversation, clearFiles, agentPipeline, streamResponse, setSettingsOpen, backend,
-    cliProviders, cliModel, planMode,
+    cliProviders, cliModel, planMode, agentExec,
   ]);
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {

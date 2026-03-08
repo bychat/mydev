@@ -86,3 +86,21 @@ export type { GhCliStatus, GhCopilotChatResult } from './ghCli.types';
 // CLI Provider types (generic)
 export type { CliProviderId, CliProviderMeta, CliProviderStatus, CliChatResult } from './cliProvider.types';
 export { CLI_PROVIDERS } from './cliProvider.types';
+
+// Agent types
+export type {
+  PhaseCategory,
+  AgentTool,
+  AgentNode,
+  AgentEdge,
+  AgentConfig,
+  TraceStepStatus,
+  TraceStep,
+  AgentTrace,
+} from './agent.types';
+export { ALL_AGENT_TOOLS } from './agent.types';
+
+// Session types
+export type {
+  ActiveSession,
+} from './session.types';

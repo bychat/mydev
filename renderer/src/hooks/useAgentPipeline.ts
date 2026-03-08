@@ -5,7 +5,8 @@
  *   3. Action plan + file execution
  *   4. Verification loop
  *
- * Extracted from ChatPanel to keep the component focused on UI.
+ * Each step emits execution trace events via the optional `trace` callbacks,
+ * so the Agent Builder's trace viewer can display real-time observability.
  */
 import { useCallback } from 'react';
 import type { ChatMessage, FileActionPlan, FileActionProgress, DisplayMessage } from '../types';
@@ -18,6 +19,8 @@ import {
   buildSystemContext,
   buildResearchPrompt,
   parseResearchResponse,
+  buildSearchDecisionPrompt,
+  parseSearchDecisionResponse,
   buildCheckAgentPrompt,
   parseCheckAgentResponse,
   buildActionPlanPrompt,
@@ -26,9 +29,19 @@ import {
   buildVerifyPrompt,
   parseVerifyResponse,
 } from '../utils';
+import type { TraceStep, PhaseCategory } from '../types/agent.types';
 
 type SetMessages = React.Dispatch<React.SetStateAction<DisplayMessage[]>>;
 type SetHistory = React.Dispatch<React.SetStateAction<ChatMessage[]>>;
+
+/** Optional trace callbacks — when provided, every AI/tool call is logged */
+export interface TraceCallbacks {
+  startTrace: (agentId: string, agentName: string, userRequest: string) => string;
+  addStep: (nodeId: string, nodeLabel: string, category: PhaseCategory, type: TraceStep['type'], summary: string, input?: unknown) => string;
+  completeStep: (stepId: string, output?: unknown, extras?: Partial<TraceStep>) => void;
+  failStep: (stepId: string, error: string) => void;
+  finishTrace: (status?: 'success' | 'error') => void;
+}
 
 interface AgentPipelineDeps {
   folderPath: string | null;
@@ -37,6 +50,7 @@ interface AgentPipelineDeps {
   scrollToBottom: () => void;
   setMessages: SetMessages;
   setHistory: SetHistory;
+  trace?: TraceCallbacks;
 }
 
 interface AIConfig {
@@ -46,7 +60,7 @@ interface AIConfig {
 }
 
 export function useAgentPipeline(deps: AgentPipelineDeps) {
-  const { folderPath, workspaceFiles, gitIgnoredPaths, scrollToBottom, setMessages, setHistory } = deps;
+  const { folderPath, workspaceFiles, gitIgnoredPaths, scrollToBottom, setMessages, setHistory, trace } = deps;
   const backend = useBackend();
 
   /** Read multiple files for context */
@@ -104,10 +118,20 @@ export function useAgentPipeline(deps: AgentPipelineDeps) {
 
       let currentContent: string | null = null;
       if (plan.action !== 'create') {
+        // Trace: file read
+        const readStepId = trace?.addStep('file-reader', 'File Reader', 'execution', 'file-read', `Reading ${plan.file}`, { path: fullPath });
         try {
           const result = await backend.readFile(fullPath);
-          if (result.success) currentContent = result.content ?? null;
-        } catch { /* file might not exist */ }
+          if (result.success) {
+            currentContent = result.content ?? null;
+            if (readStepId) trace?.completeStep(readStepId, { contentLength: currentContent?.length ?? 0 });
+          } else if (readStepId) {
+            trace?.failStep(readStepId, 'File not found');
+          }
+        } catch (err: unknown) {
+          if (readStepId) trace?.failStep(readStepId, (err as Error).message);
+          /* file might not exist */
+        }
       }
 
       progressList[i] = { ...progressList[i], status: 'updating' };
@@ -125,6 +149,10 @@ export function useAgentPipeline(deps: AgentPipelineDeps) {
 
       try {
         const changeMessages = buildFileChangePrompt(plan, currentContent, userRequest, chatHistory);
+        // Trace: LLM call for code editing
+        const editStepId = trace?.addStep('code-editor', 'Code Editor Agent', 'execution', 'llm-call',
+          `${plan.action === 'create' ? 'Creating' : 'Editing'} ${plan.file}`,
+          { file: plan.file, action: plan.action, description: plan.description });
         const changeResult = await backend.aiChat(ai.baseUrl, ai.apiKey, ai.model, changeMessages);
 
         if (changeResult.success && changeResult.reply) {
@@ -139,13 +167,23 @@ export function useAgentPipeline(deps: AgentPipelineDeps) {
               newContent = stripMarkdownFences(changeResult.reply);
             }
           }
+          if (editStepId) trace?.completeStep(editStepId, { newContentLength: newContent.length }, {
+            stopReason: 'end_turn',
+          });
+
+          // Trace: file write
+          const writeStepId = trace?.addStep('file-writer', 'File Writer', 'execution', 'file-write',
+            `Writing ${plan.file}`, { path: fullPath, action: plan.action });
           await backend.saveFile(fullPath, newContent);
+          if (writeStepId) trace?.completeStep(writeStepId, { bytesWritten: newContent.length });
+
           progressList[i] = {
             ...progressList[i],
             status: 'done',
             diff: { before: currentContent ?? '', after: newContent },
           };
         } else {
+          if (editStepId) trace?.failStep(editStepId, changeResult.error ?? 'AI failed to generate changes');
           progressList[i] = {
             ...progressList[i],
             status: 'error',
@@ -171,11 +209,98 @@ export function useAgentPipeline(deps: AgentPipelineDeps) {
     return buildSystemContext(folderPath, workspaceFiles, gitIgnoredPaths);
   }, [folderPath, workspaceFiles, gitIgnoredPaths]);
 
-  /** Step 1: Research — discover relevant files on first message */
+  /** Step 0.5: Search Decision — ask the agent if it wants to search for a specific term */
+  const runSearchDecisionStep = useCallback(async (
+    text: string,
+    ai: AIConfig,
+  ): Promise<{ searchResults: string; extraFiles: string[] }> => {
+    if (!folderPath) return { searchResults: '', extraFiles: [] };
+
+    try {
+      const decisionMessages = buildSearchDecisionPrompt(text, folderPath, workspaceFiles.size);
+      // Trace: search decision LLM call
+      const decisionStepId = trace?.addStep('search-decision', 'Search Decision Agent', 'research', 'llm-call',
+        'Deciding if text search is needed', { userQuery: text, totalFiles: workspaceFiles.size });
+      const decisionResult = await backend.aiChat(ai.baseUrl, ai.apiKey, ai.model, decisionMessages);
+
+      if (decisionResult.success && decisionResult.reply) {
+        const decision = parseSearchDecisionResponse(decisionResult.reply);
+        if (decisionStepId) trace?.completeStep(decisionStepId, decision, { stopReason: 'end_turn' });
+
+        if (decision.wantsTextSearch && decision.searchQueries.length > 0) {
+          // Perform text search for each query
+          let combinedResults = '';
+          const discoveredFiles = new Set<string>();
+
+          for (const query of decision.searchQueries) {
+            const searchStepId = trace?.addStep('text-search', 'Text Search', 'research', 'text-search',
+              `Searching for "${query}"`, { query, filePatterns: decision.filePatterns });
+
+            setMessages(prev => {
+              const updated = [...prev];
+              const statusIdx = findLastIdx(updated, m => !!m.isResearchStatus);
+              if (statusIdx >= 0) {
+                updated[statusIdx] = {
+                  text: `🔎 Searching for "${query}"…`,
+                  sender: 'system',
+                  isResearchStatus: true,
+                };
+              }
+              return updated;
+            });
+            scrollToBottom();
+
+            try {
+              const searchResult = await backend.searchText(folderPath, query, {
+                maxResults: 50,
+                includePattern: decision.filePatterns.length > 0 ? decision.filePatterns[0] : undefined,
+              });
+
+              if (searchResult.success && searchResult.matches.length > 0) {
+                const matchSummary = searchResult.matches.slice(0, 30).map(m =>
+                  `${m.file}:${m.line}: ${m.text}`
+                ).join('\n');
+                combinedResults += `\n## Search results for "${query}" (${searchResult.matches.length} matches${searchResult.truncated ? ', truncated' : ''}):\n${matchSummary}\n`;
+
+                // Collect unique files that contain matches
+                for (const m of searchResult.matches) {
+                  discoveredFiles.add(m.file);
+                }
+
+                if (searchStepId) trace?.completeStep(searchStepId, {
+                  matchCount: searchResult.matches.length,
+                  truncated: searchResult.truncated,
+                  uniqueFiles: discoveredFiles.size,
+                  topMatches: searchResult.matches.slice(0, 5).map(m => `${m.file}:${m.line}`),
+                });
+              } else {
+                if (searchStepId) trace?.completeStep(searchStepId, {
+                  matchCount: 0, message: 'No matches found',
+                });
+              }
+            } catch (err: unknown) {
+              if (searchStepId) trace?.failStep(searchStepId, (err as Error).message);
+            }
+          }
+
+          return {
+            searchResults: combinedResults,
+            extraFiles: Array.from(discoveredFiles).slice(0, 5),
+          };
+        }
+      } else if (decisionStepId) {
+        trace?.failStep(decisionStepId, decisionResult.error ?? 'Decision failed');
+      }
+    } catch { /* ignore search decision failures */ }
+
+    return { searchResults: '', extraFiles: [] };
+  }, [folderPath, workspaceFiles, scrollToBottom, setMessages, backend, trace]);
+
+  /** Step 1: Research — discover relevant files and optionally perform text search */
   const runResearchStep = useCallback(async (
     text: string,
     ai: AIConfig,
-  ): Promise<Array<{ name: string; path: string; content?: string }>> => {
+  ): Promise<Array<{ name: string; path: string; content?: string; searchContext?: string }>> => {
     if (!folderPath || workspaceFiles.size === 0) return [];
 
     setMessages(prev => [...prev, {
@@ -185,53 +310,91 @@ export function useAgentPipeline(deps: AgentPipelineDeps) {
     }]);
     scrollToBottom();
 
-    try {
-      const researchMessages = buildResearchPrompt(text, folderPath, workspaceFiles, gitIgnoredPaths);
-      const researchResult = await backend.aiChat(ai.baseUrl, ai.apiKey, ai.model, researchMessages);
+    // Run search decision + file research in parallel
+    const [searchInfo, fileResearchResult] = await Promise.all([
+      runSearchDecisionStep(text, ai),
+      (async () => {
+        try {
+          const researchMessages = buildResearchPrompt(text, folderPath, workspaceFiles, gitIgnoredPaths);
+          const researchStepId = trace?.addStep('research-agent', 'Research Agent', 'research', 'llm-call',
+            'Picking relevant files from workspace', { userQuery: text, totalFiles: workspaceFiles.size });
+          const researchResult = await backend.aiChat(ai.baseUrl, ai.apiKey, ai.model, researchMessages);
 
-      if (researchResult.success && researchResult.reply) {
-        const chosenFiles = parseResearchResponse(researchResult.reply, workspaceFiles);
+          if (researchResult.success && researchResult.reply) {
+            const chosenFiles = parseResearchResponse(researchResult.reply, workspaceFiles);
+            if (researchStepId) trace?.completeStep(researchStepId, { chosenFiles }, {
+              chosenFiles, stopReason: 'end_turn',
+            });
+            return chosenFiles;
+          } else if (researchStepId) {
+            trace?.failStep(researchStepId, researchResult.error ?? 'Research failed');
+          }
+        } catch { /* ignore */ }
+        return [] as string[];
+      })(),
+    ]);
 
-        if (chosenFiles.length > 0) {
-          setMessages(prev => {
-            const updated = [...prev];
-            const statusIdx = findLastIdx(updated, m => !!m.isResearchStatus);
-            if (statusIdx >= 0) {
-              updated[statusIdx] = {
-                text: `📂 Reading ${chosenFiles.length} relevant file${chosenFiles.length > 1 ? 's' : ''}…`,
-                sender: 'system',
-                isResearchStatus: true,
-              };
-            }
-            return updated;
-          });
-          scrollToBottom();
+    // Merge files from research + files discovered by text search
+    const mergedFiles = new Set(fileResearchResult);
+    for (const f of searchInfo.extraFiles) {
+      if (workspaceFiles.has(f)) mergedFiles.add(f);
+    }
+    const allChosenFiles = Array.from(mergedFiles).slice(0, 12);
 
-          const researchedFiles = await readFilesForContext(chosenFiles);
-
-          setMessages(prev => {
-            const updated = [...prev];
-            const statusIdx = findLastIdx(updated, m => !!m.isResearchStatus);
-            if (statusIdx >= 0) {
-              updated[statusIdx] = {
-                text: `📎 Added ${researchedFiles.length} file${researchedFiles.length > 1 ? 's' : ''} as context`,
-                sender: 'system',
-                files: researchedFiles,
-                isResearchStatus: false,
-              };
-            }
-            return updated;
-          });
-          scrollToBottom();
-          return researchedFiles;
+    if (allChosenFiles.length > 0) {
+      setMessages(prev => {
+        const updated = [...prev];
+        const statusIdx = findLastIdx(updated, m => !!m.isResearchStatus);
+        if (statusIdx >= 0) {
+          updated[statusIdx] = {
+            text: `📂 Reading ${allChosenFiles.length} relevant file${allChosenFiles.length > 1 ? 's' : ''}…`,
+            sender: 'system',
+            isResearchStatus: true,
+          };
         }
+        return updated;
+      });
+      scrollToBottom();
+
+      const researchedFiles = await readFilesForContext(allChosenFiles);
+      const fileReadStepId = trace?.addStep('file-reader', 'File Reader', 'research', 'file-read',
+        `Read ${researchedFiles.length} files for context`,
+        { files: allChosenFiles, searchExtra: searchInfo.extraFiles.length });
+      if (fileReadStepId) trace?.completeStep(fileReadStepId, {
+        filesRead: researchedFiles.map(f => f.name),
+        totalBytes: researchedFiles.reduce((s, f) => s + (f.content?.length ?? 0), 0),
+      });
+
+      // Attach text search results as extra context on the first file
+      const result: Array<{ name: string; path: string; content?: string; searchContext?: string }> = researchedFiles;
+      if (searchInfo.searchResults && result.length > 0) {
+        result[0] = { ...result[0], searchContext: searchInfo.searchResults };
       }
-    } catch { /* ignore research failures */ }
+
+      const searchNote = searchInfo.searchResults
+        ? ` + text search results`
+        : '';
+      setMessages(prev => {
+        const updated = [...prev];
+        const statusIdx = findLastIdx(updated, m => !!m.isResearchStatus);
+        if (statusIdx >= 0) {
+          updated[statusIdx] = {
+            text: `📎 Added ${researchedFiles.length} file${researchedFiles.length > 1 ? 's' : ''} as context${searchNote}`,
+            sender: 'system',
+            files: researchedFiles,
+            isResearchStatus: false,
+          };
+        }
+        return updated;
+      });
+      scrollToBottom();
+      return result;
+    }
 
     // Clean up status if no files found
     setMessages(prev => prev.filter(m => !m.isResearchStatus));
     return [];
-  }, [folderPath, workspaceFiles, gitIgnoredPaths, scrollToBottom, setMessages, readFilesForContext]);
+  }, [folderPath, workspaceFiles, gitIgnoredPaths, scrollToBottom, setMessages, readFilesForContext, runSearchDecisionStep, backend, trace]);
 
   /** Step 2.5: Check if follow-up needs file changes */
   const runCheckStep = useCallback(async (
@@ -248,11 +411,22 @@ export function useAgentPipeline(deps: AgentPipelineDeps) {
 
     try {
       const checkMessages = buildCheckAgentPrompt(text, history);
+      // Trace: classification LLM call
+      const checkStepId = trace?.addStep('check-agent', 'Check Agent (Triage)', 'classification', 'llm-call',
+        'Deciding if request needs file changes', { userMessage: text });
       const checkResult = await backend.aiChat(ai.baseUrl, ai.apiKey, ai.model, checkMessages);
       if (checkResult.success && checkResult.reply) {
-        return parseCheckAgentResponse(checkResult.reply);
+        const needsChanges = parseCheckAgentResponse(checkResult.reply);
+        if (checkStepId) trace?.completeStep(checkStepId, { needsFileChanges: needsChanges }, {
+          stopReason: 'end_turn',
+        });
+        return needsChanges;
+      } else if (checkStepId) {
+        trace?.failStep(checkStepId, checkResult.error ?? 'Check agent failed');
       }
-    } catch { /* proceed without file changes */ }
+    } catch (err: unknown) {
+      /* proceed without file changes */
+    }
 
     setMessages(prev => prev.filter(m => !m.isResearchStatus));
     return false;
@@ -283,9 +457,17 @@ export function useAgentPipeline(deps: AgentPipelineDeps) {
     let actionPlan: FileActionPlan[] = [];
     try {
       const planMessages = buildActionPlanPrompt(text, history, folderPath, workspaceFiles, gitIgnoredPaths);
+      // Trace: planning LLM call
+      const planStepId = trace?.addStep('action-planner', 'Action Planner', 'planning', 'llm-call',
+        'Creating action plan for file changes', { userRequest: text });
       const planResult = await backend.aiChat(ai.baseUrl, ai.apiKey, ai.model, planMessages);
       if (planResult.success && planResult.reply) {
         actionPlan = parseActionPlanResponse(planResult.reply);
+        if (planStepId) trace?.completeStep(planStepId, { actionPlan }, {
+          stopReason: 'end_turn',
+        });
+      } else if (planStepId) {
+        trace?.failStep(planStepId, planResult.error ?? 'Planning failed');
       }
     } catch { /* no plan */ }
 
@@ -327,12 +509,21 @@ export function useAgentPipeline(deps: AgentPipelineDeps) {
 
       try {
         const verifyMessages = buildVerifyPrompt(text, changedForVerify);
+        // Trace: verification LLM call
+        const verifyStepId = trace?.addStep('verification', 'Verification Agent', 'verification', 'llm-call',
+          `Verifying changes (attempt ${attempt}/${MAX_ATTEMPTS})`, { changedFiles: changedForVerify.length });
         const verifyResult = await backend.aiChat(ai.baseUrl, ai.apiKey, ai.model, verifyMessages);
         if (verifyResult.success && verifyResult.reply) {
           const verification = parseVerifyResponse(verifyResult.reply);
+          if (verifyStepId) trace?.completeStep(verifyStepId, verification, {
+            stopReason: verification.satisfied ? 'satisfied' : 'needs_retry',
+          });
           if (verification.satisfied || verification.missingChanges.length === 0) break;
           currentPlan = verification.missingChanges;
-        } else break;
+        } else {
+          if (verifyStepId) trace?.failStep(verifyStepId, verifyResult.error ?? 'Verification failed');
+          break;
+        }
       } catch { break; }
     }
 

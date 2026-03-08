@@ -13,6 +13,9 @@ export type {
   FileResult,
   SaveResult,
   Tab,
+  TextSearchMatch,
+  TextSearchResult,
+  TextSearchOptions,
 } from './types/file.types';
 
 // Git types
@@ -70,3 +73,6 @@ export type { ElectronAPI } from './types/electron.types';
 
 // GitHub CLI types
 export type { GhCliStatus, GhCopilotChatResult } from './types/ghCli.types';
+
+// Session types
+export type { ActiveSession } from './types/session.types';

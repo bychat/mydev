@@ -155,6 +155,87 @@ export function parseResearchResponse(raw: string, validFiles: Set<string>): str
   return [];
 }
 
+// ── Search Decision ──
+
+export interface SearchDecision {
+  /** Whether the agent wants to perform a text search */
+  wantsTextSearch: boolean;
+  /** The search queries (grep-style terms) the agent wants to search for */
+  searchQueries: string[];
+  /** Optional: whether it also wants to search by filename pattern */
+  filePatterns: string[];
+}
+
+/**
+ * Build a prompt that asks the AI to decide if it should search for
+ * specific terms in the codebase (text search / grep) or whether
+ * file-name-based research is sufficient.
+ */
+export function buildSearchDecisionPrompt(
+  userQuestion: string,
+  folderPath: string | null,
+  fileCount: number,
+): ChatMessage[] {
+  const system: ChatMessage = {
+    role: 'system',
+    content: [
+      `You are a search strategy agent inside a coding IDE.`,
+      `The user has asked a question about their codebase.`,
+      ``,
+      `## Workspace: ${folderPath ?? 'unknown'}`,
+      `## Total files: ${fileCount}`,
+      ``,
+      `## Your Task`,
+      `Decide whether you need to search for specific text/code patterns inside the codebase to answer the question accurately.`,
+      ``,
+      `Text search (grep) is useful when:`,
+      `- The user mentions a specific function, variable, class, or symbol name`,
+      `- The user asks "where is X used" or "find all references to Y"`,
+      `- The user wants to find a specific string, error message, or configuration value`,
+      `- The user asks about imports, dependencies, or how something is connected`,
+      ``,
+      `Text search is NOT needed when:`,
+      `- The user asks a general question like "what is this repo" or "explain the architecture"`,
+      `- The question can be answered by looking at file names and structure alone`,
+      `- The user is asking for code generation without needing to find existing code first`,
+      ``,
+      `## Response Format`,
+      `Return ONLY a valid JSON object — no markdown fences, no explanation:`,
+      `{`,
+      `  "wantsTextSearch": true | false,`,
+      `  "searchQueries": ["term1", "term2"],`,
+      `  "filePatterns": ["*.ts", "*.config.*"]`,
+      `}`,
+      ``,
+      `- "searchQueries" should contain specific terms/symbols to grep for (1-3 queries max)`,
+      `- "filePatterns" can optionally narrow the search to specific file types`,
+      `- If wantsTextSearch is false, return empty arrays`,
+    ].join('\n'),
+  };
+  return [system, { role: 'user', content: userQuestion }];
+}
+
+/**
+ * Parse the search decision response.
+ */
+export function parseSearchDecisionResponse(raw: string): SearchDecision {
+  try {
+    const cleaned = raw.replace(/```json?\s*/gi, '').replace(/```/g, '').trim();
+    const parsed = JSON.parse(cleaned);
+    return {
+      wantsTextSearch: !!parsed.wantsTextSearch,
+      searchQueries: Array.isArray(parsed.searchQueries)
+        ? (parsed.searchQueries as string[]).filter((s: unknown) => typeof s === 'string' && s.length > 0).slice(0, 3)
+        : [],
+      filePatterns: Array.isArray(parsed.filePatterns)
+        ? (parsed.filePatterns as string[]).filter((s: unknown) => typeof s === 'string' && s.length > 0).slice(0, 3)
+        : [],
+    };
+  } catch {
+    return { wantsTextSearch: false, searchQueries: [], filePatterns: [] };
+  }
+}
+
 /**
  * Build check agent prompt to decide whether the message needs file changes.
  */

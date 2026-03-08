@@ -12,6 +12,7 @@ import {
   registerWindowIpc,
   registerMcpIpc,
   registerCliProviderIpc,
+  registerAgentIpc,
 } from './ipc/index';
 
 export function registerIpcHandlers(getWindow: () => BW | null): void {
@@ -24,4 +25,5 @@ export function registerIpcHandlers(getWindow: () => BW | null): void {
   registerDebugIpc();
   registerMcpIpc();
   registerCliProviderIpc(getWindow);
+  registerAgentIpc();
 }

@@ -24,6 +24,8 @@ export {
   buildSystemContext,
   buildResearchPrompt,
   parseResearchResponse,
+  buildSearchDecisionPrompt,
+  parseSearchDecisionResponse,
   buildCheckAgentPrompt,
   parseCheckAgentResponse,
   buildActionPlanPrompt,

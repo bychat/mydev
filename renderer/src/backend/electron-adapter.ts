@@ -29,6 +29,7 @@ export function createElectronAdapter(): BackendAPI {
     deleteFileOrFolder: (p) => api.deleteFileOrFolder(p),
     renameFileOrFolder: (o, n) => api.renameFileOrFolder(o, n),
     refreshTree: (p) => api.refreshTree(p),
+    searchText: (p, q, o) => api.searchText(p, q, o),
 
     // ── Git ──
     gitStatus: (f) => api.gitStatus(f),
@@ -153,5 +154,10 @@ export function createElectronAdapter(): BackendAPI {
     onCliProviderChatChunk: (cb) => api.onCliProviderChatChunk(cb),
     onCliProviderChatChunkDone: (cb) => api.onCliProviderChatChunkDone(cb),
     cliProviderChatAbort: () => api.cliProviderChatAbort(),
+
+    // ── Agent Configs ──
+    agentLoadConfigs: () => api.agentLoadConfigs(),
+    agentSaveConfig: (c) => api.agentSaveConfig(c),
+    agentDeleteConfig: (id) => api.agentDeleteConfig(id),
   };
 }

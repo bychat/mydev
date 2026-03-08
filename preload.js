@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   deleteFileOrFolder: (targetPath) => ipcRenderer.invoke('delete-file-or-folder', targetPath),
   renameFileOrFolder: (oldPath, newPath) => ipcRenderer.invoke('rename-file-or-folder', oldPath, newPath),
   refreshTree: (folderPath) => ipcRenderer.invoke('refresh-tree', folderPath),
+  searchText: (folderPath, query, options) => ipcRenderer.invoke('search-text', folderPath, query, options),
   gitStatus: (folderPath) => ipcRenderer.invoke('git-status', folderPath),
   gitStatusSplit: (folderPath) => ipcRenderer.invoke('git-status-split', folderPath),
   gitDiff: (folderPath, filePath) => ipcRenderer.invoke('git-diff', folderPath, filePath),
@@ -152,6 +153,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // CLI Providers (generic)
   cliProviderDetectAll: () => ipcRenderer.invoke('cli-provider-detect-all'),
+
+  // Agent Configs
+  agentLoadConfigs: () => ipcRenderer.invoke('agent-load-configs'),
+  agentSaveConfig: (config) => ipcRenderer.invoke('agent-save-config', config),
+  agentDeleteConfig: (agentId) => ipcRenderer.invoke('agent-delete-config', agentId),
   cliProviderDetect: (providerId) => ipcRenderer.invoke('cli-provider-detect', providerId),
   cliProviderChat: (providerId, prompt, model) => ipcRenderer.invoke('cli-provider-chat', providerId, prompt, model),
   cliProviderChatStream: (providerId, prompt, model) => ipcRenderer.invoke('cli-provider-chat-stream', providerId, prompt, model),

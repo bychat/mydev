@@ -129,6 +129,7 @@ export function createHttpAdapter(): BackendAPI {
     deleteFileOrFolder: (p) => post('/api/fs/delete', { targetPath: p }),
     renameFileOrFolder: (o, n) => post('/api/fs/rename', { oldPath: o, newPath: n }),
     refreshTree: (p) => post<any>('/api/fs/refresh-tree', { folderPath: p }).then((r) => r.tree ?? r),
+    searchText: (p, q, o) => post('/api/fs/search-text', { folderPath: p, query: q, options: o }),
 
     // ── Git ──
     gitStatus: (f) => post('/api/git/status', { folderPath: f }),
@@ -277,5 +278,10 @@ export function createHttpAdapter(): BackendAPI {
     onCliProviderChatChunk: () => () => {},
     onCliProviderChatChunkDone: () => () => {},
     cliProviderChatAbort: async () => ({ success: true }),
+
+    // ── Agent Configs ──
+    agentLoadConfigs: () => get('/api/agents'),
+    agentSaveConfig: (c) => post('/api/agents', c),
+    agentDeleteConfig: (id) => post(`/api/agents/${id}/delete`),
   };
 }
