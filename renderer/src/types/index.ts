@@ -64,6 +64,7 @@ export type {
 
 // UI types
 export type { SidePanel, ChatMode } from './ui.types';
+export { isCliMode, getCliProviderId } from './ui.types';
 
 // MCP types
 export type {
@@ -81,3 +82,7 @@ export type { ElectronAPI } from './electron.types';
 
 // GitHub CLI types
 export type { GhCliStatus, GhCopilotChatResult } from './ghCli.types';
+
+// CLI Provider types (generic)
+export type { CliProviderId, CliProviderMeta, CliProviderStatus, CliChatResult } from './cliProvider.types';
+export { CLI_PROVIDERS } from './cliProvider.types';

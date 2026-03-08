@@ -46,6 +46,11 @@ import type {
   GhCliStatus,
   GhCopilotChatResult,
 } from '../types/ghCli.types';
+import type {
+  CliProviderId,
+  CliProviderStatus,
+  CliChatResult,
+} from '../types/cliProvider.types';
 
 // ─── Runtime mode ───────────────────────────────────────────────────────────
 
@@ -135,14 +140,14 @@ export interface BackendAPI {
   historyGetRecentWorkspaces(limit?: number): Promise<WorkspaceHistory[]>;
   historyOpenWorkspace(folderPath: string): Promise<WorkspaceHistory>;
   historyRemoveWorkspace(folderPath: string): Promise<{ success: boolean }>;
-  historyCreateConversation(folderPath: string, mode: 'Agent' | 'Chat' | 'Edit' | 'Copilot'): Promise<Conversation>;
+  historyCreateConversation(folderPath: string, mode: string): Promise<Conversation>;
   historyGetConversation(folderPath: string, conversationId: string): Promise<Conversation | null>;
   historyGetActiveConversation(folderPath: string): Promise<Conversation | null>;
   historyUpdateConversation(
     folderPath: string,
     conversationId: string,
     messages: ChatMessage[],
-    mode?: 'Agent' | 'Chat' | 'Edit' | 'Copilot',
+    mode?: string,
   ): Promise<Conversation | null>;
   historyDeleteConversation(folderPath: string, conversationId: string): Promise<{ success: boolean; error?: string }>;
   historySetActiveConversation(folderPath: string, conversationId: string): Promise<{ success: boolean; error?: string }>;
@@ -194,7 +199,7 @@ export interface BackendAPI {
   mcpCallTool(serverId: string, toolName: string, args: Record<string, unknown>): Promise<{ success: boolean; error?: string; result?: McpToolCallResult }>;
   mcpReadResource(serverId: string, uri: string): Promise<{ success: boolean; error?: string; result?: any }>;
 
-  // ── GitHub Copilot CLI ──
+  // ── GitHub Copilot CLI (legacy — use CLI Provider API below) ──
   ghCliDetect(): Promise<GhCliStatus>;
   ghCliInstallCopilot(): Promise<{ success: boolean; error?: string }>;
   ghCopilotChat(prompt: string, model?: string): Promise<GhCopilotChatResult>;
@@ -202,4 +207,13 @@ export interface BackendAPI {
   onGhCopilotChatChunk(cb: (chunk: string) => void): Unsubscribe;
   onGhCopilotChatChunkDone(cb: () => void): Unsubscribe;
   ghCopilotChatAbort(): Promise<{ success: boolean }>;
+
+  // ── CLI Providers (generic) ──
+  cliProviderDetectAll(): Promise<CliProviderStatus[]>;
+  cliProviderDetect(providerId: CliProviderId): Promise<CliProviderStatus>;
+  cliProviderChat(providerId: CliProviderId, prompt: string, model?: string): Promise<CliChatResult>;
+  cliProviderChatStream(providerId: CliProviderId, prompt: string, model?: string): Promise<{ success: boolean; error?: string }>;
+  onCliProviderChatChunk(cb: (chunk: string) => void): Unsubscribe;
+  onCliProviderChatChunkDone(cb: () => void): Unsubscribe;
+  cliProviderChatAbort(): Promise<{ success: boolean }>;
 }

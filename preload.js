@@ -132,7 +132,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   mcpDisconnectServer: (serverId) => ipcRenderer.invoke('mcp-disconnect-server', serverId),
   mcpCallTool: (serverId, toolName, args) => ipcRenderer.invoke('mcp-call-tool', serverId, toolName, args),
   mcpReadResource: (serverId, uri) => ipcRenderer.invoke('mcp-read-resource', serverId, uri),
-  // GitHub Copilot CLI
+  // GitHub Copilot CLI (legacy channels — still work via aliases)
   ghCliDetect: () => ipcRenderer.invoke('gh-cli-detect'),
   ghCliInstallCopilot: () => ipcRenderer.invoke('gh-cli-install-copilot'),
   ghCopilotChat: (prompt, model) => ipcRenderer.invoke('gh-copilot-chat', prompt, model),
@@ -148,4 +148,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('gh-copilot-chat-chunk-done', listener);
   },
   ghCopilotChatAbort: () => ipcRenderer.invoke('gh-copilot-chat-abort'),
+
+  // CLI Providers (generic)
+  cliProviderDetectAll: () => ipcRenderer.invoke('cli-provider-detect-all'),
+  cliProviderDetect: (providerId) => ipcRenderer.invoke('cli-provider-detect', providerId),
+  cliProviderChat: (providerId, prompt, model) => ipcRenderer.invoke('cli-provider-chat', providerId, prompt, model),
+  cliProviderChatStream: (providerId, prompt, model) => ipcRenderer.invoke('cli-provider-chat-stream', providerId, prompt, model),
+  onCliProviderChatChunk: (cb) => {
+    const listener = (_event, chunk) => cb(chunk);
+    ipcRenderer.on('cli-provider-chat-chunk', listener);
+    return () => ipcRenderer.removeListener('cli-provider-chat-chunk', listener);
+  },
+  onCliProviderChatChunkDone: (cb) => {
+    const listener = () => cb();
+    ipcRenderer.on('cli-provider-chat-chunk-done', listener);
+    return () => ipcRenderer.removeListener('cli-provider-chat-chunk-done', listener);
+  },
+  cliProviderChatAbort: () => ipcRenderer.invoke('cli-provider-chat-abort'),
 });

@@ -135,7 +135,7 @@ export function createElectronAdapter(): BackendAPI {
     mcpCallTool: (id, t, a) => api.mcpCallTool(id, t, a),
     mcpReadResource: (id, u) => api.mcpReadResource(id, u),
 
-    // ── GitHub Copilot CLI ──
+    // ── GitHub Copilot CLI (legacy) ──
     ghCliDetect: () => api.ghCliDetect(),
     ghCliInstallCopilot: () => api.ghCliInstallCopilot(),
     ghCopilotChat: (p, m) => api.ghCopilotChat(p, m),
@@ -143,5 +143,14 @@ export function createElectronAdapter(): BackendAPI {
     onGhCopilotChatChunk: (cb) => api.onGhCopilotChatChunk(cb),
     onGhCopilotChatChunkDone: (cb) => api.onGhCopilotChatChunkDone(cb),
     ghCopilotChatAbort: () => api.ghCopilotChatAbort(),
+
+    // ── CLI Providers (generic) ──
+    cliProviderDetectAll: () => api.cliProviderDetectAll(),
+    cliProviderDetect: (id) => api.cliProviderDetect(id),
+    cliProviderChat: (id, p, m) => api.cliProviderChat(id, p, m),
+    cliProviderChatStream: (id, p, m) => api.cliProviderChatStream(id, p, m),
+    onCliProviderChatChunk: (cb) => api.onCliProviderChatChunk(cb),
+    onCliProviderChatChunkDone: (cb) => api.onCliProviderChatChunkDone(cb),
+    cliProviderChatAbort: () => api.cliProviderChatAbort(),
   };
 }

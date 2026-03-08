@@ -74,7 +74,7 @@ export async function detectCopilotCli(): Promise<CopilotCliStatus> {
   };
 
   try {
-    // 1. Check if copilot is installed
+    // Check if copilot is installed (fast — just runs --version)
     const { stdout: versionOut } = await execFileAsync('copilot', ['--version'], {
       timeout: 5000,
       env: copilotEnv(),
@@ -84,38 +84,15 @@ export async function detectCopilotCli(): Promise<CopilotCliStatus> {
     const match = versionOut.match(/(\d+\.\d+\.\d+)/);
     if (match) status.version = match[1];
 
-    // 2. Try to discover available models
-    //    We ask copilot itself for the list — cheap Sonnet call
-    try {
-      const { stdout: modelOut } = await execFileAsync(
-        'copilot',
-        [
-          '-p',
-          'Respond with ONLY model IDs, one per line, no other text. List every model ID you have access to.',
-          '--model', 'claude-sonnet-4.5',
-          '--allow-all-tools',
-        ],
-        { timeout: 30000, env: copilotEnv() },
-      );
-
-      // Parse: keep only lines that look like model IDs
-      const lines = modelOut.split('\n').map(l => l.trim()).filter(Boolean);
-      const modelIds = lines.filter(l =>
-        /^(claude|gpt|gemini|o\d|codex)/i.test(l) && !l.includes(' ') && l.length < 40
-      );
-      if (modelIds.length > 0) {
-        status.models = modelIds;
-      }
-    } catch {
-      // Model detection is optional — the CLI still works with --model flag
-      // Provide a sensible fallback list
-      status.models = [
-        'claude-sonnet-4.5',
-        'claude-opus-4.5',
-        'gpt-5.2-codex',
-        'gpt-5.2',
-      ];
-    }
+    // Use a known model list — avoids an expensive LLM call during detection
+    status.models = [
+      'claude-sonnet-4',
+      'claude-sonnet-4.5',
+      'gpt-4o',
+      'gpt-4.1',
+      'o4-mini',
+      'gemini-2.5-pro',
+    ];
   } catch (err: any) {
     status.error = err.message || '`copilot` CLI not found';
   }

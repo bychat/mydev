@@ -13,6 +13,7 @@ import type { AtlassianConnection, AtlassianProjectsResult, AtlassianIssuesResul
 import type { GitHubRepoInfo, GitHubWorkflowsResult, GitHubRunsResult, GitHubJobsResult, GitHubLogsResult, GitHubIssuesResult, GitHubIssueFilterState } from './github.types';
 import type { McpServerConfig, McpServersResult, McpToolCallResult } from './mcp.types';
 import type { GhCliStatus, GhCopilotChatResult } from './ghCli.types';
+import type { CliProviderId, CliProviderStatus, CliChatResult } from './cliProvider.types';
 
 export interface ElectronAPI {
   // Window management
@@ -75,10 +76,10 @@ export interface ElectronAPI {
   historyGetRecentWorkspaces: (limit?: number) => Promise<WorkspaceHistory[]>;
   historyOpenWorkspace: (folderPath: string) => Promise<WorkspaceHistory>;
   historyRemoveWorkspace: (folderPath: string) => Promise<{ success: boolean }>;
-  historyCreateConversation: (folderPath: string, mode: 'Agent' | 'Chat' | 'Edit' | 'Copilot') => Promise<Conversation>;
+  historyCreateConversation: (folderPath: string, mode: string) => Promise<Conversation>;
   historyGetConversation: (folderPath: string, conversationId: string) => Promise<Conversation | null>;
   historyGetActiveConversation: (folderPath: string) => Promise<Conversation | null>;
-  historyUpdateConversation: (folderPath: string, conversationId: string, messages: ChatMessage[], mode?: 'Agent' | 'Chat' | 'Edit' | 'Copilot') => Promise<Conversation | null>;
+  historyUpdateConversation: (folderPath: string, conversationId: string, messages: ChatMessage[], mode?: string) => Promise<Conversation | null>;
   historyDeleteConversation: (folderPath: string, conversationId: string) => Promise<{ success: boolean; error?: string }>;
   historySetActiveConversation: (folderPath: string, conversationId: string) => Promise<{ success: boolean; error?: string }>;
   historyRenameConversation: (folderPath: string, conversationId: string, newTitle: string) => Promise<{ success: boolean; error?: string }>;
@@ -115,7 +116,7 @@ export interface ElectronAPI {
   mcpDisconnectServer: (serverId: string) => Promise<{ success: boolean; error?: string }>;
   mcpCallTool: (serverId: string, toolName: string, args: Record<string, unknown>) => Promise<{ success: boolean; error?: string; result?: McpToolCallResult }>;
   mcpReadResource: (serverId: string, uri: string) => Promise<{ success: boolean; error?: string; result?: any }>;
-  // GitHub Copilot CLI
+  // GitHub Copilot CLI (legacy — use CLI Provider API below)
   ghCliDetect: () => Promise<GhCliStatus>;
   ghCliInstallCopilot: () => Promise<{ success: boolean; error?: string }>;
   ghCopilotChat: (prompt: string, model?: string) => Promise<GhCopilotChatResult>;
@@ -123,6 +124,14 @@ export interface ElectronAPI {
   onGhCopilotChatChunk: (cb: (chunk: string) => void) => () => void;
   onGhCopilotChatChunkDone: (cb: () => void) => () => void;
   ghCopilotChatAbort: () => Promise<{ success: boolean }>;
+  // CLI Providers (generic)
+  cliProviderDetectAll: () => Promise<CliProviderStatus[]>;
+  cliProviderDetect: (providerId: CliProviderId) => Promise<CliProviderStatus>;
+  cliProviderChat: (providerId: CliProviderId, prompt: string, model?: string) => Promise<CliChatResult>;
+  cliProviderChatStream: (providerId: CliProviderId, prompt: string, model?: string) => Promise<{ success: boolean; error?: string }>;
+  onCliProviderChatChunk: (cb: (chunk: string) => void) => () => void;
+  onCliProviderChatChunkDone: (cb: () => void) => () => void;
+  cliProviderChatAbort: () => Promise<{ success: boolean }>;
 }
 
 declare global {

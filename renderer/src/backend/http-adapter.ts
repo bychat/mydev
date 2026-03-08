@@ -267,5 +267,14 @@ export function createHttpAdapter(): BackendAPI {
     onGhCopilotChatChunk: () => () => {},
     onGhCopilotChatChunkDone: () => () => {},
     ghCopilotChatAbort: async () => ({ success: true }),
+
+    // ── CLI Providers (stubs — only works in Electron) ──
+    cliProviderDetectAll: async () => [],
+    cliProviderDetect: async (providerId) => ({ providerId, installed: false, version: null, models: [], error: 'Not available in web mode' }),
+    cliProviderChat: async () => ({ success: false, response: '', error: 'Not available in web mode' }),
+    cliProviderChatStream: async () => ({ success: false, error: 'Not available in web mode' }),
+    onCliProviderChatChunk: () => () => {},
+    onCliProviderChatChunkDone: () => () => {},
+    cliProviderChatAbort: async () => ({ success: true }),
   };
 }

@@ -8,4 +8,7 @@ export { registerPromptsIpc } from './prompts.ipc';
 export { registerIntegrationsIpc } from './integrations.ipc';
 export { registerWindowIpc } from './window.ipc';
 export { registerMcpIpc } from './mcp.ipc';
+export { registerCliProviderIpc } from './cliProvider.ipc';
+
+/** @deprecated Use registerCliProviderIpc — this re-export exists for backward compat */
 export { registerGhCliIpc } from './ghCli.ipc';

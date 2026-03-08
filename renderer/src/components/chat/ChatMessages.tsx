@@ -35,23 +35,24 @@ export default function ChatMessages({
       {messages.map((msg, i) => {
         const isLastBot = msg.sender === 'bot' && i === messages.length - 1;
         const isStreaming = isLastBot && loading;
+        const isCli = msg.isCliProvider || msg.isCopilotCli;
         return (
-        <div key={i} className={`chat-msg ${msg.sender}${msg.isCopilotCli ? ' copilot-cli' : ''}${isStreaming && msg.isCopilotCli ? ' cli-streaming' : ''}`}>
-          <div className={`bubble${msg.isCopilotCli && msg.sender === 'bot' ? ' cli-terminal-bubble' : ''}`}>
-            {/* Copilot CLI terminal header */}
-            {msg.isCopilotCli && msg.sender === 'bot' && (
+        <div key={i} className={`chat-msg ${msg.sender}${isCli ? ' copilot-cli' : ''}${isStreaming && isCli ? ' cli-streaming' : ''}`}>
+          <div className={`bubble${isCli && msg.sender === 'bot' ? ' cli-terminal-bubble' : ''}`}>
+            {/* CLI provider terminal header */}
+            {isCli && msg.sender === 'bot' && (
               <div className="cli-terminal-header">
                 <span className="cli-terminal-dots">
                   <span className="cli-dot red" />
                   <span className="cli-dot yellow" />
                   <span className="cli-dot green" />
                 </span>
-                <span className="cli-terminal-title">GitHub Copilot CLI</span>
+                <span className="cli-terminal-title">CLI Provider</span>
               </div>
             )}
 
-            {/* Copilot CLI user prompt badge */}
-            {msg.isCopilotCli && msg.sender === 'user' && msg.badge && (
+            {/* CLI provider user prompt badge */}
+            {isCli && msg.sender === 'user' && msg.badge && (
               <span className="cli-user-badge">{msg.badge}</span>
             )}
 
@@ -86,7 +87,7 @@ export default function ChatMessages({
 
             {/* Message content */}
             {msg.sender === 'bot' ? (
-              msg.isCopilotCli ? (
+              isCli ? (
                 <pre className="cli-terminal-output">{msg.text || '\u00A0'}</pre>
               ) : (
                 <div className="md-content">
