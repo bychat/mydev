@@ -33,6 +33,7 @@ export {
   buildFileChangePrompt,
   buildVerifyPrompt,
   parseVerifyResponse,
+  type PromptParameters,
 } from './chatPrompts';
 export {
   findLastIdx,

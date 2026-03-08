@@ -6,6 +6,7 @@
  */
 
 import type { ChatMessage, FileActionPlan } from '../types';
+import type { PromptParameters } from '../../../core/chat';
 import {
   buildSystemContext as _buildSystemContext,
   buildResearchPrompt as _buildResearchPrompt,
@@ -33,6 +34,7 @@ export {
   buildVerifyPrompt,
   parseVerifyResponse,
 };
+export type { PromptParameters };
 
 // ─── Renderer-specific wrappers (accept Set<string> + gitIgnoredPaths) ───
 
@@ -54,9 +56,10 @@ export function buildSystemContext(
   folderPath: string | null,
   workspaceFiles: Set<string>,
   gitIgnoredPaths: string[],
+  params?: PromptParameters,
 ): ChatMessage {
   const fileList = filterFiles(folderPath, workspaceFiles, gitIgnoredPaths);
-  return _buildSystemContext(folderPath, fileList);
+  return _buildSystemContext(folderPath, fileList, params);
 }
 
 export function buildResearchPrompt(
@@ -64,9 +67,10 @@ export function buildResearchPrompt(
   folderPath: string | null,
   workspaceFiles: Set<string>,
   gitIgnoredPaths: string[],
+  params?: PromptParameters,
 ): ChatMessage[] {
   const fileList = filterFiles(folderPath, workspaceFiles, gitIgnoredPaths);
-  return _buildResearchPrompt(userQuestion, folderPath, fileList);
+  return _buildResearchPrompt(userQuestion, folderPath, fileList, params);
 }
 
 export function buildActionPlanPrompt(
@@ -75,7 +79,8 @@ export function buildActionPlanPrompt(
   folderPath: string | null,
   workspaceFiles: Set<string>,
   gitIgnoredPaths: string[],
+  params?: PromptParameters,
 ): ChatMessage[] {
   const fileList = filterFiles(folderPath, workspaceFiles, gitIgnoredPaths);
-  return _buildActionPlanPrompt(userMessage, chatHistory, folderPath, fileList);
+  return _buildActionPlanPrompt(userMessage, chatHistory, folderPath, fileList, undefined, params);
 }

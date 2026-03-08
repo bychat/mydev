@@ -29,7 +29,9 @@ import {
   buildVerifyPrompt,
   parseVerifyResponse,
 } from '../utils';
-import type { TraceStep, PhaseCategory } from '../types/agent.types';
+import type { PromptParameters } from '../utils';
+import type { TraceStep, PhaseCategory, AgentParameters } from '../types/agent.types';
+import { resolveAgentParameters } from '../types/agent.types';
 
 type SetMessages = React.Dispatch<React.SetStateAction<DisplayMessage[]>>;
 type SetHistory = React.Dispatch<React.SetStateAction<ChatMessage[]>>;
@@ -51,6 +53,8 @@ interface AgentPipelineDeps {
   setMessages: SetMessages;
   setHistory: SetHistory;
   trace?: TraceCallbacks;
+  /** Agent tunable parameters — numeric limits + prompt templates */
+  agentParams?: Partial<AgentParameters>;
 }
 
 interface AIConfig {
@@ -60,8 +64,9 @@ interface AIConfig {
 }
 
 export function useAgentPipeline(deps: AgentPipelineDeps) {
-  const { folderPath, workspaceFiles, gitIgnoredPaths, scrollToBottom, setMessages, setHistory, trace } = deps;
+  const { folderPath, workspaceFiles, gitIgnoredPaths, scrollToBottom, setMessages, setHistory, trace, agentParams } = deps;
   const backend = useBackend();
+  const params = resolveAgentParameters(agentParams);
 
   /** Read multiple files for context */
   const readFilesForContext = useCallback(async (relativePaths: string[]) => {
@@ -148,7 +153,7 @@ export function useAgentPipeline(deps: AgentPipelineDeps) {
       }
 
       try {
-        const changeMessages = buildFileChangePrompt(plan, currentContent, userRequest, chatHistory);
+        const changeMessages = buildFileChangePrompt(plan, currentContent, userRequest, chatHistory, params);
         // Trace: LLM call for code editing
         const editStepId = trace?.addStep('code-editor', 'Code Editor Agent', 'execution', 'llm-call',
           `${plan.action === 'create' ? 'Creating' : 'Editing'} ${plan.file}`,
@@ -206,8 +211,8 @@ export function useAgentPipeline(deps: AgentPipelineDeps) {
 
   /** Build the system context message */
   const getSystemContext = useCallback(() => {
-    return buildSystemContext(folderPath, workspaceFiles, gitIgnoredPaths);
-  }, [folderPath, workspaceFiles, gitIgnoredPaths]);
+    return buildSystemContext(folderPath, workspaceFiles, gitIgnoredPaths, params);
+  }, [folderPath, workspaceFiles, gitIgnoredPaths, params]);
 
   /** Step 0.5: Search Decision — ask the agent if it wants to search for a specific term */
   const runSearchDecisionStep = useCallback(async (
@@ -217,14 +222,14 @@ export function useAgentPipeline(deps: AgentPipelineDeps) {
     if (!folderPath) return { searchResults: '', extraFiles: [] };
 
     try {
-      const decisionMessages = buildSearchDecisionPrompt(text, folderPath, workspaceFiles.size);
+      const decisionMessages = buildSearchDecisionPrompt(text, folderPath, workspaceFiles.size, params);
       // Trace: search decision LLM call
       const decisionStepId = trace?.addStep('search-decision', 'Search Decision Agent', 'research', 'llm-call',
         'Deciding if text search is needed', { userQuery: text, totalFiles: workspaceFiles.size });
       const decisionResult = await backend.aiChat(ai.baseUrl, ai.apiKey, ai.model, decisionMessages);
 
       if (decisionResult.success && decisionResult.reply) {
-        const decision = parseSearchDecisionResponse(decisionResult.reply);
+        const decision = parseSearchDecisionResponse(decisionResult.reply, params);
         if (decisionStepId) trace?.completeStep(decisionStepId, decision, { stopReason: 'end_turn' });
 
         if (decision.wantsTextSearch && decision.searchQueries.length > 0) {
@@ -252,12 +257,12 @@ export function useAgentPipeline(deps: AgentPipelineDeps) {
 
             try {
               const searchResult = await backend.searchText(folderPath, query, {
-                maxResults: 50,
+                maxResults: params.maxTextSearchResults,
                 includePattern: decision.filePatterns.length > 0 ? decision.filePatterns[0] : undefined,
               });
 
               if (searchResult.success && searchResult.matches.length > 0) {
-                const matchSummary = searchResult.matches.slice(0, 30).map(m =>
+                const matchSummary = searchResult.matches.slice(0, params.maxTextSearchDisplay).map(m =>
                   `${m.file}:${m.line}: ${m.text}`
                 ).join('\n');
                 combinedResults += `\n## Search results for "${query}" (${searchResult.matches.length} matches${searchResult.truncated ? ', truncated' : ''}):\n${matchSummary}\n`;
@@ -285,7 +290,7 @@ export function useAgentPipeline(deps: AgentPipelineDeps) {
 
           return {
             searchResults: combinedResults,
-            extraFiles: Array.from(discoveredFiles).slice(0, 5),
+            extraFiles: Array.from(discoveredFiles).slice(0, params.maxSearchDiscoveredFiles),
           };
         }
       } else if (decisionStepId) {
@@ -315,13 +320,13 @@ export function useAgentPipeline(deps: AgentPipelineDeps) {
       runSearchDecisionStep(text, ai),
       (async () => {
         try {
-          const researchMessages = buildResearchPrompt(text, folderPath, workspaceFiles, gitIgnoredPaths);
+          const researchMessages = buildResearchPrompt(text, folderPath, workspaceFiles, gitIgnoredPaths, params);
           const researchStepId = trace?.addStep('research-agent', 'Research Agent', 'research', 'llm-call',
             'Picking relevant files from workspace', { userQuery: text, totalFiles: workspaceFiles.size });
           const researchResult = await backend.aiChat(ai.baseUrl, ai.apiKey, ai.model, researchMessages);
 
           if (researchResult.success && researchResult.reply) {
-            const chosenFiles = parseResearchResponse(researchResult.reply, workspaceFiles);
+            const chosenFiles = parseResearchResponse(researchResult.reply, workspaceFiles, params);
             if (researchStepId) trace?.completeStep(researchStepId, { chosenFiles }, {
               chosenFiles, stopReason: 'end_turn',
             });
@@ -339,7 +344,7 @@ export function useAgentPipeline(deps: AgentPipelineDeps) {
     for (const f of searchInfo.extraFiles) {
       if (workspaceFiles.has(f)) mergedFiles.add(f);
     }
-    const allChosenFiles = Array.from(mergedFiles).slice(0, 12);
+    const allChosenFiles = Array.from(mergedFiles).slice(0, params.maxMergedContextFiles);
 
     if (allChosenFiles.length > 0) {
       setMessages(prev => {
@@ -410,7 +415,7 @@ export function useAgentPipeline(deps: AgentPipelineDeps) {
     scrollToBottom();
 
     try {
-      const checkMessages = buildCheckAgentPrompt(text, history);
+      const checkMessages = buildCheckAgentPrompt(text, history, params);
       // Trace: classification LLM call
       const checkStepId = trace?.addStep('check-agent', 'Check Agent (Triage)', 'classification', 'llm-call',
         'Deciding if request needs file changes', { userMessage: text });
@@ -456,13 +461,13 @@ export function useAgentPipeline(deps: AgentPipelineDeps) {
 
     let actionPlan: FileActionPlan[] = [];
     try {
-      const planMessages = buildActionPlanPrompt(text, history, folderPath, workspaceFiles, gitIgnoredPaths);
+      const planMessages = buildActionPlanPrompt(text, history, folderPath, workspaceFiles, gitIgnoredPaths, params);
       // Trace: planning LLM call
       const planStepId = trace?.addStep('action-planner', 'Action Planner', 'planning', 'llm-call',
         'Creating action plan for file changes', { userRequest: text });
       const planResult = await backend.aiChat(ai.baseUrl, ai.apiKey, ai.model, planMessages);
       if (planResult.success && planResult.reply) {
-        actionPlan = parseActionPlanResponse(planResult.reply);
+        actionPlan = parseActionPlanResponse(planResult.reply, params);
         if (planStepId) trace?.completeStep(planStepId, { actionPlan }, {
           stopReason: 'end_turn',
         });
@@ -478,7 +483,7 @@ export function useAgentPipeline(deps: AgentPipelineDeps) {
 
     let completedProgress: FileActionProgress[] = [];
     let attempt = 0;
-    const MAX_ATTEMPTS = 3;
+    const MAX_ATTEMPTS = params.maxVerificationAttempts;
     let currentPlan = actionPlan;
 
     while (attempt < MAX_ATTEMPTS && currentPlan.length > 0) {
@@ -508,7 +513,7 @@ export function useAgentPipeline(deps: AgentPipelineDeps) {
       if (changedForVerify.length === 0) break;
 
       try {
-        const verifyMessages = buildVerifyPrompt(text, changedForVerify);
+        const verifyMessages = buildVerifyPrompt(text, changedForVerify, params);
         // Trace: verification LLM call
         const verifyStepId = trace?.addStep('verification', 'Verification Agent', 'verification', 'llm-call',
           `Verifying changes (attempt ${attempt}/${MAX_ATTEMPTS})`, { changedFiles: changedForVerify.length });

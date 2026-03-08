@@ -146,6 +146,7 @@ export default function ChatPanel({ onCollapse }: ChatPanelProps) {
     folderPath, workspaceFiles, gitIgnoredPaths,
     scrollToBottom, setMessages, setHistory,
     trace: traceCallbacks,
+    agentParams: agentExec.activeAgent.parameters,
   });
   const { streamResponse, stopMessage } = useMessageStream({
     scrollToBottom, setMessages, setHistory, setLoading,

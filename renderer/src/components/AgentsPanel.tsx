@@ -26,8 +26,9 @@ import type {
   AgentTrace,
   TraceStep,
   AgentEdge as AgentEdgeType,
+  AgentParameters,
 } from '../types/agent.types';
-import { ALL_AGENT_TOOLS } from '../types/agent.types';
+import { ALL_AGENT_TOOLS, DEFAULT_AGENT_PARAMETERS, resolveAgentParameters } from '../types/agent.types';
 import { useAgentExecution } from '../context/AgentExecutionContext';
 
 /* ─── Constants ─── */
@@ -676,6 +677,230 @@ function AddNodeModal({ onAdd, onClose, existingNodes }: {
   );
 }
 
+/* ─── Parameters Editor Modal ─── */
+type ParamTab = 'numbers' | 'prompts';
+
+/** Metadata for each numeric parameter for the editor UI */
+const NUMERIC_PARAM_META: { key: keyof AgentParameters; label: string; description: string; min: number; max: number }[] = [
+  { key: 'maxResearchFiles', label: 'Max Research Files', description: 'Maximum files the research agent returns', min: 1, max: 30 },
+  { key: 'minResearchFiles', label: 'Min Research Files', description: 'Minimum files the research agent should pick', min: 1, max: 20 },
+  { key: 'maxMergedContextFiles', label: 'Max Context Files', description: 'Max files after merging research + search results', min: 1, max: 50 },
+  { key: 'maxTextSearchResults', label: 'Max Search Results', description: 'Max results per text search (grep) query', min: 10, max: 500 },
+  { key: 'maxTextSearchDisplay', label: 'Max Search Display', description: 'Max search matches shown to the model', min: 5, max: 200 },
+  { key: 'maxSearchDiscoveredFiles', label: 'Max Search-Discovered Files', description: 'Max extra files discovered from text search', min: 1, max: 20 },
+  { key: 'maxSearchQueries', label: 'Max Search Queries', description: 'Max grep queries the search agent can issue', min: 1, max: 10 },
+  { key: 'maxFilePatterns', label: 'Max File Patterns', description: 'Max file type patterns for search narrowing', min: 1, max: 10 },
+  { key: 'maxVerificationAttempts', label: 'Max Verification Retries', description: 'Max retry attempts for verification loop', min: 1, max: 10 },
+  { key: 'maxActionPlanFiles', label: 'Max Action Plan Files', description: 'Max files in a single action plan', min: 1, max: 30 },
+  { key: 'chatHistoryDepth', label: 'Chat History Depth', description: 'How many recent messages to include as context', min: 2, max: 30 },
+  { key: 'maxFileListDisplay', label: 'Max File List Display', description: 'Max workspace files shown in system prompt', min: 50, max: 2000 },
+];
+
+const PROMPT_PARAM_META: { key: keyof AgentParameters; label: string; description: string; placeholders: string }[] = [
+  { key: 'systemContextPrompt', label: 'System Context', description: 'Sets the AI persona and workspace context', placeholders: '{{folderPath}}, {{fileCount}}, {{fileList}}' },
+  { key: 'researchAgentPrompt', label: 'Research Agent', description: 'Instructs the AI to pick relevant files', placeholders: '{{folderPath}}, {{fileCount}}, {{fileList}}, {{minFiles}}, {{maxFiles}}' },
+  { key: 'searchDecisionPrompt', label: 'Search Decision', description: 'Decides if text search (grep) is needed', placeholders: '{{folderPath}}, {{fileCount}}, {{maxQueries}}' },
+  { key: 'checkAgentPrompt', label: 'Check Agent (Triage)', description: 'Classifies if the request needs file changes', placeholders: '(none)' },
+  { key: 'actionPlanPrompt', label: 'Action Planner', description: 'Creates the file change action plan', placeholders: '{{fileCount}}, {{fileList}}, {{fileContexts}}, {{maxFiles}}' },
+  { key: 'fileChangeCreatePrompt', label: 'File Create', description: 'Instructs AI to create a new file', placeholders: '{{file}}, {{description}}' },
+  { key: 'fileChangeUpdatePrompt', label: 'File Update (SEARCH/REPLACE)', description: 'Instructs AI to produce SEARCH/REPLACE blocks', placeholders: '{{file}}, {{description}}, {{currentContent}}' },
+  { key: 'verificationPrompt', label: 'Verification', description: 'Evaluates if changes satisfy the request', placeholders: '{{userRequest}}, {{changeSummary}}' },
+];
+
+function ParametersEditorModal({ parameters, onSave, onClose }: {
+  parameters: Partial<AgentParameters>;
+  onSave: (params: Partial<AgentParameters>) => void;
+  onClose: () => void;
+}) {
+  const [tab, setTab] = useState<ParamTab>('numbers');
+  const resolved = resolveAgentParameters(parameters);
+  const [localParams, setLocalParams] = useState<AgentParameters>({ ...resolved });
+
+  const setNumericParam = (key: keyof AgentParameters, value: number) => {
+    setLocalParams(prev => ({ ...prev, [key]: value }));
+  };
+
+  const setPromptParam = (key: keyof AgentParameters, value: string) => {
+    setLocalParams(prev => ({ ...prev, [key]: value }));
+  };
+
+  const resetParam = (key: keyof AgentParameters) => {
+    setLocalParams(prev => ({ ...prev, [key]: DEFAULT_AGENT_PARAMETERS[key] }));
+  };
+
+  const handleSave = () => {
+    // Only save values that differ from defaults
+    const diff: Partial<AgentParameters> = {};
+    for (const key of Object.keys(localParams) as (keyof AgentParameters)[]) {
+      if (localParams[key] !== DEFAULT_AGENT_PARAMETERS[key]) {
+        (diff as any)[key] = localParams[key];
+      }
+    }
+    onSave(diff);
+    onClose();
+  };
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', fontSize: '0.76rem', padding: '6px 10px',
+    border: '1px solid #ddd', borderRadius: 6, outline: 'none',
+    boxSizing: 'border-box',
+  };
+
+  const isModified = (key: keyof AgentParameters) =>
+    localParams[key] !== DEFAULT_AGENT_PARAMETERS[key];
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={onClose}>
+      <div style={{ background: '#fff', borderRadius: 14, padding: 0, width: 640, maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '0 12px 48px rgba(0,0,0,.2)' }} onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid #e8e8e8', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: '1.2rem' }}>⚙️</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 700, fontSize: '0.92rem', color: '#1a1a2e' }}>Agent Parameters</div>
+            <div style={{ fontSize: '0.68rem', color: '#999' }}>Customize numeric limits and prompt templates for this agent</div>
+          </div>
+          <button onClick={onClose} style={{ border: 'none', background: 'none', fontSize: '1.1rem', cursor: 'pointer', color: '#999', padding: 4 }}>✕</button>
+        </div>
+
+        {/* Tab bar */}
+        <div style={{ display: 'flex', borderBottom: '1px solid #e8e8e8', padding: '0 16px', background: '#fafafa' }}>
+          {([['numbers', '🔢 Numeric Limits'], ['prompts', '📝 Prompt Templates']] as [ParamTab, string][]).map(([t, label]) => (
+            <button key={t} onClick={() => setTab(t)} style={{
+              fontSize: '0.76rem', fontWeight: tab === t ? 700 : 500,
+              padding: '10px 16px', cursor: 'pointer', border: 'none',
+              borderBottom: tab === t ? '2px solid #3b82f6' : '2px solid transparent',
+              background: 'transparent', color: tab === t ? '#3b82f6' : '#888',
+              transition: 'all 0.15s',
+            }}>{label}</button>
+          ))}
+        </div>
+
+        {/* Content */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
+          {tab === 'numbers' && (
+            <div style={{ display: 'grid', gap: 12 }}>
+              {NUMERIC_PARAM_META.map(meta => (
+                <div key={meta.key} style={{
+                  display: 'grid', gridTemplateColumns: '1fr 120px 30px', gap: 10, alignItems: 'center',
+                  padding: '10px 12px', borderRadius: 8,
+                  background: isModified(meta.key) ? '#fef9f0' : '#f9fafb',
+                  border: isModified(meta.key) ? '1px solid #f59e0b40' : '1px solid #e5e7eb',
+                }}>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: '0.78rem', color: '#333', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {meta.label}
+                      {isModified(meta.key) && (
+                        <span style={{ fontSize: '0.6rem', padding: '1px 5px', borderRadius: 3, background: '#fef3c7', color: '#d97706', fontWeight: 700 }}>MODIFIED</span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: '0.66rem', color: '#999', marginTop: 2 }}>{meta.description}</div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <input
+                      type="number"
+                      min={meta.min}
+                      max={meta.max}
+                      value={localParams[meta.key] as number}
+                      onChange={e => setNumericParam(meta.key, Math.max(meta.min, Math.min(meta.max, parseInt(e.target.value) || meta.min)))}
+                      style={{
+                        ...inputStyle, width: 80, textAlign: 'center',
+                        fontWeight: 700, fontFamily: "'SF Mono', monospace",
+                        borderColor: isModified(meta.key) ? '#f59e0b' : '#ddd',
+                      }}
+                    />
+                    <span style={{ fontSize: '0.6rem', color: '#bbb', whiteSpace: 'nowrap' }}>
+                      /{meta.max}
+                    </span>
+                  </div>
+                  {isModified(meta.key) && (
+                    <button onClick={() => resetParam(meta.key)} title={`Reset to default (${DEFAULT_AGENT_PARAMETERS[meta.key]})`}
+                      style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.7rem', color: '#999', padding: 2 }}>↩</button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {tab === 'prompts' && (
+            <div style={{ display: 'grid', gap: 16 }}>
+              <div style={{
+                padding: '10px 14px', borderRadius: 8, fontSize: '0.72rem',
+                background: '#f0f5ff', border: '1px solid #bfdbfe', color: '#3b82f6',
+                display: 'flex', alignItems: 'center', gap: 8,
+              }}>
+                <span>💡</span> Use <code style={{ background: '#e0ecff', padding: '1px 4px', borderRadius: 3, fontFamily: "'SF Mono', monospace", fontSize: '0.68rem' }}>{'{{placeholder}}'}</code> syntax for dynamic values. Reset individual prompts to restore defaults.
+              </div>
+              {PROMPT_PARAM_META.map(meta => (
+                <div key={meta.key} style={{
+                  borderRadius: 8,
+                  background: isModified(meta.key) ? '#fef9f0' : '#f9fafb',
+                  border: isModified(meta.key) ? '1px solid #f59e0b40' : '1px solid #e5e7eb',
+                  overflow: 'hidden',
+                }}>
+                  <div style={{
+                    padding: '10px 14px', borderBottom: '1px solid #e5e7eb',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  }}>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: '0.78rem', color: '#333', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        {meta.label}
+                        {isModified(meta.key) && (
+                          <span style={{ fontSize: '0.6rem', padding: '1px 5px', borderRadius: 3, background: '#fef3c7', color: '#d97706', fontWeight: 700 }}>MODIFIED</span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '0.66rem', color: '#999', marginTop: 2 }}>
+                        {meta.description} · Placeholders: <code style={{ fontFamily: "'SF Mono', monospace", fontSize: '0.62rem' }}>{meta.placeholders}</code>
+                      </div>
+                    </div>
+                    {isModified(meta.key) && (
+                      <button onClick={() => resetParam(meta.key)} title="Reset to default"
+                        style={{
+                          fontSize: '0.68rem', padding: '3px 10px', borderRadius: 4,
+                          border: '1px solid #ddd', background: '#fff', cursor: 'pointer', color: '#888',
+                        }}>↩ Reset</button>
+                    )}
+                  </div>
+                  <textarea
+                    value={localParams[meta.key] as string}
+                    onChange={e => setPromptParam(meta.key, e.target.value)}
+                    rows={6}
+                    style={{
+                      ...inputStyle,
+                      border: 'none', borderRadius: 0,
+                      resize: 'vertical',
+                      fontFamily: "'SF Mono', 'Menlo', monospace",
+                      fontSize: '0.7rem',
+                      lineHeight: 1.6,
+                      padding: '10px 14px',
+                      background: 'transparent',
+                      minHeight: 100,
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          padding: '12px 20px', borderTop: '1px solid #e8e8e8',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          background: '#fafafa', borderRadius: '0 0 14px 14px',
+        }}>
+          <div style={{ fontSize: '0.68rem', color: '#999' }}>
+            {Object.keys(localParams).filter(k => isModified(k as keyof AgentParameters)).length} parameter(s) modified from defaults
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={onClose} style={{ padding: '7px 16px', borderRadius: 6, border: '1px solid #ddd', background: '#fff', cursor: 'pointer', fontSize: '0.78rem' }}>Cancel</button>
+            <button onClick={handleSave} style={{ padding: '7px 16px', borderRadius: 6, border: 'none', background: '#3b82f6', color: '#fff', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600 }}>Save Parameters</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Main AgentsPanel ─── */
 type PanelView = 'canvas' | 'trace';
 
@@ -698,6 +923,7 @@ export default function AgentsPanel() {
   const [nodeEditing, setNodeEditing] = useState<string | null>(null);
   const [addingNode, setAddingNode] = useState(false);
   const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null);
+  const [editingParams, setEditingParams] = useState(false);
 
   const isEditable = !activeAgent.isDefault;
 
@@ -749,6 +975,18 @@ export default function AgentsPanel() {
     });
     setSelectedNode(node.id);
   }, [activeAgent, updateAgent]);
+
+  const handleSaveParams = useCallback((params: Partial<AgentParameters>) => {
+    updateAgent({
+      ...activeAgent,
+      parameters: Object.keys(params).length > 0 ? params : undefined,
+    });
+  }, [activeAgent, updateAgent]);
+
+  const resolvedParams = resolveAgentParameters(activeAgent.parameters);
+  const modifiedParamsCount = activeAgent.parameters
+    ? Object.keys(activeAgent.parameters).length
+    : 0;
 
   const flowNodes = useMemo((): Node<FlowNodeData>[] => activeAgent.nodes.map((n: AgentNodeType) => ({
     id: n.id, type: 'agentNode', position: n.position,
@@ -865,11 +1103,25 @@ export default function AgentsPanel() {
           </div>
           <div style={{ display: 'flex', gap: 4 }}>
             {isEditable && view === 'canvas' && (
-              <button onClick={() => setAddingNode(true)} style={{
+              <>
+                <button onClick={() => setAddingNode(true)} style={{
+                  fontSize: '0.72rem', padding: '4px 10px', borderRadius: 6,
+                  border: '1px solid #22c55e', cursor: 'pointer',
+                  background: '#f0fdf4', color: '#16a34a',
+                }}>➕ Add Node</button>
+                <button onClick={() => setEditingParams(true)} style={{
+                  fontSize: '0.72rem', padding: '4px 10px', borderRadius: 6,
+                  border: '1px solid #a855f7', cursor: 'pointer',
+                  background: '#fdf4ff', color: '#9333ea',
+                }}>⚙ Parameters{modifiedParamsCount > 0 ? ` (${modifiedParamsCount})` : ''}</button>
+              </>
+            )}
+            {!isEditable && view === 'canvas' && (
+              <button onClick={() => setEditingParams(true)} style={{
                 fontSize: '0.72rem', padding: '4px 10px', borderRadius: 6,
-                border: '1px solid #22c55e', cursor: 'pointer',
-                background: '#f0fdf4', color: '#16a34a',
-              }}>➕ Add Node</button>
+                border: '1px solid #ddd', cursor: 'pointer',
+                background: '#f8f8f8', color: '#888',
+              }}>👁 View Parameters</button>
             )}
             {(['canvas', 'trace'] as PanelView[]).map(v => (
               <button key={v} onClick={() => setView(v)} style={{
@@ -1066,6 +1318,15 @@ export default function AgentsPanel() {
       {/* Add Node Modal */}
       {addingNode && (
         <AddNodeModal existingNodes={activeAgent.nodes} onAdd={handleAddNode} onClose={() => setAddingNode(false)} />
+      )}
+
+      {/* Parameters Editor Modal */}
+      {editingParams && (
+        <ParametersEditorModal
+          parameters={activeAgent.parameters ?? {}}
+          onSave={isEditable ? handleSaveParams : () => {}}
+          onClose={() => setEditingParams(false)}
+        />
       )}
     </div>
   );
