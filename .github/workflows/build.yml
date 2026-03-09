@@ -2,32 +2,35 @@ name: Build & Release
 
 on:
   push:
+    branches: [main, master]
     tags: ['v*']
+  pull_request:
+    branches: [main, master]
   workflow_dispatch:
 
+# ── Shared env ──────────────────────────────────────────────────
+env:
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 jobs:
-  # ── Quick build check ────────────────────────────────────────
-  check:
+  # ── Determine the artifact label (tag name or short SHA) ──────
+  meta:
     runs-on: ubuntu-latest
+    outputs:
+      label: ${{ steps.label.outputs.value }}
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: TypeScript compile check (main process)
-        run: npx tsc --noEmit
-
-      - name: Build renderer (Vite)
-        run: npx vite build
+      - name: Compute label
+        id: label
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            echo "value=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          fi
 
   # ── macOS build (universal – Intel + Apple Silicon) ───────────
   build-mac:
-    needs: check
+    needs: meta
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -53,16 +56,14 @@ jobs:
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: mydev-mac
-          path: dist/*.dmg
+          name: mydev-bychat-io-mac-${{ needs.meta.outputs.label }}
+          path: |
+            dist/*.dmg
           if-no-files-found: error
-          retention-days: 0
-          # 2 hour retention — GitHub rounds up to nearest day minimum,
-          # but the intent is short-lived artifacts for testing.
 
   # ── Windows build (x64 .exe installer) ───────────────────────
   build-win:
-    needs: check
+    needs: meta
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -86,14 +87,14 @@ jobs:
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: mydev-win-x64
-          path: dist/*.exe
+          name: mydev-bychat-io-win-x64-${{ needs.meta.outputs.label }}
+          path: |
+            dist/*.exe
           if-no-files-found: error
-          retention-days: 0
 
   # ── Linux build (x64 AppImage) ───────────────────────────────
   build-linux:
-    needs: check
+    needs: meta
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -117,7 +118,7 @@ jobs:
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: mydev-linux-x64
-          path: dist/*.AppImage
+          name: mydev-bychat-io-linux-x64-${{ needs.meta.outputs.label }}
+          path: |
+            dist/*.AppImage
           if-no-files-found: error
-          retention-days: 0
