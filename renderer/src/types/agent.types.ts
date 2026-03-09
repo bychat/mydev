@@ -47,6 +47,12 @@ export interface AgentNode {
   enabled: boolean;
   /** Position on the visual canvas */
   position: { x: number; y: number };
+  /** Max retries for this node (0 = no retries, default follows agent params) */
+  maxRetries?: number;
+  /** Whether this node should ask the model if it wants to continue or stop */
+  continueQuestion?: boolean;
+  /** Custom continue question prompt (default: "Should we continue to the next step or stop?") */
+  continueQuestionPrompt?: string;
 }
 
 /** An edge between two nodes */
@@ -86,6 +92,12 @@ export interface AgentParameters {
   chatHistoryDepth: number;
   /** Max workspace files shown in system context (default: 300) */
   maxFileListDisplay: number;
+  /** Global max retries per node (default: 3) — individual nodes can override */
+  maxNodeRetries: number;
+  /** Whether to ask the model "should we continue or stop?" between nodes (default: true) */
+  enableContinueQuestion: boolean;
+  /** The default continue question prompt */
+  continueQuestionPrompt: string;
 
   // ─ Prompt Templates ─
   /** System context prompt template. Placeholders: {{folderPath}}, {{fileCount}}, {{fileList}} */
@@ -121,6 +133,18 @@ export const DEFAULT_AGENT_PARAMETERS: AgentParameters = {
   maxActionPlanFiles: 10,
   chatHistoryDepth: 6,
   maxFileListDisplay: 300,
+  maxNodeRetries: 3,
+  enableContinueQuestion: true,
+  continueQuestionPrompt: [
+    'You have just completed a step in the agent pipeline.',
+    'Based on the results so far and the original user request, decide whether to continue to the next step or stop here.',
+    '',
+    'Reply with ONLY a valid JSON object:',
+    '{ "shouldContinue": true | false, "reason": "<brief explanation>" }',
+    '',
+    'Continue if: there is more work to do, the task is incomplete, or the next step is needed.',
+    'Stop if: the task is already fully satisfied, there is nothing more to do, or an unrecoverable error occurred.',
+  ].join('\n'),
 
   // Prompts
   systemContextPrompt: [

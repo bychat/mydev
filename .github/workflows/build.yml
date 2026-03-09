@@ -122,3 +122,4 @@ jobs:
           path: |
             dist/*.AppImage
           if-no-files-found: error
+          retention-days: 0

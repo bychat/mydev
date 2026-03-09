@@ -1,10 +1,12 @@
 /**
- * AgentsPanel - Full agent builder with:
+ * AgentsPanel — n8n-style visual agent builder with:
  *   - Agent list sidebar (create, rename, delete, duplicate)
- *   - Visual pipeline canvas (editable nodes, tools, prompts)
- *   - Execution trace viewer (real-time step-by-step visibility)
+ *   - Visual pipeline canvas (draggable nodes, editable parameters, tool config)
+ *   - Slide-out node parameter editor (n8n-style right drawer)
+ *   - Execution trace viewer (real-time step-by-step observability)
+ *   - "Continue or Stop" question toggle + max retries per node
  */
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, useEffect } from 'react';
 import {
   ReactFlow,
   Background,
@@ -17,13 +19,67 @@ import {
   Position,
   type NodeProps,
   BackgroundVariant,
+  type OnNodesChange,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+
+/* MUI */
+import Box from '@mui/material/Box';
+import Paper from '@mui/material/Paper';
+import Typography from '@mui/material/Typography';
+import MuiButton from '@mui/material/Button';
+import MuiIconButton from '@mui/material/IconButton';
+import TextField from '@mui/material/TextField';
+import Select from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
+import Switch from '@mui/material/Switch';
+import Slider from '@mui/material/Slider';
+import Chip from '@mui/material/Chip';
+import MuiTabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
+import Drawer from '@mui/material/Drawer';
+import Tooltip from '@mui/material/Tooltip';
+import MuiBadge from '@mui/material/Badge';
+import FormControl from '@mui/material/FormControl';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import InputLabel from '@mui/material/InputLabel';
+import Checkbox from '@mui/material/Checkbox';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import InputAdornment from '@mui/material/InputAdornment';
+import Alert from '@mui/material/Alert';
+import Stack from '@mui/material/Stack';
+import Collapse from '@mui/material/Collapse';
+import Divider from '@mui/material/Divider';
+
+/* MUI Icons */
+import AddIcon from '@mui/icons-material/Add';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import CloseIcon from '@mui/icons-material/Close';
+import SettingsIcon from '@mui/icons-material/Settings';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import TuneIcon from '@mui/icons-material/Tune';
+import BuildIcon from '@mui/icons-material/Build';
+import TimelineIcon from '@mui/icons-material/Timeline';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ErrorIcon from '@mui/icons-material/Error';
+import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
+import SkipNextIcon from '@mui/icons-material/SkipNext';
+import RestoreIcon from '@mui/icons-material/Restore';
+import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
+import QuestionAnswerIcon from '@mui/icons-material/QuestionAnswer';
+import ReplayIcon from '@mui/icons-material/Replay';
+import StarIcon from '@mui/icons-material/Star';
+import DescriptionIcon from '@mui/icons-material/Description';
+
 import type {
   AgentNode as AgentNodeType,
   AgentTool,
   PhaseCategory,
-  AgentTrace,
   TraceStep,
   AgentEdge as AgentEdgeType,
   AgentParameters,
@@ -33,20 +89,22 @@ import { useAgentExecution } from '../context/AgentExecutionContext';
 
 /* ─── Constants ─── */
 const categoryColors: Record<string, { bg: string; border: string; accent: string }> = {
-  entry:          { bg: '#f0f7ff', border: '#3b82f6', accent: '#2563eb' },
-  classification: { bg: '#fef9f0', border: '#f59e0b', accent: '#d97706' },
-  research:       { bg: '#f0fdf4', border: '#22c55e', accent: '#16a34a' },
-  planning:       { bg: '#fdf4ff', border: '#a855f7', accent: '#9333ea' },
-  execution:      { bg: '#fff1f2', border: '#ef4444', accent: '#dc2626' },
-  verification:   { bg: '#f0fdfa', border: '#14b8a6', accent: '#0d9488' },
-  output:         { bg: '#f8fafc', border: '#64748b', accent: '#475569' },
+  entry:          { bg: '#e3f2fd', border: '#1976d2', accent: '#1565c0' },
+  classification: { bg: '#fff8e1', border: '#f9a825', accent: '#f57f17' },
+  research:       { bg: '#e8f5e9', border: '#43a047', accent: '#2e7d32' },
+  planning:       { bg: '#f3e5f5', border: '#8e24aa', accent: '#6a1b9a' },
+  execution:      { bg: '#ffebee', border: '#e53935', accent: '#c62828' },
+  verification:   { bg: '#e0f2f1', border: '#00897b', accent: '#00695c' },
+  output:         { bg: '#eceff1', border: '#546e7a', accent: '#37474f' },
 };
 const categoryLabels: Record<string, string> = {
   entry: 'Entry Point', classification: 'Classification', research: 'Research',
   planning: 'Planning', execution: 'Execution', verification: 'Verification', output: 'Output',
 };
 
-/* ─── Custom Flow Node ─── */
+/* ══════════════════════════════════════
+   Custom Flow Node (n8n-style card)
+   ══════════════════════════════════════ */
 interface FlowNodeData extends Record<string, unknown> {
   label: string;
   description: string;
@@ -55,147 +113,125 @@ interface FlowNodeData extends Record<string, unknown> {
   promptKey?: string;
   tools?: AgentTool[];
   enabled: boolean;
-  onToggle?: (id: string) => void;
-  onEditTools?: (id: string) => void;
   nodeId: string;
+  maxRetries?: number;
+  continueQuestion?: boolean;
+  onSelect?: (id: string) => void;
 }
 
-function AgentFlowNode({ data }: NodeProps<Node<FlowNodeData>>) {
+function AgentFlowNode({ data, selected }: NodeProps<Node<FlowNodeData>>) {
   const colors = categoryColors[data.category] || categoryColors.output;
   const dimmed = !data.enabled;
+  const enabledToolCount = data.tools?.filter(t => t.enabled).length ?? 0;
+
   return (
-    <div style={{
-      background: dimmed ? '#f5f5f5' : colors.bg,
-      borderColor: dimmed ? '#ccc' : colors.border,
-      borderWidth: 2, borderStyle: 'solid', borderRadius: 12,
-      padding: '10px 14px', minWidth: 190, maxWidth: 260,
-      opacity: dimmed ? 0.55 : 1,
-      boxShadow: '0 2px 8px rgba(0,0,0,.06)',
-    }}>
-      <Handle type="target" position={Position.Top} style={{ background: colors.border, width: 8, height: 8 }} />
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-        <span style={{
-          fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase',
-          color: colors.accent, background: `${colors.accent}14`,
-          padding: '1px 6px', borderRadius: 5,
-        }}>{categoryLabels[data.category]}</span>
-        {data.onToggle && (
-          <button
-            onClick={e => { e.stopPropagation(); data.onToggle!(data.nodeId); }}
-            style={{
-              fontSize: '0.6rem', padding: '1px 5px', borderRadius: 4,
-              border: '1px solid #ccc', background: data.enabled ? '#e8fce8' : '#fce8e8',
-              cursor: 'pointer', color: data.enabled ? '#16a34a' : '#dc2626',
-            }}
-          >{data.enabled ? 'ON' : 'OFF'}</button>
-        )}
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-        <span style={{ fontSize: '1.1rem' }}>{data.icon}</span>
-        <span style={{ fontWeight: 700, fontSize: '0.8rem', color: '#1a1a2e' }}>{data.label}</span>
-      </div>
-      <div style={{ fontSize: '0.68rem', color: '#777', lineHeight: 1.4 }}>{data.description}</div>
-      {data.tools && data.tools.length > 0 && (
-        <div style={{ marginTop: 5, display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-          {data.tools.filter(t => t.enabled).map(t => (
-            <span key={t.id} style={{
-              fontSize: '0.58rem', padding: '1px 5px', borderRadius: 4,
-              background: '#e8e8ff', color: '#555', border: '1px solid #d0d0ff',
-            }}>{t.icon} {t.label}</span>
-          ))}
-          {data.onEditTools && (
-            <button
-              onClick={e => { e.stopPropagation(); data.onEditTools!(data.nodeId); }}
-              style={{
-                fontSize: '0.58rem', padding: '1px 5px', borderRadius: 4,
-                background: '#f0f0f0', color: '#888', border: '1px solid #ddd', cursor: 'pointer',
-              }}
-            >⚙ Tools</button>
+    <Paper
+      elevation={selected ? 8 : 2}
+      sx={{
+        background: dimmed ? '#f5f5f5' : '#fff',
+        borderLeft: `4px solid ${dimmed ? '#bdbdbd' : colors.border}`,
+        borderRadius: '10px',
+        p: '10px 14px',
+        minWidth: 210,
+        maxWidth: 280,
+        opacity: dimmed ? 0.5 : 1,
+        cursor: 'pointer',
+        transition: 'all 0.2s ease',
+        outline: selected ? `2px solid ${colors.border}` : 'none',
+        '&:hover': { boxShadow: 6 },
+      }}
+      onClick={() => data.onSelect?.(data.nodeId)}
+    >
+      <Handle type="target" position={Position.Top} style={{ background: colors.border, width: 10, height: 10, border: '2px solid #fff' }} />
+
+      {/* Header */}
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
+        <Chip label={categoryLabels[data.category]} size="small"
+          sx={{ height: 18, fontSize: '0.6rem', fontWeight: 700, bgcolor: `${colors.accent}14`, color: colors.accent, border: `1px solid ${colors.accent}30` }} />
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          {data.continueQuestion && (
+            <Tooltip title="Continue/Stop question enabled" arrow>
+              <QuestionAnswerIcon sx={{ fontSize: 14, color: '#7c3aed' }} />
+            </Tooltip>
           )}
-        </div>
+          {(data.maxRetries ?? 0) > 0 && (
+            <Tooltip title={`Max ${data.maxRetries} retries`} arrow>
+              <Chip label={`↻${data.maxRetries}`} size="small" sx={{ height: 16, fontSize: '0.55rem', bgcolor: '#fff3e0', color: '#e65100' }} />
+            </Tooltip>
+          )}
+          <Chip label={data.enabled ? 'ON' : 'OFF'} size="small"
+            sx={{ height: 18, fontSize: '0.55rem', fontWeight: 700, bgcolor: data.enabled ? '#e8f5e9' : '#ffebee', color: data.enabled ? '#2e7d32' : '#c62828' }} />
+        </Box>
+      </Box>
+
+      {/* Title */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.5 }}>
+        <Typography sx={{ fontSize: '1.15rem', lineHeight: 1 }}>{data.icon}</Typography>
+        <Typography sx={{ fontWeight: 700, fontSize: '0.82rem', color: '#1a1a2e' }}>{data.label}</Typography>
+      </Box>
+
+      {/* Description */}
+      <Typography sx={{ fontSize: '0.68rem', color: '#78909c', lineHeight: 1.4, mb: 0.5 }}>{data.description}</Typography>
+
+      {/* Tools */}
+      {enabledToolCount > 0 && (
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.3, mt: 0.5 }}>
+          {data.tools!.filter(t => t.enabled).slice(0, 4).map(t => (
+            <Chip key={t.id} label={`${t.icon} ${t.label}`} size="small"
+              sx={{ height: 16, fontSize: '0.55rem', bgcolor: '#ede7f6', color: '#4527a0' }} />
+          ))}
+          {enabledToolCount > 4 && (
+            <Chip label={`+${enabledToolCount - 4}`} size="small" sx={{ height: 16, fontSize: '0.55rem', bgcolor: '#e0e0e0' }} />
+          )}
+        </Box>
       )}
-      <Handle type="source" position={Position.Bottom} style={{ background: colors.border, width: 8, height: 8 }} />
-    </div>
+
+      <Handle type="source" position={Position.Bottom} style={{ background: colors.border, width: 10, height: 10, border: '2px solid #fff' }} />
+    </Paper>
   );
 }
+
 const nodeTypes: NodeTypes = { agentNode: AgentFlowNode };
 
-/* ─── Trace Step Row (list item — compact) ─── */
+/* ══════════════════════════════════════
+   Trace Step Row
+   ══════════════════════════════════════ */
 function TraceStepRow({ step, selected, onSelect }: { step: TraceStep; selected: boolean; onSelect: () => void }) {
   const colors = categoryColors[step.category] || categoryColors.output;
-  const statusIcon = step.status === 'running' ? '⏳' : step.status === 'success' ? '✅' : step.status === 'error' ? '❌' : '⏭️';
+  const statusIcon = step.status === 'running' ? <HourglassEmptyIcon sx={{ fontSize: 16, color: '#f9a825' }} />
+    : step.status === 'success' ? <CheckCircleIcon sx={{ fontSize: 16, color: '#43a047' }} />
+    : step.status === 'error' ? <ErrorIcon sx={{ fontSize: 16, color: '#e53935' }} />
+    : <SkipNextIcon sx={{ fontSize: 16, color: '#9e9e9e' }} />;
+
   return (
-    <div
-      onClick={onSelect}
-      style={{
-        display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px',
-        cursor: 'pointer', fontSize: '0.75rem',
-        background: selected ? '#f0f5ff' : 'transparent',
-        borderLeft: selected ? '3px solid #3b82f6' : '3px solid transparent',
-        borderBottom: '1px solid #f0f0f0',
-        transition: 'background 0.15s',
-      }}
-    >
-      <span style={{ fontSize: '0.9rem' }}>{statusIcon}</span>
-      <span style={{
-        fontSize: '0.58rem', fontWeight: 700, color: colors.accent,
-        background: `${colors.accent}12`, padding: '1px 5px', borderRadius: 4,
-        textTransform: 'uppercase', flexShrink: 0,
-      }}>{step.category}</span>
-      <span style={{ fontWeight: 600, color: '#333', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{step.summary}</span>
-      {step.durationMs != null && <span style={{ fontSize: '0.6rem', color: '#aaa', flexShrink: 0 }}>{step.durationMs}ms</span>}
-    </div>
+    <Box onClick={onSelect} sx={{
+      display: 'flex', alignItems: 'center', gap: 1, px: 1.5, py: 1,
+      cursor: 'pointer',
+      bgcolor: selected ? '#e3f2fd' : 'transparent',
+      borderLeft: selected ? '3px solid #1976d2' : '3px solid transparent',
+      borderBottom: '1px solid #f5f5f5',
+      transition: 'all 0.15s',
+      '&:hover': { bgcolor: '#f5f5f5' },
+    }}>
+      {statusIcon}
+      <Chip label={step.category} size="small"
+        sx={{ height: 18, fontSize: '0.55rem', fontWeight: 700, color: colors.accent, bgcolor: `${colors.accent}12` }} />
+      <Typography sx={{ fontWeight: 600, fontSize: '0.73rem', color: '#333', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {step.summary}
+      </Typography>
+      {step.durationMs != null && (
+        <Typography sx={{ fontSize: '0.6rem', color: '#bdbdbd', flexShrink: 0 }}>{step.durationMs}ms</Typography>
+      )}
+    </Box>
   );
 }
 
-/* ─── n8n-style Step Detail Panel (Input / Parameters / Output) ─── */
-type DetailTab = 'parameters' | 'input' | 'output' | 'settings';
-
+/* ══════════════════════════════════════
+   n8n Step Detail Panel
+   ══════════════════════════════════════ */
 function StepDetailPanel({ step }: { step: TraceStep }) {
-  const [tab, setTab] = useState<DetailTab>('parameters');
+  const [tab, setTab] = useState(0);
   const colors = categoryColors[step.category] || categoryColors.output;
-
-  const tabBtnStyle = (active: boolean): React.CSSProperties => ({
-    fontSize: '0.72rem', fontWeight: active ? 700 : 500,
-    padding: '6px 14px', cursor: 'pointer', border: 'none',
-    borderBottom: active ? `2px solid ${colors.accent}` : '2px solid transparent',
-    background: 'transparent', color: active ? colors.accent : '#888',
-    transition: 'all 0.15s',
-  });
-
-  const fieldLabelStyle: React.CSSProperties = {
-    fontSize: '0.68rem', fontWeight: 600, color: '#888', textTransform: 'uppercase',
-    letterSpacing: '0.03em', marginBottom: 4, display: 'block',
-  };
-
-  const fieldValueStyle: React.CSSProperties = {
-    fontSize: '0.76rem', padding: '8px 12px', border: '1px solid #e5e7eb',
-    borderRadius: 8, background: '#f9fafb', color: '#333',
-    fontFamily: "'SF Mono', 'Menlo', monospace", lineHeight: 1.5,
-    wordBreak: 'break-word',
-  };
-
-  const aiAutoFilledBadge = (label: string) => (
-    <div style={{
-      display: 'inline-flex', alignItems: 'center', gap: 5,
-      fontSize: '0.68rem', color: '#7c3aed', background: '#f5f3ff',
-      border: '1px solid #ddd6fe', borderRadius: 6, padding: '3px 10px',
-      marginBottom: 6,
-    }}>
-      <span style={{ fontSize: '0.8rem' }}>✨</span>
-      Defined automatically by the <strong>model</strong>
-      <button style={{
-        border: 'none', background: 'none', cursor: 'pointer',
-        color: '#a78bfa', fontSize: '0.72rem', padding: '0 2px',
-      }}>×</button>
-    </div>
-  );
-
-  const formatData = (data: unknown): string => {
-    if (data == null) return '—';
-    if (typeof data === 'string') return data;
-    return JSON.stringify(data, null, 2);
-  };
 
   const inputEntries: [string, unknown][] = step.input != null
     ? (typeof step.input === 'object' && !Array.isArray(step.input)
@@ -209,396 +245,419 @@ function StepDetailPanel({ step }: { step: TraceStep }) {
       : [['result', step.output]])
     : [];
 
+  const renderDataTable = (entries: [string, unknown][], emptyIcon: string, emptyMsg: string) => {
+    if (entries.length === 0) {
+      return (
+        <Box sx={{ textAlign: 'center', py: 5, color: '#bdbdbd' }}>
+          <Typography sx={{ fontSize: '1.5rem', mb: 0.5 }}>{emptyIcon}</Typography>
+          <Typography sx={{ fontSize: '0.82rem', fontWeight: 600, color: '#9e9e9e' }}>{emptyMsg}</Typography>
+        </Box>
+      );
+    }
+    return (
+      <Paper variant="outlined" sx={{ borderRadius: 2, overflow: 'hidden' }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: '0.3fr 1fr', fontSize: '0.68rem', fontWeight: 700, color: '#9e9e9e', px: 1.5, py: 1, bgcolor: '#fafafa', borderBottom: '1px solid #e0e0e0', textTransform: 'uppercase' }}>
+          <span>Field</span><span>Value</span>
+        </Box>
+        {entries.map(([key, val], i) => (
+          <Box key={key} sx={{ display: 'grid', gridTemplateColumns: '0.3fr 1fr', px: 1.5, py: 1, fontSize: '0.74rem', borderBottom: i < entries.length - 1 ? '1px solid #f5f5f5' : 'none', alignItems: 'start' }}>
+            <Typography sx={{ fontWeight: 600, color: '#616161', fontFamily: 'monospace', fontSize: '0.7rem' }}>{key}</Typography>
+            <Box component="pre" sx={{ m: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: '0.7rem', color: '#333', fontFamily: 'monospace', maxHeight: 200, overflow: 'auto' }}>
+              {typeof val === 'string' ? val : JSON.stringify(val, null, 2)}
+            </Box>
+          </Box>
+        ))}
+      </Paper>
+    );
+  };
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Step header */}
-      <div style={{
-        padding: '12px 16px', borderBottom: '1px solid #e8e8e8', background: '#fff',
-        display: 'flex', alignItems: 'center', gap: 10,
-      }}>
-        <span style={{ fontSize: '1.1rem' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Header */}
+      <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid #e0e0e0', bgcolor: '#fff', display: 'flex', alignItems: 'center', gap: 1.25 }}>
+        <Typography sx={{ fontSize: '1.1rem' }}>
           {step.type === 'llm-call' ? '🧠' : step.type === 'file-read' ? '📖' : step.type === 'file-write' ? '💾' : step.type === 'file-search' ? '🔍' : step.type === 'text-search' ? '🔎' : step.type === 'integration-call' ? '🔌' : '⚡'}
-        </span>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#1a1a2e' }}>{step.nodeLabel}</div>
-          <div style={{ fontSize: '0.68rem', color: '#999' }}>{step.summary}</div>
-        </div>
-        <div style={{
-          fontSize: '0.6rem', fontWeight: 700, color: colors.accent,
-          background: `${colors.accent}12`, padding: '2px 8px', borderRadius: 4,
-          textTransform: 'uppercase',
-        }}>{step.category}</div>
+        </Typography>
+        <Box sx={{ flex: 1 }}>
+          <Typography sx={{ fontWeight: 700, fontSize: '0.85rem', color: '#1a1a2e' }}>{step.nodeLabel}</Typography>
+          <Typography sx={{ fontSize: '0.68rem', color: '#9e9e9e' }}>{step.summary}</Typography>
+        </Box>
+        <Chip label={step.category} size="small" sx={{ fontWeight: 700, color: colors.accent, bgcolor: `${colors.accent}12`, textTransform: 'uppercase', fontSize: '0.6rem' }} />
         {step.durationMs != null && (
-          <div style={{ fontSize: '0.68rem', color: '#aaa' }}>{step.durationMs}ms</div>
+          <Typography sx={{ fontSize: '0.68rem', color: '#bdbdbd' }}>{step.durationMs}ms</Typography>
         )}
-      </div>
+      </Box>
 
-      {/* Tab bar */}
-      <div style={{
-        display: 'flex', borderBottom: '1px solid #e8e8e8', background: '#fff',
-        padding: '0 8px',
+      {/* Tabs */}
+      <MuiTabs value={tab} onChange={(_, v) => setTab(v)} sx={{
+        borderBottom: '1px solid #e0e0e0', bgcolor: '#fff', minHeight: 36,
+        '& .MuiTab-root': { minHeight: 36, fontSize: '0.72rem', textTransform: 'none', py: 0.5 },
+        '& .MuiTabs-indicator': { bgcolor: colors.accent },
       }}>
-        {(['parameters', 'input', 'output', 'settings'] as DetailTab[]).map(t => (
-          <button key={t} onClick={() => setTab(t)} style={tabBtnStyle(tab === t)}>
-            {t === 'parameters' ? 'Parameters' : t === 'input' ? `Input${inputEntries.length ? ` (${inputEntries.length})` : ''}` : t === 'output' ? `Output${outputEntries.length ? ` (${outputEntries.length})` : ''}` : 'Settings'}
-          </button>
-        ))}
-        {/* Execute step button (visual only — mirrors n8n) */}
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', padding: '0 4px' }}>
-          <span style={{
-            fontSize: '0.65rem', padding: '3px 10px', borderRadius: 4,
-            background: step.status === 'success' ? '#dcfce7' : step.status === 'error' ? '#fee2e2' : step.status === 'running' ? '#fef9c3' : '#f3f4f6',
-            color: step.status === 'success' ? '#16a34a' : step.status === 'error' ? '#dc2626' : step.status === 'running' ? '#ca8a04' : '#6b7280',
-            fontWeight: 600,
-          }}>
-            {step.status === 'success' ? '✓ Success' : step.status === 'error' ? '✗ Error' : step.status === 'running' ? '● Running' : '⏭ Skipped'}
-          </span>
-        </div>
-      </div>
+        <Tab label="Parameters" />
+        <Tab label={`Input${inputEntries.length ? ` (${inputEntries.length})` : ''}`} />
+        <Tab label={`Output${outputEntries.length ? ` (${outputEntries.length})` : ''}`} />
+        <Tab label="Settings" />
+      </MuiTabs>
 
-      {/* Tab content */}
-      <div style={{ flex: 1, overflowY: 'auto', background: '#fafafa' }}>
-        {/* ─── Parameters Tab ─── */}
-        {tab === 'parameters' && (
-          <div style={{ padding: 16 }}>
-            {step.error && (
-              <div style={{
-                padding: '10px 14px', borderRadius: 8, marginBottom: 12,
-                background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626',
-                fontSize: '0.75rem',
-              }}>
-                <strong>⚠ Error:</strong> {step.error}
-              </div>
-            )}
-
-            {/* Method / Type */}
-            <div style={{ marginBottom: 14 }}>
-              <span style={fieldLabelStyle}>Method</span>
-              <div style={{
-                ...fieldValueStyle, display: 'inline-flex', alignItems: 'center', gap: 8,
-                padding: '6px 12px', fontSize: '0.76rem',
-              }}>
-                <span style={{
-                  background: step.type === 'llm-call' ? '#dbeafe' : '#dcfce7',
-                  color: step.type === 'llm-call' ? '#2563eb' : '#16a34a',
-                  padding: '2px 8px', borderRadius: 4, fontWeight: 700, fontSize: '0.68rem',
-                  fontFamily: "'SF Mono', monospace",
-                }}>
-                  {step.type === 'llm-call' ? 'LLM' : step.type === 'file-read' ? 'READ' : step.type === 'file-write' ? 'WRITE' : step.type === 'file-search' ? 'SEARCH' : step.type === 'text-search' ? 'GREP' : step.type === 'tool-call' ? 'TOOL' : 'API'}
-                </span>
-                <span>{step.nodeLabel}</span>
-              </div>
-            </div>
-
-            {/* URL / Target — show as "auto filled by model" */}
-            <div style={{ marginBottom: 14 }}>
-              <span style={fieldLabelStyle}>Target</span>
-              {aiAutoFilledBadge('target')}
-              <div style={fieldValueStyle}>
-                {step.type === 'llm-call' ? 'AI Model Endpoint' : step.type === 'file-read' || step.type === 'file-write' ? 'Workspace File System' : 'Tool Invocation'}
-              </div>
-            </div>
-
-            {/* Chosen Files (if applicable) */}
+      {/* Content */}
+      <Box sx={{ flex: 1, overflowY: 'auto', bgcolor: '#fafafa', p: 2 }}>
+        {tab === 0 && (
+          <Stack spacing={1.5}>
+            {step.error && <Alert severity="error" sx={{ fontSize: '0.75rem' }}><strong>Error:</strong> {step.error}</Alert>}
+            <Box>
+              <Typography variant="overline" sx={{ fontSize: '0.65rem', color: '#9e9e9e' }}>Method</Typography>
+              <Paper variant="outlined" sx={{ p: 1, display: 'flex', alignItems: 'center', gap: 1, borderRadius: 2 }}>
+                <Chip label={step.type === 'llm-call' ? 'LLM' : step.type.toUpperCase()} size="small"
+                  sx={{ fontWeight: 700, fontSize: '0.68rem', fontFamily: 'monospace', bgcolor: step.type === 'llm-call' ? '#e3f2fd' : '#e8f5e9', color: step.type === 'llm-call' ? '#1565c0' : '#2e7d32' }} />
+                <Typography sx={{ fontSize: '0.76rem' }}>{step.nodeLabel}</Typography>
+              </Paper>
+            </Box>
+            <Box>
+              <Typography variant="overline" sx={{ fontSize: '0.65rem', color: '#9e9e9e' }}>Target</Typography>
+              <Chip icon={<AutoFixHighIcon sx={{ fontSize: 14 }} />} label="Defined automatically by the model" size="small"
+                sx={{ mb: 0.5, fontSize: '0.68rem', color: '#7c3aed', bgcolor: '#f5f3ff', border: '1px solid #ddd6fe' }} />
+              <Paper variant="outlined" sx={{ p: 1, borderRadius: 2 }}>
+                <Typography sx={{ fontSize: '0.76rem', fontFamily: 'monospace', color: '#333' }}>
+                  {step.type === 'llm-call' ? 'AI Model Endpoint' : step.type === 'file-read' || step.type === 'file-write' ? 'Workspace File System' : 'Tool Invocation'}
+                </Typography>
+              </Paper>
+            </Box>
             {step.chosenFiles && step.chosenFiles.length > 0 && (
-              <div style={{ marginBottom: 14 }}>
-                <span style={fieldLabelStyle}>Chosen Files ({step.chosenFiles.length})</span>
-                <div style={{ ...fieldValueStyle, padding: 0, overflow: 'hidden' }}>
+              <Box>
+                <Typography variant="overline" sx={{ fontSize: '0.65rem', color: '#9e9e9e' }}>Chosen Files ({step.chosenFiles.length})</Typography>
+                <Paper variant="outlined" sx={{ borderRadius: 2, overflow: 'hidden' }}>
                   {step.chosenFiles.map((f, i) => (
-                    <div key={i} style={{
-                      padding: '6px 12px', fontSize: '0.72rem', color: '#333',
-                      borderBottom: i < step.chosenFiles!.length - 1 ? '1px solid #e5e7eb' : 'none',
-                      display: 'flex', alignItems: 'center', gap: 6,
-                    }}>
-                      <span style={{ color: '#3b82f6' }}>📄</span> {f}
-                    </div>
+                    <Box key={i} sx={{ px: 1.5, py: 0.75, fontSize: '0.72rem', borderBottom: i < step.chosenFiles!.length - 1 ? '1px solid #f5f5f5' : 'none', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <DescriptionIcon sx={{ fontSize: 14, color: '#1976d2' }} /> {f}
+                    </Box>
                   ))}
-                </div>
-              </div>
+                </Paper>
+              </Box>
             )}
-
-            {/* Stop Reason */}
-            {step.stopReason && (
-              <div style={{ marginBottom: 14 }}>
-                <span style={fieldLabelStyle}>Stop Reason</span>
-                <div style={fieldValueStyle}>{step.stopReason}</div>
-              </div>
-            )}
-
-            {/* Tokens */}
             {step.tokens && (
-              <div style={{ marginBottom: 14 }}>
-                <span style={fieldLabelStyle}>Token Usage</span>
-                <div style={{ display: 'flex', gap: 8 }}>
+              <Box>
+                <Typography variant="overline" sx={{ fontSize: '0.65rem', color: '#9e9e9e' }}>Token Usage</Typography>
+                <Box sx={{ display: 'flex', gap: 1 }}>
                   {(['prompt', 'completion', 'total'] as const).map(k => (
-                    <div key={k} style={{
-                      flex: 1, textAlign: 'center', padding: '8px', borderRadius: 8,
-                      background: '#fff', border: '1px solid #e5e7eb',
-                    }}>
-                      <div style={{ fontSize: '1rem', fontWeight: 700, color: '#333' }}>{step.tokens![k]}</div>
-                      <div style={{ fontSize: '0.6rem', color: '#999', textTransform: 'uppercase' }}>{k}</div>
-                    </div>
+                    <Paper key={k} variant="outlined" sx={{ flex: 1, textAlign: 'center', p: 1, borderRadius: 2 }}>
+                      <Typography sx={{ fontSize: '1rem', fontWeight: 700 }}>{step.tokens![k]}</Typography>
+                      <Typography variant="overline" sx={{ fontSize: '0.55rem', color: '#9e9e9e' }}>{k}</Typography>
+                    </Paper>
                   ))}
-                </div>
-              </div>
+                </Box>
+              </Box>
             )}
-          </div>
+          </Stack>
         )}
-
-        {/* ─── Input Tab (n8n style — left panel "No input data" or data) ─── */}
-        {tab === 'input' && (
-          <div style={{ padding: 16 }}>
-            {inputEntries.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px 20px', color: '#bbb' }}>
-                <div style={{ fontSize: '1.5rem', marginBottom: 6 }}>→|</div>
-                <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#999' }}>No input data</div>
-                <div style={{ fontSize: '0.7rem', marginTop: 4, color: '#ccc' }}>
-                  Execute previous nodes to view input data
-                </div>
-              </div>
-            ) : (
-              <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden', background: '#fff' }}>
-                <div style={{
-                  display: 'grid', gridTemplateColumns: 'minmax(100px, 0.3fr) 1fr',
-                  fontSize: '0.68rem', fontWeight: 700, color: '#888',
-                  textTransform: 'uppercase', padding: '8px 12px',
-                  background: '#f9fafb', borderBottom: '1px solid #e5e7eb',
-                }}>
-                  <span>Field</span><span>Value</span>
-                </div>
-                {inputEntries.map(([key, val], i) => (
-                  <div key={key} style={{
-                    display: 'grid', gridTemplateColumns: 'minmax(100px, 0.3fr) 1fr',
-                    padding: '8px 12px', fontSize: '0.74rem',
-                    borderBottom: i < inputEntries.length - 1 ? '1px solid #f0f0f0' : 'none',
-                    alignItems: 'start',
-                  }}>
-                    <span style={{ fontWeight: 600, color: '#555', fontFamily: "'SF Mono', monospace", fontSize: '0.7rem' }}>{key}</span>
-                    <pre style={{
-                      margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-                      fontSize: '0.7rem', color: '#333', fontFamily: "'SF Mono', monospace",
-                      maxHeight: 200, overflow: 'auto',
-                    }}>{typeof val === 'string' ? val : JSON.stringify(val, null, 2)}</pre>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ─── Output Tab ─── */}
-        {tab === 'output' && (
-          <div style={{ padding: 16 }}>
-            {outputEntries.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px 20px', color: '#bbb' }}>
-                <div style={{ fontSize: '1.5rem', marginBottom: 6 }}>|→</div>
-                <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#999' }}>No output data</div>
-                <div style={{ fontSize: '0.7rem', marginTop: 4, color: '#ccc' }}>
-                  {step.status === 'running' ? 'Step is still running…' : 'Execute step to see output'}
-                </div>
-              </div>
-            ) : (
-              <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden', background: '#fff' }}>
-                <div style={{
-                  display: 'grid', gridTemplateColumns: 'minmax(100px, 0.3fr) 1fr',
-                  fontSize: '0.68rem', fontWeight: 700, color: '#888',
-                  textTransform: 'uppercase', padding: '8px 12px',
-                  background: '#f9fafb', borderBottom: '1px solid #e5e7eb',
-                }}>
-                  <span>Field</span><span>Value</span>
-                </div>
-                {outputEntries.map(([key, val], i) => (
-                  <div key={key} style={{
-                    display: 'grid', gridTemplateColumns: 'minmax(100px, 0.3fr) 1fr',
-                    padding: '8px 12px', fontSize: '0.74rem',
-                    borderBottom: i < outputEntries.length - 1 ? '1px solid #f0f0f0' : 'none',
-                    alignItems: 'start',
-                  }}>
-                    <span style={{ fontWeight: 600, color: '#555', fontFamily: "'SF Mono', monospace", fontSize: '0.7rem' }}>{key}</span>
-                    <pre style={{
-                      margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-                      fontSize: '0.7rem', color: '#333', fontFamily: "'SF Mono', monospace",
-                      maxHeight: 200, overflow: 'auto',
-                    }}>{typeof val === 'string' ? val : JSON.stringify(val, null, 2)}</pre>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ─── Settings Tab ─── */}
-        {tab === 'settings' && (
-          <div style={{ padding: 16 }}>
-            <div style={{
-              padding: '10px 14px', borderRadius: 8, marginBottom: 14,
-              background: '#f0f5ff', border: '1px solid #bfdbfe', fontSize: '0.72rem', color: '#3b82f6',
-              display: 'flex', alignItems: 'center', gap: 8,
-            }}>
-              <span>→</span> Execution will continue even if the node fails
-            </div>
-
-            <div style={{ marginBottom: 14 }}>
-              <span style={fieldLabelStyle}>Node ID</span>
-              <div style={fieldValueStyle}>{step.nodeId}</div>
-            </div>
-
-            <div style={{ marginBottom: 14 }}>
-              <span style={fieldLabelStyle}>Type</span>
-              <div style={fieldValueStyle}>{step.type}</div>
-            </div>
-
-            <div style={{ marginBottom: 14 }}>
-              <span style={fieldLabelStyle}>Category</span>
-              <div style={{
-                ...fieldValueStyle, display: 'inline-flex', alignItems: 'center', gap: 6,
-              }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: colors.border }} />
-                {step.category}
-              </div>
-            </div>
-
-            <div style={{ marginBottom: 14 }}>
-              <span style={fieldLabelStyle}>Timestamp</span>
-              <div style={fieldValueStyle}>{new Date(step.timestamp).toLocaleString()}</div>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/* ─── Tools Editor Modal ─── */
-function ToolsEditorModal({ nodeId, nodeLabel, tools, onSave, onClose }: {
-  nodeId: string; nodeLabel: string; tools: AgentTool[];
-  onSave: (nodeId: string, tools: AgentTool[]) => void; onClose: () => void;
-}) {
-  const [localTools, setLocalTools] = useState<AgentTool[]>(() =>
-    ALL_AGENT_TOOLS.map(t => {
-      const existing = tools.find(e => e.id === t.id);
-      return existing ? { ...t, enabled: existing.enabled } : { ...t };
-    })
-  );
-  const toggleTool = (toolId: string) => setLocalTools(prev => prev.map(t => t.id === toolId ? { ...t, enabled: !t.enabled } : t));
-  const integrations = Array.from(new Set(ALL_AGENT_TOOLS.map(t => t.integration).filter(Boolean)));
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={onClose}>
-      <div style={{ background: '#fff', borderRadius: 12, padding: 20, minWidth: 400, maxWidth: 500, maxHeight: '70vh', overflow: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,.15)' }} onClick={e => e.stopPropagation()}>
-        <h3 style={{ margin: '0 0 12px', fontSize: '0.9rem' }}>⚙️ Tools for "{nodeLabel}"</h3>
-        <p style={{ fontSize: '0.72rem', color: '#888', marginBottom: 12 }}>Toggle which integrations this node can use. Tools correspond to sidebar features.</p>
-        {integrations.map(intg => (
-          <div key={intg} style={{ marginBottom: 8 }}>
-            <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#999', textTransform: 'uppercase', marginBottom: 4 }}>{intg}</div>
-            {localTools.filter(t => t.integration === intg).map(tool => (
-              <label key={tool.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', fontSize: '0.78rem', cursor: 'pointer' }}>
-                <input type="checkbox" checked={tool.enabled} onChange={() => toggleTool(tool.id)} />
-                <span>{tool.icon}</span>
-                <span>{tool.label}</span>
-              </label>
+        {tab === 1 && renderDataTable(inputEntries, '→|', 'No input data')}
+        {tab === 2 && renderDataTable(outputEntries, '|→', 'No output data')}
+        {tab === 3 && (
+          <Stack spacing={1.5}>
+            <Alert severity="info" sx={{ fontSize: '0.72rem' }}>Execution will continue even if the node fails</Alert>
+            {[
+              ['Node ID', step.nodeId],
+              ['Type', step.type],
+              ['Category', step.category],
+              ['Timestamp', new Date(step.timestamp).toLocaleString()],
+            ].map(([label, val]) => (
+              <Box key={label}>
+                <Typography variant="overline" sx={{ fontSize: '0.65rem', color: '#9e9e9e' }}>{label}</Typography>
+                <Paper variant="outlined" sx={{ p: 1, borderRadius: 2 }}>
+                  <Typography sx={{ fontSize: '0.76rem', fontFamily: 'monospace' }}>{val}</Typography>
+                </Paper>
+              </Box>
             ))}
-          </div>
-        ))}
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
-          <button onClick={onClose} style={{ padding: '6px 14px', borderRadius: 6, border: '1px solid #ddd', background: '#f8f8f8', cursor: 'pointer', fontSize: '0.78rem' }}>Cancel</button>
-          <button onClick={() => { onSave(nodeId, localTools.filter(t => t.enabled)); onClose(); }} style={{ padding: '6px 14px', borderRadius: 6, border: 'none', background: '#3b82f6', color: '#fff', cursor: 'pointer', fontSize: '0.78rem' }}>Save</button>
-        </div>
-      </div>
-    </div>
+          </Stack>
+        )}
+      </Box>
+    </Box>
   );
 }
 
-/* ─── Node Editor Modal ─── */
-function NodeEditorModal({ node, onSave, onDelete, onClose }: {
+/* ══════════════════════════════════════
+   n8n-Style Node Parameter Drawer
+   ══════════════════════════════════════ */
+function NodeParameterDrawer({
+  node, isEditable, onSave, onDelete, onSaveTools, onClose,
+}: {
   node: AgentNodeType;
+  isEditable: boolean;
   onSave: (updated: AgentNodeType) => void;
   onDelete: (nodeId: string) => void;
+  onSaveTools: (nodeId: string, tools: AgentTool[]) => void;
   onClose: () => void;
 }) {
+  const [tab, setTab] = useState(0);
   const [label, setLabel] = useState(node.label);
   const [description, setDescription] = useState(node.description);
   const [category, setCategory] = useState<PhaseCategory>(node.category);
   const [icon, setIcon] = useState(node.icon);
   const [promptKey, setPromptKey] = useState(node.promptKey ?? '');
   const [customPrompt, setCustomPrompt] = useState(node.customPrompt ?? '');
+  const [enabled, setEnabled] = useState(node.enabled);
+  const [maxRetries, setMaxRetries] = useState(node.maxRetries ?? 0);
+  const [continueQuestion, setContinueQuestion] = useState(node.continueQuestion ?? false);
+  const [continueQuestionPrompt, setContinueQuestionPrompt] = useState(
+    node.continueQuestionPrompt ?? 'Based on the results, should we continue to the next step or stop here?'
+  );
+  const [localTools, setLocalTools] = useState<AgentTool[]>(() =>
+    ALL_AGENT_TOOLS.map(t => {
+      const existing = node.tools?.find(e => e.id === t.id);
+      return existing ? { ...t, enabled: existing.enabled } : { ...t };
+    })
+  );
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  // Sync when node changes
+  useEffect(() => {
+    setLabel(node.label);
+    setDescription(node.description);
+    setCategory(node.category);
+    setIcon(node.icon);
+    setPromptKey(node.promptKey ?? '');
+    setCustomPrompt(node.customPrompt ?? '');
+    setEnabled(node.enabled);
+    setMaxRetries(node.maxRetries ?? 0);
+    setContinueQuestion(node.continueQuestion ?? false);
+    setContinueQuestionPrompt(node.continueQuestionPrompt ?? 'Based on the results, should we continue to the next step or stop here?');
+    setLocalTools(ALL_AGENT_TOOLS.map(t => {
+      const existing = node.tools?.find(e => e.id === t.id);
+      return existing ? { ...t, enabled: existing.enabled } : { ...t };
+    }));
+    setTab(0);
+  }, [node.id]);
+
+  const toggleTool = (toolId: string) => setLocalTools(prev => prev.map(t => t.id === toolId ? { ...t, enabled: !t.enabled } : t));
+  const integrations = Array.from(new Set(ALL_AGENT_TOOLS.map(t => t.integration).filter(Boolean)));
+  const colors = categoryColors[node.category] || categoryColors.output;
 
   const handleSave = () => {
     onSave({
       ...node,
-      label, description, category, icon,
+      label, description, category, icon, enabled,
       promptKey: promptKey || undefined,
       customPrompt: customPrompt || undefined,
+      maxRetries: maxRetries > 0 ? maxRetries : undefined,
+      continueQuestion: continueQuestion || undefined,
+      continueQuestionPrompt: continueQuestion ? continueQuestionPrompt : undefined,
     });
-    onClose();
-  };
-
-  const inputStyle: React.CSSProperties = {
-    width: '100%', fontSize: '0.78rem', padding: '6px 10px',
-    border: '1px solid #ddd', borderRadius: 6, outline: 'none',
-    boxSizing: 'border-box',
-  };
-  const labelStyle: React.CSSProperties = {
-    fontSize: '0.7rem', fontWeight: 600, color: '#666', marginBottom: 3, display: 'block',
+    if (node.tools) {
+      onSaveTools(node.id, localTools.filter(t => t.enabled));
+    }
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={onClose}>
-      <div style={{ background: '#fff', borderRadius: 12, padding: 20, minWidth: 420, maxWidth: 520, maxHeight: '80vh', overflow: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,.15)' }} onClick={e => e.stopPropagation()}>
-        <h3 style={{ margin: '0 0 14px', fontSize: '0.9rem' }}>✏️ Edit Node</h3>
+    <Drawer anchor="right" open onClose={onClose} PaperProps={{
+      sx: { width: 420, display: 'flex', flexDirection: 'column', bgcolor: '#fafafa' },
+    }}>
+      {/* Header */}
+      <Box sx={{ px: 2, py: 1.5, display: 'flex', alignItems: 'center', gap: 1.5, borderBottom: `3px solid ${colors.border}`, bgcolor: '#fff' }}>
+        <Typography sx={{ fontSize: '1.4rem' }}>{icon}</Typography>
+        <Box sx={{ flex: 1 }}>
+          <Typography sx={{ fontWeight: 700, fontSize: '0.92rem', color: '#1a1a2e' }}>{label || 'Node'}</Typography>
+          <Chip label={categoryLabels[category]} size="small"
+            sx={{ height: 18, fontSize: '0.6rem', fontWeight: 700, bgcolor: `${colors.accent}14`, color: colors.accent }} />
+        </Box>
+        <FormControlLabel
+          control={<Switch checked={enabled} onChange={(_, v) => setEnabled(v)} disabled={!isEditable} size="small" />}
+          label="" sx={{ mr: 0 }}
+        />
+        <MuiIconButton onClick={onClose} size="small"><CloseIcon fontSize="small" /></MuiIconButton>
+      </Box>
 
-        <div style={{ marginBottom: 10 }}>
-          <span style={labelStyle}>Icon & Label</span>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input value={icon} onChange={e => setIcon(e.target.value)} style={{ ...inputStyle, width: 50, textAlign: 'center' }} />
-            <input value={label} onChange={e => setLabel(e.target.value)} style={inputStyle} />
-          </div>
-        </div>
+      {/* Tabs */}
+      <MuiTabs value={tab} onChange={(_, v) => setTab(v)} variant="fullWidth" sx={{
+        bgcolor: '#fff', borderBottom: '1px solid #e0e0e0', minHeight: 40,
+        '& .MuiTab-root': { minHeight: 40, fontSize: '0.72rem', textTransform: 'none' },
+      }}>
+        <Tab icon={<TuneIcon sx={{ fontSize: 16 }} />} iconPosition="start" label="Parameters" />
+        <Tab icon={<BuildIcon sx={{ fontSize: 16 }} />} iconPosition="start" label={`Tools (${localTools.filter(t => t.enabled).length})`} />
+        <Tab icon={<SettingsIcon sx={{ fontSize: 16 }} />} iconPosition="start" label="Settings" />
+      </MuiTabs>
 
-        <div style={{ marginBottom: 10 }}>
-          <span style={labelStyle}>Description</span>
-          <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2}
-            style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit' }} />
-        </div>
+      {/* Content */}
+      <Box sx={{ flex: 1, overflowY: 'auto', p: 2 }}>
+        {/* Parameters Tab */}
+        {tab === 0 && (
+          <Stack spacing={2}>
+            {/* Basic Info */}
+            <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+              <Typography variant="overline" sx={{ fontSize: '0.65rem', color: '#9e9e9e', mb: 1, display: 'block' }}>Basic Info</Typography>
+              <Stack spacing={1.5}>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <TextField label="Icon" value={icon} onChange={e => setIcon(e.target.value)} size="small"
+                    disabled={!isEditable} sx={{ width: 70 }}
+                    inputProps={{ style: { textAlign: 'center', fontSize: '1.2rem' } }} />
+                  <TextField label="Label" value={label} onChange={e => setLabel(e.target.value)} size="small"
+                    disabled={!isEditable} fullWidth />
+                </Box>
+                <TextField label="Description" value={description} onChange={e => setDescription(e.target.value)}
+                  size="small" disabled={!isEditable} fullWidth multiline rows={2} />
+                <FormControl size="small" fullWidth disabled={!isEditable}>
+                  <InputLabel>Category</InputLabel>
+                  <Select value={category} label="Category" onChange={e => setCategory(e.target.value as PhaseCategory)}>
+                    {Object.entries(categoryLabels).map(([k, v]) => (
+                      <MenuItem key={k} value={k}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: categoryColors[k]?.border }} />
+                          {v}
+                        </Box>
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Stack>
+            </Paper>
 
-        <div style={{ marginBottom: 10 }}>
-          <span style={labelStyle}>Phase Category</span>
-          <select value={category} onChange={e => setCategory(e.target.value as PhaseCategory)}
-            style={{ ...inputStyle, cursor: 'pointer' }}>
-            {Object.entries(categoryLabels).map(([k, v]) => (
-              <option key={k} value={k}>{v}</option>
-            ))}
-          </select>
-        </div>
+            {/* Prompt */}
+            <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+              <Typography variant="overline" sx={{ fontSize: '0.65rem', color: '#9e9e9e', mb: 1, display: 'block' }}>Prompt</Typography>
+              <Stack spacing={1.5}>
+                <TextField label="Prompt Key" value={promptKey} onChange={e => setPromptKey(e.target.value)}
+                  size="small" disabled={!isEditable} fullWidth placeholder="e.g. researchAgentPrompt"
+                  InputProps={{ startAdornment: <InputAdornment position="start"><Typography sx={{ fontSize: '0.7rem', color: '#9e9e9e' }}>key:</Typography></InputAdornment> }}
+                />
+                <TextField label="Custom Prompt Override" value={customPrompt} onChange={e => setCustomPrompt(e.target.value)}
+                  size="small" disabled={!isEditable} fullWidth multiline rows={4}
+                  placeholder="Leave empty to use default prompt…"
+                  sx={{ '& textarea': { fontFamily: 'monospace', fontSize: '0.72rem' } }} />
+              </Stack>
+            </Paper>
 
-        <div style={{ marginBottom: 10 }}>
-          <span style={labelStyle}>Prompt Key (optional)</span>
-          <input value={promptKey} onChange={e => setPromptKey(e.target.value)}
-            placeholder="e.g. researchAgentPrompt" style={inputStyle} />
-        </div>
+            {/* Continue/Stop Gate */}
+            <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, border: continueQuestion ? '2px solid #7c3aed' : undefined }}>
+              <Typography variant="overline" sx={{ fontSize: '0.65rem', color: '#9e9e9e', mb: 1, display: 'block' }}>
+                <QuestionAnswerIcon sx={{ fontSize: 14, mr: 0.5, verticalAlign: 'middle' }} />
+                Continue / Stop Gate
+              </Typography>
+              <FormControlLabel
+                control={<Switch checked={continueQuestion} onChange={(_, v) => setContinueQuestion(v)} disabled={!isEditable} size="small"
+                  sx={{ '& .MuiSwitch-switchBase.Mui-checked': { color: '#7c3aed' }, '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: '#7c3aed' } }} />}
+                label={<Typography sx={{ fontSize: '0.76rem', fontWeight: 600 }}>Ask model to continue or stop</Typography>}
+              />
+              <Collapse in={continueQuestion}>
+                <Box sx={{ mt: 1.5 }}>
+                  <Alert severity="info" sx={{ fontSize: '0.7rem', mb: 1.5 }}>
+                    After this node completes, the model decides whether to proceed or stop the pipeline.
+                  </Alert>
+                  <TextField
+                    label="Continue Question Prompt"
+                    value={continueQuestionPrompt}
+                    onChange={e => setContinueQuestionPrompt(e.target.value)}
+                    size="small" disabled={!isEditable} fullWidth multiline rows={3}
+                    sx={{ '& textarea': { fontFamily: 'monospace', fontSize: '0.72rem' } }}
+                  />
+                </Box>
+              </Collapse>
+            </Paper>
 
-        <div style={{ marginBottom: 10 }}>
-          <span style={labelStyle}>Custom Prompt Override (optional)</span>
-          <textarea value={customPrompt} onChange={e => setCustomPrompt(e.target.value)}
-            rows={4} placeholder="Leave empty to use the default prompt from prompt settings…"
-            style={{ ...inputStyle, resize: 'vertical', fontFamily: "'SF Mono', monospace", fontSize: '0.7rem' }} />
-        </div>
+            {/* Max Retries */}
+            <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+              <Typography variant="overline" sx={{ fontSize: '0.65rem', color: '#9e9e9e', mb: 0.5, display: 'block' }}>
+                <ReplayIcon sx={{ fontSize: 14, mr: 0.5, verticalAlign: 'middle' }} />
+                Max Retries
+              </Typography>
+              <Typography sx={{ fontSize: '0.7rem', color: '#78909c', mb: 1 }}>
+                Retry this node on failure (0 = no retries)
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, px: 1 }}>
+                <Slider value={maxRetries} onChange={(_, v) => setMaxRetries(v as number)}
+                  min={0} max={10} step={1} disabled={!isEditable}
+                  marks={[{ value: 0, label: '0' }, { value: 3, label: '3' }, { value: 5, label: '5' }, { value: 10, label: '10' }]}
+                  valueLabelDisplay="auto" sx={{ flex: 1, color: '#e65100' }} />
+                <TextField value={maxRetries} type="number"
+                  onChange={e => setMaxRetries(Math.max(0, Math.min(10, parseInt(e.target.value) || 0)))}
+                  size="small" disabled={!isEditable} sx={{ width: 65 }}
+                  inputProps={{ min: 0, max: 10, style: { textAlign: 'center', fontWeight: 700 } }} />
+              </Box>
+            </Paper>
+          </Stack>
+        )}
 
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between', marginTop: 16 }}>
-          <button onClick={() => { if (confirm(`Delete node "${node.label}"?`)) { onDelete(node.id); onClose(); } }}
-            style={{ padding: '6px 14px', borderRadius: 6, border: '1px solid #fca5a5', background: '#fef2f2', color: '#dc2626', cursor: 'pointer', fontSize: '0.78rem' }}>🗑 Delete Node</button>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={onClose} style={{ padding: '6px 14px', borderRadius: 6, border: '1px solid #ddd', background: '#f8f8f8', cursor: 'pointer', fontSize: '0.78rem' }}>Cancel</button>
-            <button onClick={handleSave} style={{ padding: '6px 14px', borderRadius: 6, border: 'none', background: '#3b82f6', color: '#fff', cursor: 'pointer', fontSize: '0.78rem' }}>Save</button>
-          </div>
-        </div>
-      </div>
-    </div>
+        {/* Tools Tab */}
+        {tab === 1 && (
+          <Stack spacing={2}>
+            {!node.tools ? (
+              <Alert severity="info" sx={{ fontSize: '0.72rem' }}>This node does not use tools.</Alert>
+            ) : (
+              integrations.map(intg => (
+                <Paper key={intg} variant="outlined" sx={{ borderRadius: 2, overflow: 'hidden' }}>
+                  <Box sx={{ px: 1.5, py: 0.75, bgcolor: '#f5f5f5', borderBottom: '1px solid #e0e0e0' }}>
+                    <Typography sx={{ fontSize: '0.68rem', fontWeight: 700, color: '#9e9e9e', textTransform: 'uppercase' }}>{intg}</Typography>
+                  </Box>
+                  {localTools.filter(t => t.integration === intg).map(tool => (
+                    <Box key={tool.id} sx={{
+                      display: 'flex', alignItems: 'center', px: 1.5, py: 0.5,
+                      borderBottom: '1px solid #f5f5f5', '&:hover': { bgcolor: '#f8f8ff' },
+                    }}>
+                      <Checkbox checked={tool.enabled} onChange={() => toggleTool(tool.id)} disabled={!isEditable} size="small" />
+                      <Typography sx={{ fontSize: '0.9rem', mr: 0.75 }}>{tool.icon}</Typography>
+                      <Typography sx={{ fontSize: '0.78rem', flex: 1 }}>{tool.label}</Typography>
+                      {tool.enabled && <Chip label="Active" size="small" sx={{ height: 18, fontSize: '0.55rem', bgcolor: '#e8f5e9', color: '#2e7d32' }} />}
+                    </Box>
+                  ))}
+                </Paper>
+              ))
+            )}
+          </Stack>
+        )}
+
+        {/* Settings Tab */}
+        {tab === 2 && (
+          <Stack spacing={2}>
+            <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+              <Typography variant="overline" sx={{ fontSize: '0.65rem', color: '#9e9e9e', mb: 1, display: 'block' }}>Node Metadata</Typography>
+              {[
+                ['Node ID', node.id],
+                ['Position', `x: ${node.position.x}, y: ${node.position.y}`],
+                ['Inputs', node.inputs?.join(' → ') || 'None'],
+                ['Outputs', node.outputs?.join(' → ') || 'None'],
+              ].map(([lbl, val]) => (
+                <Box key={lbl} sx={{ mb: 1 }}>
+                  <Typography sx={{ fontSize: '0.65rem', fontWeight: 600, color: '#9e9e9e', textTransform: 'uppercase' }}>{lbl}</Typography>
+                  <Typography sx={{ fontSize: '0.76rem', fontFamily: 'monospace', color: '#333' }}>{val}</Typography>
+                </Box>
+              ))}
+            </Paper>
+            {isEditable && (
+              <Box>
+                <MuiButton variant="outlined" color="error" startIcon={<DeleteIcon />}
+                  onClick={() => setConfirmDelete(true)} fullWidth sx={{ textTransform: 'none' }}>
+                  Delete Node
+                </MuiButton>
+                <Dialog open={confirmDelete} onClose={() => setConfirmDelete(false)}>
+                  <DialogTitle>Delete "{node.label}"?</DialogTitle>
+                  <DialogContent>
+                    <Typography sx={{ fontSize: '0.85rem' }}>This will remove the node and all connected edges.</Typography>
+                  </DialogContent>
+                  <DialogActions>
+                    <MuiButton onClick={() => setConfirmDelete(false)}>Cancel</MuiButton>
+                    <MuiButton color="error" variant="contained" onClick={() => { onDelete(node.id); onClose(); }}>Delete</MuiButton>
+                  </DialogActions>
+                </Dialog>
+              </Box>
+            )}
+          </Stack>
+        )}
+      </Box>
+
+      {/* Footer */}
+      <Box sx={{ px: 2, py: 1.5, borderTop: '1px solid #e0e0e0', bgcolor: '#fff', display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+        <MuiButton variant="outlined" size="small" onClick={onClose} sx={{ textTransform: 'none' }}>Cancel</MuiButton>
+        {isEditable && (
+          <MuiButton variant="contained" size="small" onClick={handleSave} sx={{ textTransform: 'none' }}>Save Changes</MuiButton>
+        )}
+      </Box>
+    </Drawer>
   );
 }
 
-/* ─── Add Node Modal ─── */
-function AddNodeModal({ onAdd, onClose, existingNodes }: {
+/* ══════════════════════════════════════
+   Add Node Dialog
+   ══════════════════════════════════════ */
+function AddNodeDialog({ open, onAdd, onClose, existingNodes }: {
+  open: boolean;
   onAdd: (node: AgentNodeType) => void;
   onClose: () => void;
   existingNodes: AgentNodeType[];
@@ -608,300 +667,295 @@ function AddNodeModal({ onAdd, onClose, existingNodes }: {
   const [category, setCategory] = useState<PhaseCategory>('execution');
   const [icon, setIcon] = useState('⚡');
   const [hasTools, setHasTools] = useState(false);
+  const [continueQuestion, setContinueQuestion] = useState(false);
+  const [maxRetries, setMaxRetries] = useState(0);
 
   const handleAdd = () => {
     if (!label.trim()) return;
-    // Position below the last node
     const maxY = existingNodes.reduce((max, n) => Math.max(max, n.position.y), 0);
     const newNode: AgentNodeType = {
       id: `node-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       label: label.trim(),
       description: description.trim() || `Custom ${label.trim()} node`,
-      category,
-      icon,
-      enabled: true,
+      category, icon, enabled: true,
       position: { x: 200, y: maxY + 160 },
       tools: hasTools ? ALL_AGENT_TOOLS.map(t => ({ ...t, enabled: false })) : undefined,
+      continueQuestion: continueQuestion || undefined,
+      maxRetries: maxRetries > 0 ? maxRetries : undefined,
     };
     onAdd(newNode);
+    setLabel(''); setDescription(''); setIcon('⚡'); setCategory('execution'); setHasTools(false); setContinueQuestion(false); setMaxRetries(0);
     onClose();
   };
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%', fontSize: '0.78rem', padding: '6px 10px',
-    border: '1px solid #ddd', borderRadius: 6, outline: 'none',
-    boxSizing: 'border-box',
-  };
-
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={onClose}>
-      <div style={{ background: '#fff', borderRadius: 12, padding: 20, minWidth: 400, maxWidth: 480, boxShadow: '0 8px 32px rgba(0,0,0,.15)' }} onClick={e => e.stopPropagation()}>
-        <h3 style={{ margin: '0 0 14px', fontSize: '0.9rem' }}>➕ Add New Node</h3>
-
-        <div style={{ marginBottom: 10 }}>
-          <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#666', marginBottom: 3, display: 'block' }}>Icon & Label</span>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input value={icon} onChange={e => setIcon(e.target.value)} style={{ ...inputStyle, width: 50, textAlign: 'center' }} />
-            <input value={label} onChange={e => setLabel(e.target.value)} placeholder="Node name…" autoFocus style={inputStyle} />
-          </div>
-        </div>
-
-        <div style={{ marginBottom: 10 }}>
-          <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#666', marginBottom: 3, display: 'block' }}>Description</span>
-          <textarea value={description} onChange={e => setDescription(e.target.value)}
-            rows={2} placeholder="What does this node do?"
-            style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit' }} />
-        </div>
-
-        <div style={{ marginBottom: 10 }}>
-          <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#666', marginBottom: 3, display: 'block' }}>Phase Category</span>
-          <select value={category} onChange={e => setCategory(e.target.value as PhaseCategory)}
-            style={{ ...inputStyle, cursor: 'pointer' }}>
-            {Object.entries(categoryLabels).map(([k, v]) => (
-              <option key={k} value={k}>{v}</option>
-            ))}
-          </select>
-        </div>
-
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.78rem', cursor: 'pointer', marginBottom: 10 }}>
-          <input type="checkbox" checked={hasTools} onChange={e => setHasTools(e.target.checked)} />
-          Enable tool selection for this node
-        </label>
-
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
-          <button onClick={onClose} style={{ padding: '6px 14px', borderRadius: 6, border: '1px solid #ddd', background: '#f8f8f8', cursor: 'pointer', fontSize: '0.78rem' }}>Cancel</button>
-          <button onClick={handleAdd} disabled={!label.trim()} style={{ padding: '6px 14px', borderRadius: 6, border: 'none', background: '#3b82f6', color: '#fff', cursor: 'pointer', fontSize: '0.78rem', opacity: label.trim() ? 1 : 0.5 }}>Add Node</button>
-        </div>
-      </div>
-    </div>
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <AddIcon /> Add New Node
+      </DialogTitle>
+      <DialogContent>
+        <Stack spacing={2} sx={{ mt: 1 }}>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <TextField label="Icon" value={icon} onChange={e => setIcon(e.target.value)} size="small"
+              sx={{ width: 70 }} inputProps={{ style: { textAlign: 'center', fontSize: '1.2rem' } }} />
+            <TextField label="Name" value={label} onChange={e => setLabel(e.target.value)} size="small" fullWidth autoFocus />
+          </Box>
+          <TextField label="Description" value={description} onChange={e => setDescription(e.target.value)}
+            size="small" fullWidth multiline rows={2} placeholder="What does this node do?" />
+          <FormControl size="small" fullWidth>
+            <InputLabel>Category</InputLabel>
+            <Select value={category} label="Category" onChange={e => setCategory(e.target.value as PhaseCategory)}>
+              {Object.entries(categoryLabels).map(([k, v]) => (
+                <MenuItem key={k} value={k}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: categoryColors[k]?.border }} />
+                    {v}
+                  </Box>
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <Divider />
+          <FormControlLabel
+            control={<Checkbox checked={hasTools} onChange={e => setHasTools(e.target.checked)} size="small" />}
+            label={<Typography sx={{ fontSize: '0.82rem' }}>Enable tool selection</Typography>}
+          />
+          <FormControlLabel
+            control={<Switch checked={continueQuestion} onChange={(_, v) => setContinueQuestion(v)} size="small"
+              sx={{ '& .MuiSwitch-switchBase.Mui-checked': { color: '#7c3aed' } }} />}
+            label={<Typography sx={{ fontSize: '0.82rem' }}>Ask "continue or stop?" after this node</Typography>}
+          />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Typography sx={{ fontSize: '0.82rem', whiteSpace: 'nowrap' }}>Max Retries:</Typography>
+            <Slider value={maxRetries} onChange={(_, v) => setMaxRetries(v as number)}
+              min={0} max={10} step={1} sx={{ flex: 1 }} valueLabelDisplay="auto" />
+            <Typography sx={{ fontWeight: 700, fontSize: '0.85rem', minWidth: 20, textAlign: 'center' }}>{maxRetries}</Typography>
+          </Box>
+        </Stack>
+      </DialogContent>
+      <DialogActions>
+        <MuiButton onClick={onClose} sx={{ textTransform: 'none' }}>Cancel</MuiButton>
+        <MuiButton variant="contained" onClick={handleAdd} disabled={!label.trim()} sx={{ textTransform: 'none' }}>Add Node</MuiButton>
+      </DialogActions>
+    </Dialog>
   );
 }
 
-/* ─── Parameters Editor Modal ─── */
-type ParamTab = 'numbers' | 'prompts';
-
-/** Metadata for each numeric parameter for the editor UI */
+/* ══════════════════════════════════════
+   Agent Parameters Dialog
+   ══════════════════════════════════════ */
 const NUMERIC_PARAM_META: { key: keyof AgentParameters; label: string; description: string; min: number; max: number }[] = [
   { key: 'maxResearchFiles', label: 'Max Research Files', description: 'Maximum files the research agent returns', min: 1, max: 30 },
   { key: 'minResearchFiles', label: 'Min Research Files', description: 'Minimum files the research agent should pick', min: 1, max: 20 },
-  { key: 'maxMergedContextFiles', label: 'Max Context Files', description: 'Max files after merging research + search results', min: 1, max: 50 },
-  { key: 'maxTextSearchResults', label: 'Max Search Results', description: 'Max results per text search (grep) query', min: 10, max: 500 },
-  { key: 'maxTextSearchDisplay', label: 'Max Search Display', description: 'Max search matches shown to the model', min: 5, max: 200 },
-  { key: 'maxSearchDiscoveredFiles', label: 'Max Search-Discovered Files', description: 'Max extra files discovered from text search', min: 1, max: 20 },
-  { key: 'maxSearchQueries', label: 'Max Search Queries', description: 'Max grep queries the search agent can issue', min: 1, max: 10 },
-  { key: 'maxFilePatterns', label: 'Max File Patterns', description: 'Max file type patterns for search narrowing', min: 1, max: 10 },
-  { key: 'maxVerificationAttempts', label: 'Max Verification Retries', description: 'Max retry attempts for verification loop', min: 1, max: 10 },
+  { key: 'maxMergedContextFiles', label: 'Max Context Files', description: 'Max files after merging research + search', min: 1, max: 50 },
+  { key: 'maxTextSearchResults', label: 'Max Search Results', description: 'Max results per text search query', min: 10, max: 500 },
+  { key: 'maxTextSearchDisplay', label: 'Max Search Display', description: 'Max search matches shown to model', min: 5, max: 200 },
+  { key: 'maxSearchDiscoveredFiles', label: 'Max Search-Discovered Files', description: 'Max extra files from text search', min: 1, max: 20 },
+  { key: 'maxSearchQueries', label: 'Max Search Queries', description: 'Max grep queries the search agent issues', min: 1, max: 10 },
+  { key: 'maxFilePatterns', label: 'Max File Patterns', description: 'Max file type patterns for search', min: 1, max: 10 },
+  { key: 'maxVerificationAttempts', label: 'Max Verification Retries', description: 'Max verification retry attempts', min: 1, max: 10 },
   { key: 'maxActionPlanFiles', label: 'Max Action Plan Files', description: 'Max files in a single action plan', min: 1, max: 30 },
-  { key: 'chatHistoryDepth', label: 'Chat History Depth', description: 'How many recent messages to include as context', min: 2, max: 30 },
-  { key: 'maxFileListDisplay', label: 'Max File List Display', description: 'Max workspace files shown in system prompt', min: 50, max: 2000 },
+  { key: 'chatHistoryDepth', label: 'Chat History Depth', description: 'Recent messages included as context', min: 2, max: 30 },
+  { key: 'maxFileListDisplay', label: 'Max File List Display', description: 'Max workspace files in system prompt', min: 50, max: 2000 },
+  { key: 'maxNodeRetries', label: 'Global Max Node Retries', description: 'Default max retries per node', min: 0, max: 10 },
 ];
 
 const PROMPT_PARAM_META: { key: keyof AgentParameters; label: string; description: string; placeholders: string }[] = [
-  { key: 'systemContextPrompt', label: 'System Context', description: 'Sets the AI persona and workspace context', placeholders: '{{folderPath}}, {{fileCount}}, {{fileList}}' },
-  { key: 'researchAgentPrompt', label: 'Research Agent', description: 'Instructs the AI to pick relevant files', placeholders: '{{folderPath}}, {{fileCount}}, {{fileList}}, {{minFiles}}, {{maxFiles}}' },
-  { key: 'searchDecisionPrompt', label: 'Search Decision', description: 'Decides if text search (grep) is needed', placeholders: '{{folderPath}}, {{fileCount}}, {{maxQueries}}' },
-  { key: 'checkAgentPrompt', label: 'Check Agent (Triage)', description: 'Classifies if the request needs file changes', placeholders: '(none)' },
-  { key: 'actionPlanPrompt', label: 'Action Planner', description: 'Creates the file change action plan', placeholders: '{{fileCount}}, {{fileList}}, {{fileContexts}}, {{maxFiles}}' },
+  { key: 'systemContextPrompt', label: 'System Context', description: 'AI persona & workspace context', placeholders: '{{folderPath}}, {{fileCount}}, {{fileList}}' },
+  { key: 'researchAgentPrompt', label: 'Research Agent', description: 'Instructs AI to pick relevant files', placeholders: '{{folderPath}}, {{fileCount}}, {{fileList}}, {{minFiles}}, {{maxFiles}}' },
+  { key: 'searchDecisionPrompt', label: 'Search Decision', description: 'Decides if text search is needed', placeholders: '{{folderPath}}, {{fileCount}}, {{maxQueries}}' },
+  { key: 'checkAgentPrompt', label: 'Check Agent', description: 'Classifies if request needs file changes', placeholders: '(none)' },
+  { key: 'actionPlanPrompt', label: 'Action Planner', description: 'Creates file change action plan', placeholders: '{{fileCount}}, {{fileList}}, {{fileContexts}}, {{maxFiles}}' },
   { key: 'fileChangeCreatePrompt', label: 'File Create', description: 'Instructs AI to create a new file', placeholders: '{{file}}, {{description}}' },
-  { key: 'fileChangeUpdatePrompt', label: 'File Update (SEARCH/REPLACE)', description: 'Instructs AI to produce SEARCH/REPLACE blocks', placeholders: '{{file}}, {{description}}, {{currentContent}}' },
-  { key: 'verificationPrompt', label: 'Verification', description: 'Evaluates if changes satisfy the request', placeholders: '{{userRequest}}, {{changeSummary}}' },
+  { key: 'fileChangeUpdatePrompt', label: 'File Update', description: 'SEARCH/REPLACE instructions', placeholders: '{{file}}, {{description}}, {{currentContent}}' },
+  { key: 'verificationPrompt', label: 'Verification', description: 'Evaluates if changes satisfy request', placeholders: '{{userRequest}}, {{changeSummary}}' },
+  { key: 'continueQuestionPrompt', label: 'Continue Question', description: 'Asked between nodes to decide continue/stop', placeholders: '(none)' },
 ];
 
-function ParametersEditorModal({ parameters, onSave, onClose }: {
+function ParametersDialog({ open, parameters, isEditable, onSave, onClose }: {
+  open: boolean;
   parameters: Partial<AgentParameters>;
+  isEditable: boolean;
   onSave: (params: Partial<AgentParameters>) => void;
   onClose: () => void;
 }) {
-  const [tab, setTab] = useState<ParamTab>('numbers');
+  const [tab, setTab] = useState(0);
   const resolved = resolveAgentParameters(parameters);
   const [localParams, setLocalParams] = useState<AgentParameters>({ ...resolved });
+  const [enableContinueQuestion, setEnableContinueQuestion] = useState(resolved.enableContinueQuestion);
 
-  const setNumericParam = (key: keyof AgentParameters, value: number) => {
+  useEffect(() => {
+    const r = resolveAgentParameters(parameters);
+    setLocalParams({ ...r });
+    setEnableContinueQuestion(r.enableContinueQuestion);
+  }, [parameters]);
+
+  const setNumericParam = (key: keyof AgentParameters, value: number) =>
     setLocalParams(prev => ({ ...prev, [key]: value }));
-  };
-
-  const setPromptParam = (key: keyof AgentParameters, value: string) => {
+  const setPromptParam = (key: keyof AgentParameters, value: string) =>
     setLocalParams(prev => ({ ...prev, [key]: value }));
-  };
-
-  const resetParam = (key: keyof AgentParameters) => {
+  const resetParam = (key: keyof AgentParameters) =>
     setLocalParams(prev => ({ ...prev, [key]: DEFAULT_AGENT_PARAMETERS[key] }));
-  };
+  const isModified = (key: keyof AgentParameters) =>
+    localParams[key] !== DEFAULT_AGENT_PARAMETERS[key];
 
   const handleSave = () => {
-    // Only save values that differ from defaults
     const diff: Partial<AgentParameters> = {};
     for (const key of Object.keys(localParams) as (keyof AgentParameters)[]) {
       if (localParams[key] !== DEFAULT_AGENT_PARAMETERS[key]) {
         (diff as any)[key] = localParams[key];
       }
     }
+    diff.enableContinueQuestion = enableContinueQuestion;
     onSave(diff);
     onClose();
   };
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%', fontSize: '0.76rem', padding: '6px 10px',
-    border: '1px solid #ddd', borderRadius: 6, outline: 'none',
-    boxSizing: 'border-box',
-  };
-
-  const isModified = (key: keyof AgentParameters) =>
-    localParams[key] !== DEFAULT_AGENT_PARAMETERS[key];
+  const modifiedCount = Object.keys(localParams).filter(k => isModified(k as keyof AgentParameters)).length;
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={onClose}>
-      <div style={{ background: '#fff', borderRadius: 14, padding: 0, width: 640, maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '0 12px 48px rgba(0,0,0,.2)' }} onClick={e => e.stopPropagation()}>
-        {/* Header */}
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid #e8e8e8', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: '1.2rem' }}>⚙️</span>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700, fontSize: '0.92rem', color: '#1a1a2e' }}>Agent Parameters</div>
-            <div style={{ fontSize: '0.68rem', color: '#999' }}>Customize numeric limits and prompt templates for this agent</div>
-          </div>
-          <button onClick={onClose} style={{ border: 'none', background: 'none', fontSize: '1.1rem', cursor: 'pointer', color: '#999', padding: 4 }}>✕</button>
-        </div>
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth PaperProps={{ sx: { height: '85vh' } }}>
+      <Box sx={{ px: 2.5, py: 1.5, borderBottom: '1px solid #e0e0e0', display: 'flex', alignItems: 'center', gap: 1.25 }}>
+        <SettingsIcon sx={{ color: '#1976d2' }} />
+        <Box sx={{ flex: 1 }}>
+          <Typography sx={{ fontWeight: 700, fontSize: '0.95rem' }}>Agent Parameters</Typography>
+          <Typography sx={{ fontSize: '0.68rem', color: '#9e9e9e' }}>Customize limits, prompts, and continue/stop behavior</Typography>
+        </Box>
+        <MuiIconButton onClick={onClose} size="small"><CloseIcon /></MuiIconButton>
+      </Box>
 
-        {/* Tab bar */}
-        <div style={{ display: 'flex', borderBottom: '1px solid #e8e8e8', padding: '0 16px', background: '#fafafa' }}>
-          {([['numbers', '🔢 Numeric Limits'], ['prompts', '📝 Prompt Templates']] as [ParamTab, string][]).map(([t, label]) => (
-            <button key={t} onClick={() => setTab(t)} style={{
-              fontSize: '0.76rem', fontWeight: tab === t ? 700 : 500,
-              padding: '10px 16px', cursor: 'pointer', border: 'none',
-              borderBottom: tab === t ? '2px solid #3b82f6' : '2px solid transparent',
-              background: 'transparent', color: tab === t ? '#3b82f6' : '#888',
-              transition: 'all 0.15s',
-            }}>{label}</button>
-          ))}
-        </div>
+      <MuiTabs value={tab} onChange={(_, v) => setTab(v)} sx={{
+        borderBottom: '1px solid #e0e0e0', bgcolor: '#fafafa', minHeight: 40,
+        '& .MuiTab-root': { minHeight: 40, fontSize: '0.76rem', textTransform: 'none' },
+      }}>
+        <Tab label="🔢 Numeric Limits" />
+        <Tab label="📝 Prompt Templates" />
+        <Tab label="🤔 Continue/Stop" />
+      </MuiTabs>
 
-        {/* Content */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
-          {tab === 'numbers' && (
-            <div style={{ display: 'grid', gap: 12 }}>
-              {NUMERIC_PARAM_META.map(meta => (
-                <div key={meta.key} style={{
-                  display: 'grid', gridTemplateColumns: '1fr 120px 30px', gap: 10, alignItems: 'center',
-                  padding: '10px 12px', borderRadius: 8,
-                  background: isModified(meta.key) ? '#fef9f0' : '#f9fafb',
-                  border: isModified(meta.key) ? '1px solid #f59e0b40' : '1px solid #e5e7eb',
-                }}>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: '0.78rem', color: '#333', display: 'flex', alignItems: 'center', gap: 6 }}>
-                      {meta.label}
-                      {isModified(meta.key) && (
-                        <span style={{ fontSize: '0.6rem', padding: '1px 5px', borderRadius: 3, background: '#fef3c7', color: '#d97706', fontWeight: 700 }}>MODIFIED</span>
-                      )}
-                    </div>
-                    <div style={{ fontSize: '0.66rem', color: '#999', marginTop: 2 }}>{meta.description}</div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <input
-                      type="number"
-                      min={meta.min}
-                      max={meta.max}
-                      value={localParams[meta.key] as number}
-                      onChange={e => setNumericParam(meta.key, Math.max(meta.min, Math.min(meta.max, parseInt(e.target.value) || meta.min)))}
-                      style={{
-                        ...inputStyle, width: 80, textAlign: 'center',
-                        fontWeight: 700, fontFamily: "'SF Mono', monospace",
-                        borderColor: isModified(meta.key) ? '#f59e0b' : '#ddd',
-                      }}
-                    />
-                    <span style={{ fontSize: '0.6rem', color: '#bbb', whiteSpace: 'nowrap' }}>
-                      /{meta.max}
-                    </span>
-                  </div>
-                  {isModified(meta.key) && (
-                    <button onClick={() => resetParam(meta.key)} title={`Reset to default (${DEFAULT_AGENT_PARAMETERS[meta.key]})`}
-                      style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.7rem', color: '#999', padding: 2 }}>↩</button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {tab === 'prompts' && (
-            <div style={{ display: 'grid', gap: 16 }}>
-              <div style={{
-                padding: '10px 14px', borderRadius: 8, fontSize: '0.72rem',
-                background: '#f0f5ff', border: '1px solid #bfdbfe', color: '#3b82f6',
-                display: 'flex', alignItems: 'center', gap: 8,
+      <DialogContent sx={{ bgcolor: '#fafafa' }}>
+        {/* Numeric */}
+        {tab === 0 && (
+          <Stack spacing={1.5}>
+            {NUMERIC_PARAM_META.map(meta => (
+              <Paper key={meta.key} variant="outlined" sx={{
+                p: 1.5, borderRadius: 2, display: 'flex', alignItems: 'center', gap: 2,
+                bgcolor: isModified(meta.key) ? '#fff8e1' : '#fff',
+                borderColor: isModified(meta.key) ? '#ffb300' : '#e0e0e0',
               }}>
-                <span>💡</span> Use <code style={{ background: '#e0ecff', padding: '1px 4px', borderRadius: 3, fontFamily: "'SF Mono', monospace", fontSize: '0.68rem' }}>{'{{placeholder}}'}</code> syntax for dynamic values. Reset individual prompts to restore defaults.
-              </div>
-              {PROMPT_PARAM_META.map(meta => (
-                <div key={meta.key} style={{
-                  borderRadius: 8,
-                  background: isModified(meta.key) ? '#fef9f0' : '#f9fafb',
-                  border: isModified(meta.key) ? '1px solid #f59e0b40' : '1px solid #e5e7eb',
-                  overflow: 'hidden',
-                }}>
-                  <div style={{
-                    padding: '10px 14px', borderBottom: '1px solid #e5e7eb',
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  }}>
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: '0.78rem', color: '#333', display: 'flex', alignItems: 'center', gap: 6 }}>
-                        {meta.label}
-                        {isModified(meta.key) && (
-                          <span style={{ fontSize: '0.6rem', padding: '1px 5px', borderRadius: 3, background: '#fef3c7', color: '#d97706', fontWeight: 700 }}>MODIFIED</span>
-                        )}
-                      </div>
-                      <div style={{ fontSize: '0.66rem', color: '#999', marginTop: 2 }}>
-                        {meta.description} · Placeholders: <code style={{ fontFamily: "'SF Mono', monospace", fontSize: '0.62rem' }}>{meta.placeholders}</code>
-                      </div>
-                    </div>
-                    {isModified(meta.key) && (
-                      <button onClick={() => resetParam(meta.key)} title="Reset to default"
-                        style={{
-                          fontSize: '0.68rem', padding: '3px 10px', borderRadius: 4,
-                          border: '1px solid #ddd', background: '#fff', cursor: 'pointer', color: '#888',
-                        }}>↩ Reset</button>
-                    )}
-                  </div>
-                  <textarea
-                    value={localParams[meta.key] as string}
-                    onChange={e => setPromptParam(meta.key, e.target.value)}
-                    rows={6}
-                    style={{
-                      ...inputStyle,
-                      border: 'none', borderRadius: 0,
-                      resize: 'vertical',
-                      fontFamily: "'SF Mono', 'Menlo', monospace",
-                      fontSize: '0.7rem',
-                      lineHeight: 1.6,
-                      padding: '10px 14px',
-                      background: 'transparent',
-                      minHeight: 100,
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                <Box sx={{ flex: 1 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <Typography sx={{ fontWeight: 600, fontSize: '0.78rem' }}>{meta.label}</Typography>
+                    {isModified(meta.key) && <Chip label="MODIFIED" size="small" sx={{ height: 16, fontSize: '0.55rem', bgcolor: '#fff3e0', color: '#e65100', fontWeight: 700 }} />}
+                  </Box>
+                  <Typography sx={{ fontSize: '0.66rem', color: '#9e9e9e' }}>{meta.description}</Typography>
+                </Box>
+                <TextField type="number" size="small"
+                  value={localParams[meta.key] as number}
+                  onChange={e => setNumericParam(meta.key, Math.max(meta.min, Math.min(meta.max, parseInt(e.target.value) || meta.min)))}
+                  disabled={!isEditable}
+                  inputProps={{ min: meta.min, max: meta.max, style: { textAlign: 'center', fontWeight: 700, fontFamily: 'monospace', width: 50 } }}
+                />
+                {isModified(meta.key) && (
+                  <Tooltip title={`Reset to ${DEFAULT_AGENT_PARAMETERS[meta.key]}`}>
+                    <MuiIconButton size="small" onClick={() => resetParam(meta.key)}><RestoreIcon fontSize="small" /></MuiIconButton>
+                  </Tooltip>
+                )}
+              </Paper>
+            ))}
+          </Stack>
+        )}
 
-        {/* Footer */}
-        <div style={{
-          padding: '12px 20px', borderTop: '1px solid #e8e8e8',
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          background: '#fafafa', borderRadius: '0 0 14px 14px',
-        }}>
-          <div style={{ fontSize: '0.68rem', color: '#999' }}>
-            {Object.keys(localParams).filter(k => isModified(k as keyof AgentParameters)).length} parameter(s) modified from defaults
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={onClose} style={{ padding: '7px 16px', borderRadius: 6, border: '1px solid #ddd', background: '#fff', cursor: 'pointer', fontSize: '0.78rem' }}>Cancel</button>
-            <button onClick={handleSave} style={{ padding: '7px 16px', borderRadius: 6, border: 'none', background: '#3b82f6', color: '#fff', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600 }}>Save Parameters</button>
-          </div>
-        </div>
-      </div>
-    </div>
+        {/* Prompts */}
+        {tab === 1 && (
+          <Stack spacing={2}>
+            <Alert severity="info" sx={{ fontSize: '0.72rem' }}>
+              Use <code style={{ background: '#e3f2fd', padding: '1px 4px', borderRadius: 3, fontFamily: 'monospace' }}>{'{{placeholder}}'}</code> for dynamic values.
+            </Alert>
+            {PROMPT_PARAM_META.map(meta => (
+              <Paper key={meta.key} variant="outlined" sx={{
+                borderRadius: 2, overflow: 'hidden',
+                borderColor: isModified(meta.key) ? '#ffb300' : '#e0e0e0',
+              }}>
+                <Box sx={{ px: 1.5, py: 1, borderBottom: '1px solid #e0e0e0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Typography sx={{ fontWeight: 600, fontSize: '0.78rem' }}>{meta.label}</Typography>
+                      {isModified(meta.key) && <Chip label="MODIFIED" size="small" sx={{ height: 16, fontSize: '0.55rem', bgcolor: '#fff3e0', color: '#e65100', fontWeight: 700 }} />}
+                    </Box>
+                    <Typography sx={{ fontSize: '0.62rem', color: '#9e9e9e' }}>
+                      {meta.description} · <code style={{ fontFamily: 'monospace', fontSize: '0.6rem' }}>{meta.placeholders}</code>
+                    </Typography>
+                  </Box>
+                  {isModified(meta.key) && (
+                    <MuiButton size="small" startIcon={<RestoreIcon sx={{ fontSize: 14 }} />} onClick={() => resetParam(meta.key)}
+                      sx={{ textTransform: 'none', fontSize: '0.68rem' }}>Reset</MuiButton>
+                  )}
+                </Box>
+                <TextField
+                  value={localParams[meta.key] as string}
+                  onChange={e => setPromptParam(meta.key, e.target.value)}
+                  disabled={!isEditable} fullWidth multiline rows={5}
+                  sx={{ '& .MuiOutlinedInput-notchedOutline': { border: 'none' }, '& textarea': { fontFamily: 'monospace', fontSize: '0.7rem', lineHeight: 1.6 } }}
+                />
+              </Paper>
+            ))}
+          </Stack>
+        )}
+
+        {/* Continue/Stop */}
+        {tab === 2 && (
+          <Stack spacing={2}>
+            <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, border: enableContinueQuestion ? '2px solid #7c3aed' : undefined }}>
+              <FormControlLabel
+                control={<Switch checked={enableContinueQuestion} onChange={(_, v) => setEnableContinueQuestion(v)} disabled={!isEditable} size="small"
+                  sx={{ '& .MuiSwitch-switchBase.Mui-checked': { color: '#7c3aed' }, '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { bgcolor: '#7c3aed' } }} />}
+                label={<Typography sx={{ fontWeight: 700, fontSize: '0.88rem' }}>Enable "Continue or Stop?" globally</Typography>}
+              />
+              <Typography sx={{ fontSize: '0.72rem', color: '#78909c', mt: 0.5, ml: 5.5 }}>
+                After each node the model decides whether to continue or stop. Individual nodes can override this.
+              </Typography>
+            </Paper>
+            <Alert severity="info" sx={{ fontSize: '0.72rem' }}>
+              The continue question prompt is in the "Prompt Templates" tab under "Continue Question".
+            </Alert>
+            <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+              <Typography sx={{ fontWeight: 700, fontSize: '0.85rem', mb: 1 }}>How it works</Typography>
+              <Stack spacing={1}>
+                {[
+                  'After a node completes, the "continue question" prompt is sent to the model',
+                  'The model responds with { shouldContinue: true/false, reason: "..." }',
+                  'If shouldContinue is false, the pipeline stops with the reason',
+                  'Nodes with their own "Continue/Stop Gate" override the global setting',
+                  'Max retries per node controls how many times a failed node retries',
+                ].map((text, i) => (
+                  <Box key={i} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                    <Chip label={String(i + 1)} size="small" sx={{ height: 20, minWidth: 20, fontSize: '0.65rem', fontWeight: 700, bgcolor: '#ede7f6', color: '#4527a0' }} />
+                    <Typography sx={{ fontSize: '0.76rem', color: '#333' }}>{text}</Typography>
+                  </Box>
+                ))}
+              </Stack>
+            </Paper>
+          </Stack>
+        )}
+      </DialogContent>
+
+      <Box sx={{ px: 2.5, py: 1.5, borderTop: '1px solid #e0e0e0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: '#fafafa' }}>
+        <Typography sx={{ fontSize: '0.68rem', color: '#9e9e9e' }}>{modifiedCount} parameter(s) modified</Typography>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <MuiButton variant="outlined" size="small" onClick={onClose} sx={{ textTransform: 'none' }}>Cancel</MuiButton>
+          {isEditable && (
+            <MuiButton variant="contained" size="small" onClick={handleSave} sx={{ textTransform: 'none' }}>Save Parameters</MuiButton>
+          )}
+        </Box>
+      </Box>
+    </Dialog>
   );
 }
 
-/* ─── Main AgentsPanel ─── */
+/* ══════════════════════════════════════
+   Main AgentsPanel
+   ══════════════════════════════════════ */
 type PanelView = 'canvas' | 'trace';
 
 export default function AgentsPanel() {
@@ -916,41 +970,14 @@ export default function AgentsPanel() {
   const [newName, setNewName] = useState('');
   const [editingName, setEditingName] = useState<string | null>(null);
   const [editNameValue, setEditNameValue] = useState('');
-  const [toolsEditing, setToolsEditing] = useState<string | null>(null);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
-  const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set());
   const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
-  const [nodeEditing, setNodeEditing] = useState<string | null>(null);
   const [addingNode, setAddingNode] = useState(false);
   const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null);
   const [editingParams, setEditingParams] = useState(false);
 
   const isEditable = !activeAgent.isDefault;
-
-  const toggleNode = useCallback((nodeId: string) => {
-    if (!isEditable) return;
-    updateAgent({ ...activeAgent, nodes: activeAgent.nodes.map((n: AgentNodeType) => n.id === nodeId ? { ...n, enabled: !n.enabled } : n) });
-  }, [activeAgent, isEditable, updateAgent]);
-
-  const handleEditTools = useCallback((nodeId: string) => {
-    if (!isEditable) return;
-    setToolsEditing(nodeId);
-  }, [isEditable]);
-
-  const handleSaveTools = useCallback((nodeId: string, enabledTools: AgentTool[]) => {
-    updateAgent({
-      ...activeAgent,
-      nodes: activeAgent.nodes.map((n: AgentNodeType) => {
-        if (n.id !== nodeId) return n;
-        return { ...n, tools: ALL_AGENT_TOOLS.map(t => ({ ...t, enabled: enabledTools.some(e => e.id === t.id) })) };
-      }),
-    });
-  }, [activeAgent, updateAgent]);
-
-  const handleEditNode = useCallback((nodeId: string) => {
-    if (!isEditable) return;
-    setNodeEditing(nodeId);
-  }, [isEditable]);
+  const drawerNode = selectedNode ? activeAgent.nodes.find((n: AgentNodeType) => n.id === selectedNode) : null;
 
   const handleSaveNode = useCallback((updated: AgentNodeType) => {
     updateAgent({
@@ -968,11 +995,18 @@ export default function AgentsPanel() {
     if (selectedNode === nodeId) setSelectedNode(null);
   }, [activeAgent, updateAgent, selectedNode]);
 
-  const handleAddNode = useCallback((node: AgentNodeType) => {
+  const handleSaveTools = useCallback((nodeId: string, enabledTools: AgentTool[]) => {
     updateAgent({
       ...activeAgent,
-      nodes: [...activeAgent.nodes, node],
+      nodes: activeAgent.nodes.map((n: AgentNodeType) => {
+        if (n.id !== nodeId) return n;
+        return { ...n, tools: ALL_AGENT_TOOLS.map(t => ({ ...t, enabled: enabledTools.some(e => e.id === t.id) })) };
+      }),
     });
+  }, [activeAgent, updateAgent]);
+
+  const handleAddNode = useCallback((node: AgentNodeType) => {
+    updateAgent({ ...activeAgent, nodes: [...activeAgent.nodes, node] });
     setSelectedNode(node.id);
   }, [activeAgent, updateAgent]);
 
@@ -983,10 +1017,23 @@ export default function AgentsPanel() {
     });
   }, [activeAgent, updateAgent]);
 
-  const resolvedParams = resolveAgentParameters(activeAgent.parameters);
-  const modifiedParamsCount = activeAgent.parameters
-    ? Object.keys(activeAgent.parameters).length
-    : 0;
+  const modifiedParamsCount = activeAgent.parameters ? Object.keys(activeAgent.parameters).length : 0;
+
+  const onNodesChange: OnNodesChange = useCallback((changes) => {
+    if (!isEditable) return;
+    const posChanges = changes.filter(c => c.type === 'position' && c.position);
+    if (posChanges.length === 0) return;
+    const updatedNodes = activeAgent.nodes.map((n: AgentNodeType) => {
+      const change = posChanges.find(c => c.type === 'position' && c.id === n.id);
+      if (change && change.type === 'position' && change.position) {
+        return { ...n, position: { x: change.position.x, y: change.position.y } };
+      }
+      return n;
+    });
+    if (JSON.stringify(updatedNodes.map(n => n.position)) !== JSON.stringify(activeAgent.nodes.map((n: AgentNodeType) => n.position))) {
+      updateAgent({ ...activeAgent, nodes: updatedNodes });
+    }
+  }, [activeAgent, isEditable, updateAgent]);
 
   const flowNodes = useMemo((): Node<FlowNodeData>[] => activeAgent.nodes.map((n: AgentNodeType) => ({
     id: n.id, type: 'agentNode', position: n.position,
@@ -994,10 +1041,10 @@ export default function AgentsPanel() {
       label: n.label, description: n.description, category: n.category,
       icon: n.icon, promptKey: n.promptKey, tools: n.tools,
       enabled: n.enabled, nodeId: n.id,
-      onToggle: isEditable ? toggleNode : undefined,
-      onEditTools: isEditable && n.tools ? handleEditTools : undefined,
+      maxRetries: n.maxRetries, continueQuestion: n.continueQuestion,
+      onSelect: (id: string) => setSelectedNode(id),
     },
-  })), [activeAgent, isEditable, toggleNode, handleEditTools]);
+  })), [activeAgent]);
 
   const flowEdges = useMemo((): Edge[] => activeAgent.edges.map((e: AgentEdgeType) => ({
     id: e.id, source: e.source, target: e.target, label: e.label,
@@ -1006,162 +1053,157 @@ export default function AgentsPanel() {
       stroke: categoryColors[activeAgent.nodes.find((n: AgentNodeType) => n.id === e.source)?.category || 'output']?.border || '#999',
       strokeWidth: 2, ...(e.label ? { strokeDasharray: '5,5' } : {}),
     },
-    labelStyle: { fontSize: 10, fill: '#888' },
+    labelStyle: { fontSize: 10, fill: '#78909c' },
+    labelBgStyle: { fill: '#fafafa', fillOpacity: 0.8 },
   })), [activeAgent]);
 
   const handleCreate = async () => {
     if (!newName.trim()) return;
     await createAgent(newName.trim());
-    setNewName('');
-    setCreating(false);
+    setNewName(''); setCreating(false);
   };
-
   const handleStartRename = (id: string, name: string) => { setEditingName(id); setEditNameValue(name); };
   const handleFinishRename = async () => {
     if (editingName && editNameValue.trim()) await renameAgent(editingName, editNameValue.trim());
     setEditingName(null);
   };
 
-  const toolsEditNode = toolsEditing ? activeAgent.nodes.find((n: AgentNodeType) => n.id === toolsEditing) : null;
-  const nodeEditNode = nodeEditing ? activeAgent.nodes.find((n: AgentNodeType) => n.id === nodeEditing) : null;
-
   return (
-    <div style={{ display: 'flex', flex: 1, overflow: 'hidden', background: '#fafafa' }}>
-      {/* ─── Agent List Sidebar ─── */}
-      <div style={{ width: 220, flexShrink: 0, borderRight: '1px solid #e8e8e8', background: '#fff', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <div style={{ padding: '10px 12px', borderBottom: '1px solid #f0f0f0' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-            <h3 style={{ margin: 0, fontSize: '0.82rem', fontWeight: 700 }}>🤖 Agents</h3>
-            <button onClick={() => setCreating(!creating)} style={{ fontSize: '0.85rem', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px', borderRadius: 4, color: '#3b82f6' }} title="Create new agent">+</button>
-          </div>
-          {creating && (
-            <div style={{ display: 'flex', gap: 4 }}>
-              <input
-                autoFocus value={newName} onChange={e => setNewName(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleCreate()}
-                placeholder="Agent name…"
-                style={{ flex: 1, fontSize: '0.75rem', padding: '4px 8px', border: '1px solid #ddd', borderRadius: 6, outline: 'none' }}
-              />
-              <button onClick={handleCreate} disabled={!newName.trim()} style={{ fontSize: '0.72rem', padding: '4px 8px', borderRadius: 6, border: 'none', background: '#3b82f6', color: '#fff', cursor: 'pointer', opacity: newName.trim() ? 1 : 0.5 }}>Create</button>
-            </div>
-          )}
-        </div>
-        <div style={{ flex: 1, overflowY: 'auto' }}>
+    <Box sx={{ display: 'flex', flex: 1, overflow: 'hidden', bgcolor: '#f5f5f5' }}>
+      {/* Agent List Sidebar */}
+      <Paper sx={{ width: 230, flexShrink: 0, borderRadius: 0, borderRight: '1px solid #e0e0e0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }} elevation={0}>
+        <Box sx={{ px: 1.5, py: 1.25, borderBottom: '1px solid #f0f0f0' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: creating ? 1 : 0 }}>
+            <Typography sx={{ fontWeight: 700, fontSize: '0.84rem', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              🤖 Agents
+            </Typography>
+            <Tooltip title="Create new agent">
+              <MuiIconButton size="small" onClick={() => setCreating(!creating)} sx={{ color: '#1976d2' }}>
+                <AddIcon fontSize="small" />
+              </MuiIconButton>
+            </Tooltip>
+          </Box>
+          <Collapse in={creating}>
+            <Box sx={{ display: 'flex', gap: 0.5 }}>
+              <TextField autoFocus value={newName} onChange={e => setNewName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleCreate()} placeholder="Agent name…" size="small" fullWidth
+                sx={{ '& .MuiInputBase-input': { fontSize: '0.75rem', py: 0.5 } }} />
+              <MuiButton variant="contained" size="small" onClick={handleCreate} disabled={!newName.trim()}
+                sx={{ textTransform: 'none', fontSize: '0.72rem', minWidth: 'auto', px: 1.5 }}>Create</MuiButton>
+            </Box>
+          </Collapse>
+        </Box>
+
+        <Box sx={{ flex: 1, overflowY: 'auto' }}>
           {agents.map(agent => (
-            <div
-              key={agent.id} onClick={() => setActiveAgentId(agent.id)}
-              style={{
-                padding: '8px 12px', cursor: 'pointer',
-                background: agent.id === activeAgentId ? '#f0f5ff' : 'transparent',
-                borderLeft: agent.id === activeAgentId ? '3px solid #3b82f6' : '3px solid transparent',
-                fontSize: '0.78rem',
-              }}
-            >
+            <Box key={agent.id} onClick={() => setActiveAgentId(agent.id)} sx={{
+              px: 1.5, py: 1, cursor: 'pointer',
+              bgcolor: agent.id === activeAgentId ? '#e3f2fd' : 'transparent',
+              borderLeft: agent.id === activeAgentId ? '3px solid #1976d2' : '3px solid transparent',
+              '&:hover': { bgcolor: agent.id === activeAgentId ? '#e3f2fd' : '#f5f5f5' },
+              transition: 'all 0.15s',
+            }}>
               {editingName === agent.id ? (
-                <input
-                  autoFocus value={editNameValue} onChange={e => setEditNameValue(e.target.value)}
+                <TextField autoFocus value={editNameValue} onChange={e => setEditNameValue(e.target.value)}
                   onBlur={handleFinishRename}
                   onKeyDown={e => { if (e.key === 'Enter') handleFinishRename(); if (e.key === 'Escape') setEditingName(null); }}
-                  onClick={e => e.stopPropagation()}
-                  style={{ width: '100%', fontSize: '0.75rem', padding: '2px 6px', border: '1px solid #3b82f6', borderRadius: 4, outline: 'none' }}
-                />
+                  onClick={e => e.stopPropagation()} size="small" fullWidth
+                  sx={{ '& .MuiInputBase-input': { fontSize: '0.75rem', py: 0.25 } }} />
               ) : (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontWeight: agent.id === activeAgentId ? 700 : 500 }}>
-                    {agent.isDefault ? '⭐ ' : '📄 '}{agent.name}
-                  </span>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Typography sx={{ fontWeight: agent.id === activeAgentId ? 700 : 500, fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    {agent.isDefault ? <StarIcon sx={{ fontSize: 14, color: '#f9a825' }} /> : <DescriptionIcon sx={{ fontSize: 14, color: '#9e9e9e' }} />}
+                    {agent.name}
+                  </Typography>
                   {!agent.isDefault && agent.id === activeAgentId && (
-                    <div style={{ display: 'flex', gap: 2 }}>
-                      <button onClick={e => { e.stopPropagation(); handleStartRename(agent.id, agent.name); }} title="Rename" style={{ fontSize: '0.65rem', background: 'none', border: 'none', cursor: 'pointer', padding: 2 }}>✏️</button>
-                      <button onClick={e => { e.stopPropagation(); duplicateAgent(agent.id); }} title="Duplicate" style={{ fontSize: '0.65rem', background: 'none', border: 'none', cursor: 'pointer', padding: 2 }}>📋</button>
-                      <button onClick={e => { e.stopPropagation(); if (confirm(`Delete "${agent.name}"?`)) deleteAgent(agent.id); }} title="Delete" style={{ fontSize: '0.65rem', background: 'none', border: 'none', cursor: 'pointer', padding: 2 }}>🗑️</button>
-                    </div>
+                    <Box sx={{ display: 'flex', gap: 0 }}>
+                      <MuiIconButton size="small" onClick={e => { e.stopPropagation(); handleStartRename(agent.id, agent.name); }}><EditIcon sx={{ fontSize: 14 }} /></MuiIconButton>
+                      <MuiIconButton size="small" onClick={e => { e.stopPropagation(); duplicateAgent(agent.id); }}><ContentCopyIcon sx={{ fontSize: 14 }} /></MuiIconButton>
+                      <MuiIconButton size="small" onClick={e => { e.stopPropagation(); if (confirm(`Delete "${agent.name}"?`)) deleteAgent(agent.id); }}><DeleteIcon sx={{ fontSize: 14, color: '#e53935' }} /></MuiIconButton>
+                    </Box>
                   )}
-                </div>
+                </Box>
               )}
               {agent.id === activeAgentId && (
-                <div style={{ fontSize: '0.65rem', color: '#999', marginTop: 2 }}>
+                <Typography sx={{ fontSize: '0.63rem', color: '#9e9e9e', mt: 0.25 }}>
                   {agent.nodes.filter((n: AgentNodeType) => n.enabled).length}/{agent.nodes.length} nodes active
-                </div>
+                </Typography>
               )}
-            </div>
+            </Box>
           ))}
-        </div>
-      </div>
+        </Box>
+      </Paper>
 
-      {/* ─── Main Area ─── */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {/* Main Area */}
+      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', borderBottom: '1px solid #e8e8e8', background: '#fff', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: '1.1rem' }}>{activeAgent.isDefault ? '⭐' : '📄'}</span>
-            <h2 style={{ fontSize: '0.88rem', fontWeight: 700, color: '#1a1a2e', margin: 0 }}>{activeAgent.name}</h2>
-            <span style={{
-              fontSize: '0.65rem', fontWeight: 500, padding: '1px 6px', borderRadius: 4,
-              ...(activeAgent.isDefault ? { color: '#999', background: '#f0f0f0' } : { color: '#3b82f6', background: '#f0f5ff' }),
-            }}>{activeAgent.isDefault ? 'Read Only' : 'Editable'}</span>
-          </div>
-          <div style={{ display: 'flex', gap: 4 }}>
+        <Paper elevation={0} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, py: 1, borderBottom: '1px solid #e0e0e0', borderRadius: 0, flexShrink: 0, flexWrap: 'wrap', gap: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography sx={{ fontSize: '1.1rem' }}>{activeAgent.isDefault ? '⭐' : '📄'}</Typography>
+            <Typography sx={{ fontSize: '0.9rem', fontWeight: 700, color: '#1a1a2e' }}>{activeAgent.name}</Typography>
+            <Chip label={activeAgent.isDefault ? 'Read Only' : 'Editable'} size="small"
+              sx={{ height: 20, fontSize: '0.65rem', fontWeight: 600,
+                ...(activeAgent.isDefault ? { bgcolor: '#f5f5f5', color: '#9e9e9e' } : { bgcolor: '#e3f2fd', color: '#1976d2' }) }} />
+          </Box>
+
+          <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
             {isEditable && view === 'canvas' && (
               <>
-                <button onClick={() => setAddingNode(true)} style={{
-                  fontSize: '0.72rem', padding: '4px 10px', borderRadius: 6,
-                  border: '1px solid #22c55e', cursor: 'pointer',
-                  background: '#f0fdf4', color: '#16a34a',
-                }}>➕ Add Node</button>
-                <button onClick={() => setEditingParams(true)} style={{
-                  fontSize: '0.72rem', padding: '4px 10px', borderRadius: 6,
-                  border: '1px solid #a855f7', cursor: 'pointer',
-                  background: '#fdf4ff', color: '#9333ea',
-                }}>⚙ Parameters{modifiedParamsCount > 0 ? ` (${modifiedParamsCount})` : ''}</button>
+                <MuiButton variant="outlined" size="small" startIcon={<AddIcon />} onClick={() => setAddingNode(true)}
+                  sx={{ textTransform: 'none', fontSize: '0.72rem', borderColor: '#43a047', color: '#2e7d32', '&:hover': { borderColor: '#2e7d32', bgcolor: '#e8f5e9' } }}>
+                  Add Node
+                </MuiButton>
+                <MuiBadge badgeContent={modifiedParamsCount > 0 ? modifiedParamsCount : undefined} color="warning">
+                  <MuiButton variant="outlined" size="small" startIcon={<SettingsIcon />} onClick={() => setEditingParams(true)}
+                    sx={{ textTransform: 'none', fontSize: '0.72rem', borderColor: '#8e24aa', color: '#6a1b9a', '&:hover': { borderColor: '#6a1b9a', bgcolor: '#f3e5f5' } }}>
+                    Parameters
+                  </MuiButton>
+                </MuiBadge>
               </>
             )}
             {!isEditable && view === 'canvas' && (
-              <button onClick={() => setEditingParams(true)} style={{
-                fontSize: '0.72rem', padding: '4px 10px', borderRadius: 6,
-                border: '1px solid #ddd', cursor: 'pointer',
-                background: '#f8f8f8', color: '#888',
-              }}>👁 View Parameters</button>
+              <MuiButton variant="outlined" size="small" startIcon={<VisibilityIcon />} onClick={() => setEditingParams(true)}
+                sx={{ textTransform: 'none', fontSize: '0.72rem' }}>View Parameters</MuiButton>
             )}
-            {(['canvas', 'trace'] as PanelView[]).map(v => (
-              <button key={v} onClick={() => setView(v)} style={{
-                fontSize: '0.72rem', padding: '4px 10px', borderRadius: 6,
-                border: '1px solid #ddd', cursor: 'pointer',
-                background: view === v ? '#3b82f6' : '#fff',
-                color: view === v ? '#fff' : '#555',
-              }}>{v === 'canvas' ? '🔧 Pipeline' : `📊 Traces${traces.length > 0 ? ` (${traces.length})` : ''}`}</button>
-            ))}
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-            {Object.entries(categoryLabels).map(([key, label]) => {
+            <Box sx={{ mx: 0.5, height: 24, borderLeft: '1px solid #e0e0e0' }} />
+            <MuiButton variant={view === 'canvas' ? 'contained' : 'outlined'} size="small"
+              startIcon={<BuildIcon sx={{ fontSize: 16 }} />} onClick={() => setView('canvas')}
+              sx={{ textTransform: 'none', fontSize: '0.72rem' }}>Pipeline</MuiButton>
+            <MuiBadge badgeContent={traces.length > 0 ? traces.length : undefined} color="info">
+              <MuiButton variant={view === 'trace' ? 'contained' : 'outlined'} size="small"
+                startIcon={<TimelineIcon sx={{ fontSize: 16 }} />} onClick={() => setView('trace')}
+                sx={{ textTransform: 'none', fontSize: '0.72rem' }}>Traces</MuiButton>
+            </MuiBadge>
+          </Box>
+
+          {/* Legend */}
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+            {Object.entries(categoryLabels).map(([key, lbl]) => {
               const c = categoryColors[key];
               return (
-                <span key={key} style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 3,
-                  fontSize: '0.58rem', fontWeight: 600, color: c.accent,
-                  background: c.bg, border: `1px solid ${c.border}40`,
-                  padding: '1px 6px', borderRadius: 4,
-                }}>
-                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: c.border }} />{label}
-                </span>
+                <Chip key={key} size="small" label={lbl}
+                  sx={{ height: 20, fontSize: '0.58rem', fontWeight: 600, color: c.accent, bgcolor: c.bg, border: `1px solid ${c.border}30`,
+                    '& .MuiChip-label': { px: 0.75 } }}
+                  avatar={<Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: c.border, ml: '4px !important' }} />} />
               );
             })}
-          </div>
-        </div>
+          </Box>
+        </Paper>
 
         {/* Canvas or Trace */}
         {view === 'canvas' ? (
-          <div style={{ flex: 1, minHeight: 0 }}>
+          <Box sx={{ flex: 1, minHeight: 0 }}>
             <ReactFlow
               nodes={flowNodes} edges={flowEdges} nodeTypes={nodeTypes}
               fitView fitViewOptions={{ padding: 0.2 }}
-              nodesDraggable={!activeAgent.isDefault} nodesConnectable={false} elementsSelectable
+              nodesDraggable={isEditable} nodesConnectable={false} elementsSelectable
               proOptions={{ hideAttribution: true }} minZoom={0.3} maxZoom={1.5}
+              onNodesChange={onNodesChange}
               onNodeClick={(_, node) => setSelectedNode(node.id)}
-              onNodeDoubleClick={(_, node) => handleEditNode(node.id)}
+              onNodeDoubleClick={(_, node) => setSelectedNode(node.id)}
               onPaneClick={() => setSelectedNode(null)}
             >
-              <Background variant={BackgroundVariant.Dots} gap={16} size={1} color="#ddd" />
+              <Background variant={BackgroundVariant.Dots} gap={16} size={1} color="#e0e0e0" />
               <Controls showInteractive={false} />
               <MiniMap
                 nodeColor={n => {
@@ -1171,163 +1213,114 @@ export default function AgentsPanel() {
                 style={{ borderRadius: 8, border: '1px solid #e0e0e0' }}
               />
             </ReactFlow>
-          </div>
+          </Box>
         ) : (
-          <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+          <Box sx={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
             {traces.length === 0 ? (
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999' }}>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '2rem', marginBottom: 8 }}>📊</div>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>No traces yet</div>
-                  <div style={{ fontSize: '0.72rem', marginTop: 4 }}>Run the agent from the Chat panel in Agent mode to see execution traces here.</div>
-                </div>
-              </div>
+              <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9e9e9e' }}>
+                <Box sx={{ textAlign: 'center' }}>
+                  <TimelineIcon sx={{ fontSize: 48, mb: 1, color: '#bdbdbd' }} />
+                  <Typography sx={{ fontSize: '0.88rem', fontWeight: 600 }}>No traces yet</Typography>
+                  <Typography sx={{ fontSize: '0.72rem', mt: 0.5, color: '#bdbdbd' }}>Run the agent from the Chat panel to see execution traces here.</Typography>
+                </Box>
+              </Box>
             ) : (
               <>
-                {/* Left: Trace list + step list */}
-                <div style={{ width: 300, flexShrink: 0, borderRight: '1px solid #e8e8e8', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#fff' }}>
-                  {/* Trace selector */}
-                  <div style={{ padding: '8px 12px', borderBottom: '1px solid #f0f0f0', background: '#f8f8f8' }}>
-                    <select
-                      value={selectedTraceId ?? traces[traces.length - 1]?.id ?? ''}
-                      onChange={e => { setSelectedTraceId(e.target.value); setSelectedStepId(null); }}
-                      style={{
-                        width: '100%', fontSize: '0.72rem', padding: '5px 8px',
-                        border: '1px solid #ddd', borderRadius: 6, outline: 'none',
-                        background: '#fff', cursor: 'pointer',
-                      }}
-                    >
-                      {traces.map(t => (
-                        <option key={t.id} value={t.id}>
-                          {t.status === 'running' ? '⏳' : t.status === 'success' ? '✓' : '✗'} {t.agentName} — "{t.userRequest.slice(0, 50)}{t.userRequest.length > 50 ? '…' : ''}"
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                {/* Trace list + steps */}
+                <Paper elevation={0} sx={{ width: 300, flexShrink: 0, borderRight: '1px solid #e0e0e0', borderRadius: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                  <Box sx={{ px: 1.5, py: 1, borderBottom: '1px solid #f0f0f0', bgcolor: '#fafafa' }}>
+                    <FormControl size="small" fullWidth>
+                      <Select
+                        value={selectedTraceId ?? traces[traces.length - 1]?.id ?? ''}
+                        onChange={e => { setSelectedTraceId(e.target.value); setSelectedStepId(null); }}
+                        sx={{ fontSize: '0.72rem' }}
+                      >
+                        {traces.map(t => (
+                          <MenuItem key={t.id} value={t.id} sx={{ fontSize: '0.72rem' }}>
+                            {t.status === 'running' ? '⏳' : t.status === 'success' ? '✓' : '✗'} {t.agentName} — "{t.userRequest.slice(0, 40)}{t.userRequest.length > 40 ? '…' : ''}"
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Box>
 
-                  {/* Step list */}
-                  <div style={{ flex: 1, overflowY: 'auto' }}>
+                  <Box sx={{ flex: 1, overflowY: 'auto' }}>
                     {(() => {
                       const currentTrace = traces.find(t => t.id === (selectedTraceId ?? traces[traces.length - 1]?.id));
                       if (!currentTrace) return null;
                       return currentTrace.steps.map(step => (
-                        <TraceStepRow
-                          key={step.id}
-                          step={step}
-                          selected={selectedStepId === step.id}
-                          onSelect={() => setSelectedStepId(step.id)}
-                        />
+                        <TraceStepRow key={step.id} step={step} selected={selectedStepId === step.id}
+                          onSelect={() => setSelectedStepId(step.id)} />
                       ));
                     })()}
-                  </div>
+                  </Box>
 
-                  {/* Trace summary footer */}
                   {(() => {
                     const currentTrace = traces.find(t => t.id === (selectedTraceId ?? traces[traces.length - 1]?.id));
                     if (!currentTrace) return null;
-                    const successCount = currentTrace.steps.filter(s => s.status === 'success').length;
-                    const errorCount = currentTrace.steps.filter(s => s.status === 'error').length;
+                    const sc = currentTrace.steps.filter(s => s.status === 'success').length;
+                    const ec = currentTrace.steps.filter(s => s.status === 'error').length;
                     return (
-                      <div style={{
-                        padding: '8px 12px', borderTop: '1px solid #f0f0f0', background: '#f8f8f8',
-                        fontSize: '0.65rem', color: '#888', display: 'flex', gap: 10,
-                      }}>
+                      <Box sx={{ px: 1.5, py: 1, borderTop: '1px solid #f0f0f0', bgcolor: '#fafafa', display: 'flex', gap: 1.25, fontSize: '0.65rem', color: '#9e9e9e' }}>
                         <span>{currentTrace.steps.length} steps</span>
-                        <span style={{ color: '#16a34a' }}>✓ {successCount}</span>
-                        {errorCount > 0 && <span style={{ color: '#dc2626' }}>✗ {errorCount}</span>}
+                        <Typography sx={{ color: '#43a047', fontSize: '0.65rem' }}>✓ {sc}</Typography>
+                        {ec > 0 && <Typography sx={{ color: '#e53935', fontSize: '0.65rem' }}>✗ {ec}</Typography>}
                         {currentTrace.totalDurationMs != null && (
-                          <span style={{ marginLeft: 'auto' }}>{(currentTrace.totalDurationMs / 1000).toFixed(1)}s total</span>
+                          <Typography sx={{ ml: 'auto', fontSize: '0.65rem', color: '#9e9e9e' }}>{(currentTrace.totalDurationMs / 1000).toFixed(1)}s</Typography>
                         )}
-                      </div>
+                      </Box>
                     );
                   })()}
-                </div>
+                </Paper>
 
-                {/* Right: Detail panel (n8n style) */}
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                {/* Step detail */}
+                <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                   {(() => {
                     const currentTrace = traces.find(t => t.id === (selectedTraceId ?? traces[traces.length - 1]?.id));
                     const step = currentTrace?.steps.find(s => s.id === selectedStepId);
                     if (!step) {
                       return (
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#bbb' }}>
-                          <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: '2.5rem', marginBottom: 8 }}>🖱️</div>
-                            <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#999' }}>Select a step</div>
-                            <div style={{ fontSize: '0.72rem', marginTop: 4 }}>Click on a step in the list to view its parameters, input, and output.</div>
-                          </div>
-                        </div>
+                        <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#bdbdbd' }}>
+                          <Box sx={{ textAlign: 'center' }}>
+                            <Typography sx={{ fontSize: '2.5rem', mb: 1 }}>🖱️</Typography>
+                            <Typography sx={{ fontSize: '0.85rem', fontWeight: 600, color: '#9e9e9e' }}>Select a step</Typography>
+                            <Typography sx={{ fontSize: '0.72rem', mt: 0.5 }}>Click a step to view parameters, input, and output.</Typography>
+                          </Box>
+                        </Box>
                       );
                     }
                     return <StepDetailPanel step={step} />;
                   })()}
-                </div>
+                </Box>
               </>
             )}
-          </div>
+          </Box>
         )}
+      </Box>
 
-        {/* Selected node detail */}
-        {view === 'canvas' && selectedNode && (() => {
-          const node = activeAgent.nodes.find((n: AgentNodeType) => n.id === selectedNode);
-          if (!node) return null;
-          const c = categoryColors[node.category] || categoryColors.output;
-          return (
-            <div style={{ flexShrink: 0, padding: '10px 14px', borderTop: `2px solid ${c.border}`, background: c.bg, maxHeight: 180, overflowY: 'auto' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                <span style={{ fontSize: '1.1rem' }}>{node.icon}</span>
-                <span style={{ fontWeight: 700, fontSize: '0.82rem' }}>{node.label}</span>
-                <span style={{ fontSize: '0.55rem', fontWeight: 700, textTransform: 'uppercase', color: c.accent, background: `${c.accent}14`, padding: '1px 5px', borderRadius: 4 }}>{categoryLabels[node.category]}</span>
-                <span style={{ fontSize: '0.6rem', padding: '1px 6px', borderRadius: 4, background: node.enabled ? '#dcfce7' : '#fee2e2', color: node.enabled ? '#16a34a' : '#dc2626' }}>{node.enabled ? 'Enabled' : 'Disabled'}</span>
-                {isEditable && (
-                  <button onClick={() => handleEditNode(node.id)} style={{
-                    fontSize: '0.65rem', padding: '2px 8px', borderRadius: 4,
-                    border: '1px solid #ddd', background: '#fff', cursor: 'pointer', color: '#3b82f6', marginLeft: 'auto',
-                  }}>✏️ Edit Node</button>
-                )}
-              </div>
-              <p style={{ fontSize: '0.72rem', color: '#555', lineHeight: 1.5, marginBottom: 4 }}>{node.description}</p>
-              {node.inputs && <div style={{ fontSize: '0.68rem', color: '#777', marginBottom: 3 }}><strong>Inputs:</strong> {node.inputs.join(' → ')}</div>}
-              {node.outputs && <div style={{ fontSize: '0.68rem', color: '#777', marginBottom: 3 }}><strong>Outputs:</strong> {node.outputs.join(' → ')}</div>}
-              {node.promptKey && (
-                <div style={{ fontSize: '0.65rem', color: c.accent, fontFamily: "'SF Mono', monospace", background: `${c.accent}0a`, padding: '3px 8px', borderRadius: 4, marginTop: 4, display: 'inline-block' }}>
-                  prompt: <strong>{node.promptKey}</strong>
-                </div>
-              )}
-              {node.customPrompt && (
-                <details style={{ marginTop: 6 }}>
-                  <summary style={{ fontSize: '0.65rem', cursor: 'pointer', color: c.accent, fontWeight: 600 }}>Custom Prompt Override</summary>
-                  <pre style={{ fontSize: '0.6rem', background: '#f0f0f0', padding: 6, borderRadius: 4, overflow: 'auto', maxHeight: 100, marginTop: 4 }}>{node.customPrompt}</pre>
-                </details>
-              )}
-            </div>
-          );
-        })()}
-      </div>
-
-      {/* Tools Modal */}
-      {toolsEditing && toolsEditNode && (
-        <ToolsEditorModal nodeId={toolsEditNode.id} nodeLabel={toolsEditNode.label} tools={toolsEditNode.tools || []} onSave={handleSaveTools} onClose={() => setToolsEditing(null)} />
-      )}
-
-      {/* Node Editor Modal */}
-      {nodeEditing && nodeEditNode && (
-        <NodeEditorModal node={nodeEditNode} onSave={handleSaveNode} onDelete={handleDeleteNode} onClose={() => setNodeEditing(null)} />
-      )}
-
-      {/* Add Node Modal */}
-      {addingNode && (
-        <AddNodeModal existingNodes={activeAgent.nodes} onAdd={handleAddNode} onClose={() => setAddingNode(false)} />
-      )}
-
-      {/* Parameters Editor Modal */}
-      {editingParams && (
-        <ParametersEditorModal
-          parameters={activeAgent.parameters ?? {}}
-          onSave={isEditable ? handleSaveParams : () => {}}
-          onClose={() => setEditingParams(false)}
+      {/* Node Parameter Drawer (n8n style) */}
+      {drawerNode && (
+        <NodeParameterDrawer
+          node={drawerNode}
+          isEditable={isEditable}
+          onSave={handleSaveNode}
+          onDelete={handleDeleteNode}
+          onSaveTools={handleSaveTools}
+          onClose={() => setSelectedNode(null)}
         />
       )}
-    </div>
+
+      {/* Add Node Dialog */}
+      <AddNodeDialog open={addingNode} existingNodes={activeAgent.nodes} onAdd={handleAddNode} onClose={() => setAddingNode(false)} />
+
+      {/* Parameters Dialog */}
+      <ParametersDialog
+        open={editingParams}
+        parameters={activeAgent.parameters ?? {}}
+        isEditable={isEditable}
+        onSave={isEditable ? handleSaveParams : () => {}}
+        onClose={() => setEditingParams(false)}
+      />
+    </Box>
   );
 }
