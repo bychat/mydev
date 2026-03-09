@@ -159,5 +159,12 @@ export function createElectronAdapter(): BackendAPI {
     agentLoadConfigs: () => api.agentLoadConfigs(),
     agentSaveConfig: (c) => api.agentSaveConfig(c),
     agentDeleteConfig: (id) => api.agentDeleteConfig(id),
+
+    // ── Plugin Credentials ──
+    credentialsLoad: () => api.credentialsLoad(),
+    credentialsLoadByType: (t) => api.credentialsLoadByType(t),
+    credentialsSave: (c) => api.credentialsSave(c),
+    credentialsDelete: (id) => api.credentialsDelete(id),
+    credentialsTest: (c) => api.credentialsTest(c),
   };
 }

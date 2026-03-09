@@ -39,7 +39,15 @@ const CopilotIconSvg = ({ size = 16 }: { size?: number }) => (
 );
 
 
-const panels: { id: SidePanel; icon: 'explorer' | 'search' | 'source-control' | 'npm' | 'supabase' | 'database' | 'github' | 'atlassian' | 'mcp' | 'copilot'; label: string; gitOnly?: boolean; npmOnly?: boolean }[] = [
+// Credentials/Key Icon component
+const CredentialsIcon = ({ size = 16 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12.65 10C11.83 7.67 9.61 6 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6c2.61 0 4.83-1.67 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/>
+  </svg>
+);
+
+
+const panels: { id: SidePanel; icon: 'explorer' | 'search' | 'source-control' | 'npm' | 'supabase' | 'database' | 'github' | 'atlassian' | 'mcp' | 'copilot' | 'credentials'; label: string; gitOnly?: boolean; npmOnly?: boolean }[] = [
   { id: 'explorer', icon: 'explorer', label: 'Explorer' },
   { id: 'search', icon: 'search', label: 'Search' },
   { id: 'source-control', icon: 'source-control', label: 'Source Control', gitOnly: true },
@@ -50,6 +58,7 @@ const panels: { id: SidePanel; icon: 'explorer' | 'search' | 'source-control' | 
   { id: 'github', icon: 'github', label: 'GitHub Actions', gitOnly: true },
   { id: 'atlassian', icon: 'atlassian', label: 'Atlassian' },
   { id: 'mcp', icon: 'mcp', label: 'MCP Servers' },
+  { id: 'credentials', icon: 'credentials', label: 'Credentials' },
 ];
 
 interface ActivityBarProps {
@@ -120,6 +129,8 @@ export default function ActivityBar({ onToggleTerminal, terminalVisible }: Activ
         return <McpIcon />;
       case 'copilot':
         return <CopilotIconSvg />;
+      case 'credentials':
+        return <CredentialsIcon />;
       default:
         return null;
     }

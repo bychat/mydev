@@ -51,6 +51,12 @@ import type {
   CliProviderStatus,
   CliChatResult,
 } from '../types/cliProvider.types';
+import type {
+  Credential,
+  PluginType,
+  CredentialResult,
+  CredentialTestResult,
+} from '../types/credentials.types';
 
 // ─── Runtime mode ───────────────────────────────────────────────────────────
 
@@ -223,4 +229,11 @@ export interface BackendAPI {
   agentLoadConfigs(): Promise<unknown[]>;
   agentSaveConfig(config: unknown): Promise<{ success: boolean }>;
   agentDeleteConfig(agentId: string): Promise<{ success: boolean }>;
+
+  // ── Plugin Credentials ──
+  credentialsLoad(): Promise<{ success: boolean; credentials?: Credential[]; error?: string }>;
+  credentialsLoadByType(pluginType: PluginType): Promise<{ success: boolean; credentials?: Credential[]; error?: string }>;
+  credentialsSave(credential: Credential): Promise<CredentialResult>;
+  credentialsDelete(credentialId: string): Promise<{ success: boolean; error?: string }>;
+  credentialsTest(credential: Credential): Promise<CredentialTestResult>;
 }

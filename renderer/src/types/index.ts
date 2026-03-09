@@ -104,3 +104,21 @@ export { ALL_AGENT_TOOLS } from './agent.types';
 export type {
   ActiveSession,
 } from './session.types';
+
+// Credentials types
+export type {
+  PluginType,
+  CredentialBase,
+  GitHubCredential,
+  AtlassianCredential,
+  SupabaseCredential,
+  OpenAICredential,
+  AnthropicCredential,
+  OllamaCredential,
+  Credential,
+  PluginMetadata,
+  PluginFieldConfig,
+  CredentialsStore,
+  CredentialResult,
+  CredentialTestResult,
+} from './credentials.types';

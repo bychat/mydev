@@ -3,7 +3,7 @@
  */
 import type { CliProviderId } from './cliProvider.types';
 
-export type SidePanel = 'explorer' | 'search' | 'source-control' | 'npm' | 'supabase' | 'database' | 'github' | 'atlassian' | 'mcp' | 'copilot';
+export type SidePanel = 'explorer' | 'search' | 'source-control' | 'npm' | 'supabase' | 'database' | 'github' | 'atlassian' | 'mcp' | 'copilot' | 'credentials';
 
 /** Chat mode — local AI modes or external CLI provider via 'cli:<providerId>' */
 export type ChatMode = 'Agent' | 'Chat' | 'Edit' | `cli:${CliProviderId}`;
