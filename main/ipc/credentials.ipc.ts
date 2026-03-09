@@ -100,17 +100,24 @@ export function registerCredentialsIpc(): void {
             return { success: false, error: 'Project URL and service role key are required' };
           }
           // Test Supabase API access
-          const sbResponse = await fetch(`${credential.projectUrl}/rest/v1/`, {
-            headers: {
-              'apikey': credential.serviceRoleKey,
-              'Authorization': `Bearer ${credential.serviceRoleKey}`,
-            },
-          });
-          if (sbResponse.ok || sbResponse.status === 404) {
-            // 404 is acceptable - it means the API is reachable
-            return { success: true, message: 'Connected to Supabase project' };
+          try {
+            const sbResponse = await fetch(`${credential.projectUrl}/rest/v1/`, {
+              headers: {
+                'apikey': credential.serviceRoleKey,
+                'Authorization': `Bearer ${credential.serviceRoleKey}`,
+              },
+            });
+            // Accept 200-299 status codes
+            if (sbResponse.ok) {
+              return { success: true, message: 'Connected to Supabase project' };
+            }
+            if (sbResponse.status === 401) {
+              return { success: false, error: 'Invalid service role key - authentication failed' };
+            }
+            return { success: false, error: `Supabase API returned status ${sbResponse.status}` };
+          } catch {
+            return { success: false, error: 'Could not connect to Supabase project URL' };
           }
-          return { success: false, error: 'Invalid project URL or service role key' };
 
         case 'openai':
           if (!credential.apiKey) {

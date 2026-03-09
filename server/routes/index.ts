@@ -7,6 +7,7 @@ import aiRoutes from './ai.routes';
 import promptsRoutes from './prompts.routes';
 import historyRoutes from './history.routes';
 import integrationsRoutes from './integrations.routes';
+import credentialsRoutes from './credentials.routes';
 
 const router = Router();
 
@@ -15,5 +16,6 @@ router.use(aiRoutes);
 router.use(promptsRoutes);
 router.use(historyRoutes);
 router.use(integrationsRoutes);
+router.use(credentialsRoutes);
 
 export default router;

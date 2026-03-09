@@ -197,7 +197,9 @@ export default function CredentialsPanel() {
     // Populate form with credential data
     const data: CredentialFormData = { name: credential.name };
     currentPlugin.fields.forEach(field => {
-      data[field.key] = (credential as any)[field.key] || '';
+      // Use type-safe property access based on credential type
+      const credentialRecord = credential as unknown as Record<string, string>;
+      data[field.key] = credentialRecord[field.key] || '';
     });
     setFormData(data);
     setTestResult(null);
