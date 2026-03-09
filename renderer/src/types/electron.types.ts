@@ -14,6 +14,7 @@ import type { GitHubRepoInfo, GitHubWorkflowsResult, GitHubRunsResult, GitHubJob
 import type { McpServerConfig, McpServersResult, McpToolCallResult } from './mcp.types';
 import type { GhCliStatus, GhCopilotChatResult } from './ghCli.types';
 import type { CliProviderId, CliProviderStatus, CliChatResult } from './cliProvider.types';
+import type { Credential, PluginType, CredentialResult, CredentialTestResult } from './credentials.types';
 
 export interface ElectronAPI {
   // Window management
@@ -138,6 +139,12 @@ export interface ElectronAPI {
   agentLoadConfigs: () => Promise<unknown[]>;
   agentSaveConfig: (config: unknown) => Promise<{ success: boolean }>;
   agentDeleteConfig: (agentId: string) => Promise<{ success: boolean }>;
+  // Plugin Credentials
+  credentialsLoad: () => Promise<{ success: boolean; credentials?: Credential[]; error?: string }>;
+  credentialsLoadByType: (pluginType: PluginType) => Promise<{ success: boolean; credentials?: Credential[]; error?: string }>;
+  credentialsSave: (credential: Credential) => Promise<CredentialResult>;
+  credentialsDelete: (credentialId: string) => Promise<{ success: boolean; error?: string }>;
+  credentialsTest: (credential: Credential) => Promise<CredentialTestResult>;
 }
 
 declare global {

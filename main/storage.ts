@@ -230,3 +230,105 @@ export function deleteAgentConfig(agentId: string): boolean {
   saveAgentConfigs(filtered);
   return true;
 }
+
+// ── Plugin Credentials ───────────────────────────────────────────────────────
+
+export type PluginType = 
+  | 'github'
+  | 'atlassian'
+  | 'supabase'
+  | 'openai'
+  | 'anthropic'
+  | 'ollama';
+
+export interface CredentialBase {
+  id: string;
+  pluginType: PluginType;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GitHubCredential extends CredentialBase {
+  pluginType: 'github';
+  token: string;
+}
+
+export interface AtlassianCredential extends CredentialBase {
+  pluginType: 'atlassian';
+  domain: string;
+  email: string;
+  apiToken: string;
+}
+
+export interface SupabaseCredential extends CredentialBase {
+  pluginType: 'supabase';
+  projectUrl: string;
+  serviceRoleKey: string;
+}
+
+export interface OpenAICredential extends CredentialBase {
+  pluginType: 'openai';
+  apiKey: string;
+  baseUrl?: string;
+}
+
+export interface AnthropicCredential extends CredentialBase {
+  pluginType: 'anthropic';
+  apiKey: string;
+}
+
+export interface OllamaCredential extends CredentialBase {
+  pluginType: 'ollama';
+  baseUrl: string;
+}
+
+export type Credential = 
+  | GitHubCredential
+  | AtlassianCredential
+  | SupabaseCredential
+  | OpenAICredential
+  | AnthropicCredential
+  | OllamaCredential;
+
+const CREDENTIALS_FILE = () => dataFile('credentials.json');
+
+export function loadCredentials(): Credential[] {
+  return readJSON<Credential[]>(CREDENTIALS_FILE(), []);
+}
+
+export function saveCredentials(credentials: Credential[]): void {
+  writeJSON(CREDENTIALS_FILE(), credentials);
+}
+
+export function saveCredential(credential: Credential): Credential {
+  const all = loadCredentials();
+  const idx = all.findIndex(c => c.id === credential.id);
+  const now = new Date().toISOString();
+  
+  if (idx >= 0) {
+    // Update existing
+    const updated = { ...credential, updatedAt: now };
+    all[idx] = updated;
+    saveCredentials(all);
+    return updated;
+  } else {
+    // Add new
+    const newCred = { ...credential, createdAt: now, updatedAt: now };
+    all.push(newCred);
+    saveCredentials(all);
+    return newCred;
+  }
+}
+
+export function deleteCredential(credentialId: string): boolean {
+  const all = loadCredentials();
+  const filtered = all.filter(c => c.id !== credentialId);
+  if (filtered.length === all.length) return false;
+  saveCredentials(filtered);
+  return true;
+}
+
+export function getCredentialsByType(pluginType: PluginType): Credential[] {
+  return loadCredentials().filter(c => c.pluginType === pluginType);
+}

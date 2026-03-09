@@ -172,4 +172,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('cli-provider-chat-chunk-done', listener);
   },
   cliProviderChatAbort: () => ipcRenderer.invoke('cli-provider-chat-abort'),
+
+  // Plugin Credentials
+  credentialsLoad: () => ipcRenderer.invoke('credentials-load'),
+  credentialsLoadByType: (pluginType) => ipcRenderer.invoke('credentials-load-by-type', pluginType),
+  credentialsSave: (credential) => ipcRenderer.invoke('credentials-save', credential),
+  credentialsDelete: (credentialId) => ipcRenderer.invoke('credentials-delete', credentialId),
+  credentialsTest: (credential) => ipcRenderer.invoke('credentials-test', credential),
 });

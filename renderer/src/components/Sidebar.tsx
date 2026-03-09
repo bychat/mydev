@@ -9,6 +9,7 @@ import GitHubActionsTab from './GitHubActionsTab';
 import AtlassianPanel from './AtlassianPanel';
 import McpServersPanel from './McpServersPanel';
 import CliProvidersPanel from './CliProvidersPanel';
+import CredentialsPanel from './CredentialsPanel';
 import ExplorerGitControls from './ExplorerGitControls';
 import { ChevronLeftIcon } from './icons';
 
@@ -28,6 +29,7 @@ export default function Sidebar({ onCollapse }: SidebarProps) {
   if (activePanel === 'atlassian') return <aside className="sidebar"><AtlassianPanel /></aside>;
   if (activePanel === 'mcp') return <aside className="sidebar"><McpServersPanel /></aside>;
   if (activePanel === 'copilot') return <CliProvidersPanel />;
+  if (activePanel === 'credentials') return <aside className="sidebar"><CredentialsPanel /></aside>;
 
   return (
     <aside className="sidebar">

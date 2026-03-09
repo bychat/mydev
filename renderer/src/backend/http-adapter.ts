@@ -283,5 +283,12 @@ export function createHttpAdapter(): BackendAPI {
     agentLoadConfigs: () => get('/api/agents'),
     agentSaveConfig: (c) => post('/api/agents', c),
     agentDeleteConfig: (id) => post(`/api/agents/${id}/delete`),
+
+    // ── Plugin Credentials ──
+    credentialsLoad: () => get('/api/credentials'),
+    credentialsLoadByType: (t) => get(`/api/credentials/type/${t}`),
+    credentialsSave: (c) => post('/api/credentials', c),
+    credentialsDelete: (id) => post(`/api/credentials/${id}/delete`),
+    credentialsTest: (c) => post('/api/credentials/test', c),
   };
 }
