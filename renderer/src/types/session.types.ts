@@ -26,3 +26,29 @@ export interface ActiveSession {
   /** Chat mode */
   mode: 'Agent' | 'Chat' | 'Edit';
 }
+
+/**
+ * Session folder types (for web/Docker mode)
+ * Manages temporary session folders for chat without workspace
+ * and GitHub clone operations.
+ */
+
+export interface SessionFolderResult {
+  success: boolean;
+  folderPath?: string;
+  folderName?: string;
+  error?: string;
+}
+
+export interface GitCloneResult {
+  success: boolean;
+  folderPath?: string;
+  folderName?: string;
+  error?: string;
+}
+
+export interface SessionFolderInfo {
+  folderPath: string;
+  folderName: string;
+  createdAt: string;
+}

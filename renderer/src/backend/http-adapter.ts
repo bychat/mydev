@@ -283,5 +283,11 @@ export function createHttpAdapter(): BackendAPI {
     agentLoadConfigs: () => get('/api/agents'),
     agentSaveConfig: (c) => post('/api/agents', c),
     agentDeleteConfig: (id) => post(`/api/agents/${id}/delete`),
+
+    // ── Session Folder Management ──
+    sessionCreateFolder: (t) => post('/api/session/create-folder', { title: t }),
+    sessionCloneGitHub: (u, t) => post('/api/session/clone-github', { repoUrl: u, token: t }),
+    sessionListFolders: () => get('/api/session/list-folders'),
+    sessionDeleteFolder: (p) => post('/api/session/delete-folder', { folderPath: p }),
   };
 }

@@ -159,5 +159,11 @@ export function createElectronAdapter(): BackendAPI {
     agentLoadConfigs: () => api.agentLoadConfigs(),
     agentSaveConfig: (c) => api.agentSaveConfig(c),
     agentDeleteConfig: (id) => api.agentDeleteConfig(id),
+
+    // ── Session Folder Management ──
+    sessionCreateFolder: (t) => api.sessionCreateFolder(t),
+    sessionCloneGitHub: (u, t) => api.sessionCloneGitHub(u, t),
+    sessionListFolders: () => api.sessionListFolders(),
+    sessionDeleteFolder: (p) => api.sessionDeleteFolder(p),
   };
 }

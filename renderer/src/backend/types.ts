@@ -51,6 +51,11 @@ import type {
   CliProviderStatus,
   CliChatResult,
 } from '../types/cliProvider.types';
+import type {
+  SessionFolderResult,
+  GitCloneResult,
+  SessionFolderInfo,
+} from '../types/session.types';
 
 // ─── Runtime mode ───────────────────────────────────────────────────────────
 
@@ -223,4 +228,10 @@ export interface BackendAPI {
   agentLoadConfigs(): Promise<unknown[]>;
   agentSaveConfig(config: unknown): Promise<{ success: boolean }>;
   agentDeleteConfig(agentId: string): Promise<{ success: boolean }>;
+
+  // ── Session Folder Management (for web/Docker mode) ──
+  sessionCreateFolder(title?: string): Promise<SessionFolderResult>;
+  sessionCloneGitHub(repoUrl: string, token?: string): Promise<GitCloneResult>;
+  sessionListFolders(): Promise<SessionFolderInfo[]>;
+  sessionDeleteFolder(folderPath: string): Promise<{ success: boolean; error?: string }>;
 }
