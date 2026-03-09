@@ -3,11 +3,48 @@
  *
  * Users can browse a built-in catalog, install servers (npm), connect/disconnect,
  * and view tools + resources exposed by each server.
+ * 
+ * Fully refactored to use Material UI components.
  */
 import { useState, useEffect, useCallback } from 'react';
+import {
+  Box,
+  Typography,
+  IconButton,
+  Button,
+  Card,
+  CardContent,
+  Stack,
+  Collapse,
+  TextField,
+  Alert,
+  Chip,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Avatar,
+  Divider,
+  Tooltip,
+} from '@mui/material';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import StopIcon from '@mui/icons-material/Stop';
+import BuildIcon from '@mui/icons-material/Build';
+import DescriptionIcon from '@mui/icons-material/Description';
+import HubIcon from '@mui/icons-material/Hub';
 import { useBackend } from '../context/BackendContext';
 import type { McpServerConfig, McpRegistryEntry } from '../types/mcp.types';
-import { RefreshIcon, PlusIcon, TrashIcon, ChevronDownIcon, ChevronRightIcon } from './icons';
+import { Panel, PanelHeader, StatusIndicator, EmptyState } from './mui';
+import type { StatusType } from './mui/StatusIndicator';
 
 // ── Built-in catalog of popular MCP servers ──────────────────────────────────
 
@@ -78,34 +115,19 @@ const CATALOG: McpRegistryEntry[] = [
   },
 ];
 
-// ── Status badge helper ──────────────────────────────────────────────────────
-
-function StatusDot({ status }: { status: McpServerConfig['status'] }) {
-  const colors: Record<string, string> = {
-    connected: '#22c55e',
-    installed: '#3b82f6',
-    installing: '#f59e0b',
-    connecting: '#f59e0b',
-    error: '#ef4444',
-    stopped: '#94a3b8',
-    'not-installed': '#d1d5db',
+// ── Helper to map server status to StatusIndicator type ──
+const mapStatus = (status: McpServerConfig['status']): StatusType => {
+  const map: Record<string, StatusType> = {
+    connected: 'connected',
+    installed: 'installed',
+    installing: 'installing',
+    connecting: 'connecting',
+    error: 'error',
+    stopped: 'stopped',
+    'not-installed': 'not-installed',
   };
-  const labels: Record<string, string> = {
-    connected: 'Connected',
-    installed: 'Installed',
-    installing: 'Installing…',
-    connecting: 'Connecting…',
-    error: 'Error',
-    stopped: 'Stopped',
-    'not-installed': 'Not installed',
-  };
-  return (
-    <span className="mcp-status" title={labels[status] || status}>
-      <span className="mcp-status-dot" style={{ background: colors[status] || '#d1d5db' }} />
-      <span className="mcp-status-label">{labels[status] || status}</span>
-    </span>
-  );
-}
+  return map[status] || 'disconnected';
+};
 
 // ── Main component ───────────────────────────────────────────────────────────
 
@@ -113,8 +135,8 @@ export default function McpServersPanel() {
   const backend = useBackend();
   const [servers, setServers] = useState<McpServerConfig[]>([]);
   const [loading, setLoading] = useState(false);
-  const [showCatalog, setShowCatalog] = useState(false);
-  const [showCustom, setShowCustom] = useState(false);
+  const [catalogOpen, setCatalogOpen] = useState(false);
+  const [customDialogOpen, setCustomDialogOpen] = useState(false);
   const [customPkg, setCustomPkg] = useState('');
   const [customName, setCustomName] = useState('');
   const [expandedServer, setExpandedServer] = useState<string | null>(null);
@@ -127,8 +149,8 @@ export default function McpServersPanel() {
     try {
       const result = await backend.mcpLoadServers();
       setServers(result.servers || []);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError((err as Error).message);
     } finally {
       setLoading(false);
     }
@@ -147,7 +169,6 @@ export default function McpServersPanel() {
   };
 
   const addFromCatalog = async (entry: McpRegistryEntry) => {
-    // Don't add duplicates
     if (servers.some(s => s.id === entry.id)) return;
 
     const config: McpServerConfig = {
@@ -161,6 +182,7 @@ export default function McpServersPanel() {
     setServers(prev => [...prev, config]);
     setBusy(entry.id, true);
     setError(null);
+    setCatalogOpen(false);
 
     try {
       const result = await backend.mcpInstallServer(config);
@@ -170,9 +192,9 @@ export default function McpServersPanel() {
         setServers(prev => prev.map(s => s.id === entry.id ? { ...s, status: 'error', lastError: result.error } : s));
         setError(result.error || 'Install failed');
       }
-    } catch (err: any) {
-      setServers(prev => prev.map(s => s.id === entry.id ? { ...s, status: 'error', lastError: err.message } : s));
-      setError(err.message);
+    } catch (err: unknown) {
+      setServers(prev => prev.map(s => s.id === entry.id ? { ...s, status: 'error', lastError: (err as Error).message } : s));
+      setError((err as Error).message);
     } finally {
       setBusy(entry.id, false);
     }
@@ -192,7 +214,7 @@ export default function McpServersPanel() {
     };
 
     setServers(prev => [...prev, config]);
-    setShowCustom(false);
+    setCustomDialogOpen(false);
     setCustomPkg('');
     setCustomName('');
     setBusy(id, true);
@@ -206,9 +228,9 @@ export default function McpServersPanel() {
         setServers(prev => prev.map(s => s.id === id ? { ...s, status: 'error', lastError: result.error } : s));
         setError(result.error || 'Install failed');
       }
-    } catch (err: any) {
-      setServers(prev => prev.map(s => s.id === id ? { ...s, status: 'error', lastError: err.message } : s));
-      setError(err.message);
+    } catch (err: unknown) {
+      setServers(prev => prev.map(s => s.id === id ? { ...s, status: 'error', lastError: (err as Error).message } : s));
+      setError((err as Error).message);
     } finally {
       setBusy(id, false);
     }
@@ -227,9 +249,9 @@ export default function McpServersPanel() {
         setServers(prev => prev.map(s => s.id === id ? { ...s, status: 'error', lastError: result.error } : s));
         setError(result.error || 'Connect failed');
       }
-    } catch (err: any) {
-      setServers(prev => prev.map(s => s.id === id ? { ...s, status: 'error', lastError: err.message } : s));
-      setError(err.message);
+    } catch (err: unknown) {
+      setServers(prev => prev.map(s => s.id === id ? { ...s, status: 'error', lastError: (err as Error).message } : s));
+      setError((err as Error).message);
     } finally {
       setBusy(id, false);
     }
@@ -240,8 +262,8 @@ export default function McpServersPanel() {
     try {
       await backend.mcpDisconnectServer(id);
       setServers(prev => prev.map(s => s.id === id ? { ...s, status: 'stopped', tools: undefined, resources: undefined } : s));
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError((err as Error).message);
     } finally {
       setBusy(id, false);
     }
@@ -253,8 +275,8 @@ export default function McpServersPanel() {
       await backend.mcpUninstallServer(id);
       setServers(prev => prev.filter(s => s.id !== id));
       if (expandedServer === id) setExpandedServer(null);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError((err as Error).message);
     } finally {
       setBusy(id, false);
     }
@@ -267,202 +289,278 @@ export default function McpServersPanel() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="mcp-panel">
-      {/* Header */}
-      <div className="mcp-panel-header">
-        <svg width={16} height={16} viewBox="0 0 16 16" fill="currentColor" style={{ color: '#7c3aed' }}>
-          <path d="M2.5 2A1.5 1.5 0 0 0 1 3.5v2A1.5 1.5 0 0 0 2.5 7h3A1.5 1.5 0 0 0 7 5.5v-2A1.5 1.5 0 0 0 5.5 2h-3zM2 3.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-2z"/>
-          <path d="M10.5 2A1.5 1.5 0 0 0 9 3.5v2A1.5 1.5 0 0 0 10.5 7h3A1.5 1.5 0 0 0 15 5.5v-2A1.5 1.5 0 0 0 13.5 2h-3zM10 3.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-2z"/>
-          <path d="M2.5 9A1.5 1.5 0 0 0 1 10.5v2A1.5 1.5 0 0 0 2.5 14h3A1.5 1.5 0 0 0 7 12.5v-2A1.5 1.5 0 0 0 5.5 9h-3zM2 10.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-2z"/>
-          <path d="M7 4.5h2v1H7zM4 7v2h1V7zM12 7v2h1V7zM7 11.5h2v1H7z"/>
-          <path d="M10.5 9A1.5 1.5 0 0 0 9 10.5v2a1.5 1.5 0 0 0 1.5 1.5h3a1.5 1.5 0 0 0 1.5-1.5v-2A1.5 1.5 0 0 0 13.5 9h-3zm-.5 1.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-2z"/>
-        </svg>
-        <h2>MCP Servers</h2>
-        <div className="mcp-header-actions">
-          <button className="mcp-icon-btn" onClick={loadServers} disabled={loading} title="Refresh">
-            <RefreshIcon className={loading ? 'spinning' : ''} />
-          </button>
-          <button className="mcp-icon-btn" onClick={() => { setShowCatalog(!showCatalog); setShowCustom(false); }} title="Add server">
-            <PlusIcon />
-          </button>
-        </div>
-      </div>
+    <Panel>
+      <PanelHeader
+        title="MCP Servers"
+        icon={<HubIcon sx={{ color: '#7c3aed' }} />}
+        onRefresh={loadServers}
+        refreshing={loading}
+        onAdd={() => setCatalogOpen(true)}
+      />
 
       {/* Error banner */}
-      {error && (
-        <div className="mcp-error">
-          <span>{error}</span>
-          <button onClick={() => setError(null)}>✕</button>
-        </div>
-      )}
+      <Collapse in={!!error}>
+        <Alert
+          severity="error"
+          onClose={() => setError(null)}
+          sx={{ borderRadius: 0 }}
+        >
+          {error}
+        </Alert>
+      </Collapse>
 
-      {/* Catalog dropdown */}
-      {showCatalog && (
-        <div className="mcp-catalog">
-          <div className="mcp-catalog-header">
-            <span className="mcp-catalog-title">📦 Server Catalog</span>
-            <button className="mcp-text-btn" onClick={() => { setShowCustom(!showCustom); }}>
-              Custom npm…
-            </button>
-          </div>
+      {/* Server list */}
+      <Box sx={{ flex: 1, overflow: 'auto', p: 1.5 }}>
+        {servers.length === 0 && !loading ? (
+          <EmptyState
+            icon={<HubIcon sx={{ fontSize: 40 }} />}
+            title="No MCP servers configured"
+            description="Click + to browse the catalog or add a custom server"
+            action={{ label: 'Browse Catalog', onClick: () => setCatalogOpen(true) }}
+          />
+        ) : (
+          <Stack spacing={1.5}>
+            {servers.map(server => {
+              const busy = busyIds.has(server.id);
+              const expanded = expandedServer === server.id;
+              const canConnect = server.status === 'installed' || server.status === 'stopped' || server.status === 'error';
+              const canDisconnect = server.status === 'connected';
 
-          {showCustom && (
-            <div className="mcp-custom-form">
-              <input
-                className="mcp-input"
-                placeholder="npm package (e.g. @org/server-name)"
-                value={customPkg}
-                onChange={e => setCustomPkg(e.target.value)}
-              />
-              <input
-                className="mcp-input"
-                placeholder="Display name (optional)"
-                value={customName}
-                onChange={e => setCustomName(e.target.value)}
-              />
-              <div className="mcp-custom-form-actions">
-                <button className="mcp-btn mcp-btn-primary" onClick={addCustomServer} disabled={!customPkg.trim()}>
-                  Install
-                </button>
-                <button className="mcp-btn" onClick={() => setShowCustom(false)}>Cancel</button>
-              </div>
-            </div>
-          )}
+              return (
+                <Card key={server.id} variant="outlined">
+                  <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+                    {/* Server header */}
+                    <Stack
+                      direction="row"
+                      alignItems="center"
+                      spacing={1}
+                      onClick={() => toggleExpand(server.id)}
+                      sx={{ cursor: 'pointer' }}
+                    >
+                      <IconButton size="small" sx={{ p: 0.5 }}>
+                        {expanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+                      </IconButton>
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography variant="body2" fontWeight={600} noWrap>
+                          {server.name}
+                        </Typography>
+                        <StatusIndicator status={mapStatus(server.status)} size="small" />
+                      </Box>
+                      <Stack direction="row" spacing={0.5} onClick={e => e.stopPropagation()}>
+                        {canConnect && (
+                          <Tooltip title="Connect">
+                            <IconButton
+                              size="small"
+                              color="primary"
+                              onClick={() => connectServer(server.id)}
+                              disabled={busy}
+                            >
+                              <PlayArrowIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                        {canDisconnect && (
+                          <Tooltip title="Disconnect">
+                            <IconButton
+                              size="small"
+                              onClick={() => disconnectServer(server.id)}
+                              disabled={busy}
+                            >
+                              <StopIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                        <Tooltip title="Remove">
+                          <IconButton
+                            size="small"
+                            color="error"
+                            onClick={() => removeServer(server.id)}
+                            disabled={busy}
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </Stack>
+                    </Stack>
 
-          <div className="mcp-catalog-list">
+                    {/* Expanded details */}
+                    <Collapse in={expanded}>
+                      <Box sx={{ mt: 1.5, pt: 1.5, borderTop: 1, borderColor: 'divider' }}>
+                        <Typography variant="caption" color="text.secondary">
+                          Package: <code>{server.npmPackage}</code>
+                        </Typography>
+
+                        {server.lastError && (
+                          <Alert severity="error" sx={{ mt: 1, py: 0.5 }}>
+                            {server.lastError}
+                          </Alert>
+                        )}
+
+                        {/* Tools */}
+                        {server.tools && server.tools.length > 0 && (
+                          <Box sx={{ mt: 1.5 }}>
+                            <Stack direction="row" alignItems="center" spacing={0.5}>
+                              <BuildIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+                              <Typography variant="caption" fontWeight={600}>
+                                Tools ({server.tools.length})
+                              </Typography>
+                            </Stack>
+                            <List dense disablePadding sx={{ mt: 0.5 }}>
+                              {server.tools.map(tool => (
+                                <ListItem key={tool.name} disablePadding sx={{ py: 0.25 }}>
+                                  <ListItemText
+                                    primary={tool.name}
+                                    secondary={tool.description}
+                                    primaryTypographyProps={{ variant: 'caption', fontWeight: 500 }}
+                                    secondaryTypographyProps={{ variant: 'caption' }}
+                                  />
+                                </ListItem>
+                              ))}
+                            </List>
+                          </Box>
+                        )}
+
+                        {/* Resources */}
+                        {server.resources && server.resources.length > 0 && (
+                          <Box sx={{ mt: 1.5 }}>
+                            <Stack direction="row" alignItems="center" spacing={0.5}>
+                              <DescriptionIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+                              <Typography variant="caption" fontWeight={600}>
+                                Resources ({server.resources.length})
+                              </Typography>
+                            </Stack>
+                            <List dense disablePadding sx={{ mt: 0.5 }}>
+                              {server.resources.map(res => (
+                                <ListItem key={res.uri} disablePadding sx={{ py: 0.25 }}>
+                                  <ListItemText
+                                    primary={res.name}
+                                    secondary={res.description}
+                                    primaryTypographyProps={{ variant: 'caption', fontWeight: 500 }}
+                                    secondaryTypographyProps={{ variant: 'caption' }}
+                                  />
+                                </ListItem>
+                              ))}
+                            </List>
+                          </Box>
+                        )}
+
+                        {server.status === 'connected' && 
+                         (!server.tools || server.tools.length === 0) && 
+                         (!server.resources || server.resources.length === 0) && (
+                          <Typography variant="caption" color="text.disabled" sx={{ mt: 1, display: 'block' }}>
+                            No tools or resources exposed by this server.
+                          </Typography>
+                        )}
+                      </Box>
+                    </Collapse>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </Stack>
+        )}
+      </Box>
+
+      {/* Catalog Dialog */}
+      <Dialog
+        open={catalogOpen}
+        onClose={() => setCatalogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          Server Catalog
+          <Button size="small" onClick={() => { setCatalogOpen(false); setCustomDialogOpen(true); }}>
+            Custom npm…
+          </Button>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={1}>
             {CATALOG.map(entry => {
               const alreadyAdded = servers.some(s => s.id === entry.id);
               return (
-                <div key={entry.id} className="mcp-catalog-item">
-                  <div className="mcp-catalog-item-info">
-                    <span className="mcp-catalog-icon">{entry.icon}</span>
-                    <div>
-                      <div className="mcp-catalog-item-name">{entry.name}</div>
-                      <div className="mcp-catalog-item-desc">{entry.description}</div>
-                    </div>
-                  </div>
-                  <button
-                    className="mcp-btn mcp-btn-sm"
-                    onClick={() => addFromCatalog(entry)}
-                    disabled={alreadyAdded || busyIds.has(entry.id)}
-                  >
-                    {alreadyAdded ? '✓ Added' : 'Install'}
-                  </button>
-                </div>
+                <Card key={entry.id} variant="outlined">
+                  <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+                    <Stack direction="row" spacing={1.5} alignItems="flex-start">
+                      <Avatar sx={{ width: 32, height: 32, bgcolor: 'grey.100', fontSize: '1rem' }}>
+                        {entry.icon}
+                      </Avatar>
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Stack direction="row" alignItems="center" spacing={1}>
+                          <Typography variant="body2" fontWeight={600}>
+                            {entry.name}
+                          </Typography>
+                          <Chip
+                            label={entry.category}
+                            size="small"
+                            variant="outlined"
+                            sx={{ fontSize: '0.65rem', height: 18 }}
+                          />
+                        </Stack>
+                        <Typography variant="caption" color="text.secondary">
+                          {entry.description}
+                        </Typography>
+                      </Box>
+                      <Button
+                        size="small"
+                        variant={alreadyAdded ? 'text' : 'contained'}
+                        onClick={() => addFromCatalog(entry)}
+                        disabled={alreadyAdded || busyIds.has(entry.id)}
+                        sx={{ minWidth: 80 }}
+                      >
+                        {alreadyAdded ? '✓ Added' : 'Install'}
+                      </Button>
+                    </Stack>
+                  </CardContent>
+                </Card>
               );
             })}
-          </div>
-        </div>
-      )}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCatalogOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
 
-      {/* Installed servers list */}
-      <div className="mcp-server-list">
-        {servers.length === 0 && !loading && (
-          <div className="mcp-empty">
-            <p>No MCP servers configured.</p>
-            <p className="mcp-hint">Click <strong>+</strong> above to browse the catalog or add a custom server.</p>
-          </div>
-        )}
-
-        {servers.map(server => {
-          const busy = busyIds.has(server.id);
-          const expanded = expandedServer === server.id;
-          const canConnect = server.status === 'installed' || server.status === 'stopped' || server.status === 'error';
-          const canDisconnect = server.status === 'connected';
-
-          return (
-            <div key={server.id} className={`mcp-server-card${expanded ? ' expanded' : ''}`}>
-              {/* Server header row */}
-              <div className="mcp-server-row" onClick={() => toggleExpand(server.id)}>
-                <span className="mcp-server-expand">
-                  {expanded ? <ChevronDownIcon /> : <ChevronRightIcon />}
-                </span>
-                <div className="mcp-server-info">
-                  <span className="mcp-server-name">{server.name}</span>
-                  <StatusDot status={server.status} />
-                </div>
-                <div className="mcp-server-actions" onClick={e => e.stopPropagation()}>
-                  {canConnect && (
-                    <button
-                      className="mcp-btn mcp-btn-sm mcp-btn-connect"
-                      onClick={() => connectServer(server.id)}
-                      disabled={busy}
-                      title="Connect"
-                    >
-                      {busy ? '…' : '▶'}
-                    </button>
-                  )}
-                  {canDisconnect && (
-                    <button
-                      className="mcp-btn mcp-btn-sm mcp-btn-disconnect"
-                      onClick={() => disconnectServer(server.id)}
-                      disabled={busy}
-                      title="Disconnect"
-                    >
-                      ■
-                    </button>
-                  )}
-                  <button
-                    className="mcp-icon-btn mcp-icon-btn-danger"
-                    onClick={() => removeServer(server.id)}
-                    disabled={busy}
-                    title="Remove"
-                  >
-                    <TrashIcon />
-                  </button>
-                </div>
-              </div>
-
-              {/* Expanded details */}
-              {expanded && (
-                <div className="mcp-server-details">
-                  <div className="mcp-detail-row">
-                    <span className="mcp-detail-label">Package:</span>
-                    <span className="mcp-detail-value">{server.npmPackage}</span>
-                  </div>
-
-                  {server.lastError && (
-                    <div className="mcp-detail-row mcp-detail-error">
-                      <span className="mcp-detail-label">Error:</span>
-                      <span className="mcp-detail-value">{server.lastError}</span>
-                    </div>
-                  )}
-
-                  {/* Tools */}
-                  {server.tools && server.tools.length > 0 && (
-                    <div className="mcp-detail-section">
-                      <div className="mcp-detail-section-title">🔧 Tools ({server.tools.length})</div>
-                      {server.tools.map(tool => (
-                        <div key={tool.name} className="mcp-tool-item">
-                          <span className="mcp-tool-name">{tool.name}</span>
-                          {tool.description && <span className="mcp-tool-desc">{tool.description}</span>}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Resources */}
-                  {server.resources && server.resources.length > 0 && (
-                    <div className="mcp-detail-section">
-                      <div className="mcp-detail-section-title">📄 Resources ({server.resources.length})</div>
-                      {server.resources.map(res => (
-                        <div key={res.uri} className="mcp-tool-item">
-                          <span className="mcp-tool-name">{res.name}</span>
-                          {res.description && <span className="mcp-tool-desc">{res.description}</span>}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {server.status === 'connected' && (!server.tools || server.tools.length === 0) && (!server.resources || server.resources.length === 0) && (
-                    <div className="mcp-detail-empty">No tools or resources exposed by this server.</div>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
+      {/* Custom Server Dialog */}
+      <Dialog
+        open={customDialogOpen}
+        onClose={() => setCustomDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Add Custom MCP Server</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField
+              fullWidth
+              size="small"
+              label="NPM Package"
+              placeholder="e.g. @org/server-name"
+              value={customPkg}
+              onChange={e => setCustomPkg(e.target.value)}
+            />
+            <TextField
+              fullWidth
+              size="small"
+              label="Display Name (optional)"
+              placeholder="My Server"
+              value={customName}
+              onChange={e => setCustomName(e.target.value)}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCustomDialogOpen(false)}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={addCustomServer}
+            disabled={!customPkg.trim()}
+          >
+            Install
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Panel>
   );
 }
