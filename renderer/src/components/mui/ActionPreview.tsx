@@ -49,7 +49,9 @@ export default function ActionPreview({
       : JSON.stringify(result.data, null, 2)
     : result.error || 'Unknown error';
 
-  const filename = `${actionName.toLowerCase().replace(/\s+/g, '-')}-result.json`;
+  // Determine file extension based on content type
+  const fileExtension = result.success && typeof result.data !== 'string' ? 'json' : 'txt';
+  const filename = `${actionName.toLowerCase().replace(/\s+/g, '-')}-result.${fileExtension}`;
 
   const handleCopy = useCallback(async () => {
     await navigator.clipboard.writeText(content);

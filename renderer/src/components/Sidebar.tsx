@@ -104,7 +104,7 @@ export default function Sidebar({ onCollapse }: SidebarProps) {
           }}
         >
           <Chip
-            icon={<FolderIcon sx={{ fontSize: '0.9rem !important' }} />}
+            icon={<FolderIcon fontSize="small" />}
             label={folderName}
             size="small"
             variant="outlined"

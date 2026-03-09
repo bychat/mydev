@@ -150,7 +150,7 @@ export default function McpServersPanel() {
       const result = await backend.mcpLoadServers();
       setServers(result.servers || []);
     } catch (err: unknown) {
-      setError((err as Error).message);
+      setError(`Failed to load servers: ${(err as Error).message}`);
     } finally {
       setLoading(false);
     }

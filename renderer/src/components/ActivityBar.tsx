@@ -47,6 +47,13 @@ const CopilotIcon = () => (
   </svg>
 );
 
+// Active indicator styling constants
+const ACTIVE_INDICATOR = {
+  top: 8,
+  bottom: 8,
+  width: 2,
+};
+
 // Panel configuration
 interface PanelConfig {
   id: SidePanel;
@@ -160,9 +167,9 @@ export default function ActivityBar({ onToggleTerminal, terminalVisible }: Activ
                     content: '""',
                     position: 'absolute',
                     left: 0,
-                    top: 8,
-                    bottom: 8,
-                    width: 2,
+                    top: ACTIVE_INDICATOR.top,
+                    bottom: ACTIVE_INDICATOR.bottom,
+                    width: ACTIVE_INDICATOR.width,
                     bgcolor: 'text.primary',
                     borderRadius: 1,
                   } : undefined,

@@ -6,6 +6,9 @@
  */
 import { createTheme, type ThemeOptions } from '@mui/material/styles';
 
+// Font family stack for consistency across the application
+const FONT_FAMILY_STACK = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+
 // Color palette
 const palette = {
   primary: {
@@ -68,7 +71,7 @@ const palette = {
 const themeOptions: ThemeOptions = {
   palette,
   typography: {
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+    fontFamily: FONT_FAMILY_STACK,
     fontSize: 13,
     h1: { fontSize: '1.5rem', fontWeight: 600 },
     h2: { fontSize: '1.25rem', fontWeight: 600 },

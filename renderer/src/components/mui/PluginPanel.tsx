@@ -126,6 +126,11 @@ export default function PluginPanel({
     params: Record<string, string | boolean | number>
   ) => {
     setExecuting(true);
+    // Find action name for better error messages
+    const plugin = plugins.find(p => p.id === pluginId);
+    const action = plugin?.actions.find(a => a.id === actionId);
+    const actionName = action?.name || actionId;
+    
     try {
       const result = await onExecuteAction(pluginId, actionId, params);
       setView({ type: 'result', pluginId, actionId, result });
@@ -134,12 +139,12 @@ export default function PluginPanel({
         type: 'result',
         pluginId,
         actionId,
-        result: { success: false, error: (err as Error).message },
+        result: { success: false, error: `Failed to execute "${actionName}": ${(err as Error).message}` },
       });
     } finally {
       setExecuting(false);
     }
-  }, [onExecuteAction]);
+  }, [onExecuteAction, plugins]);
 
   const handleBack = useCallback(() => {
     setView({ type: 'list' });

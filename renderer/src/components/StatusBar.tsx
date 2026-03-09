@@ -26,6 +26,9 @@ import { useWorkspace } from '../context/WorkspaceContext';
 import SettingsModal from './SettingsModal';
 import { GitIcon, NpmIcon } from './icons';
 
+// Window control padding for macOS
+const MAC_WINDOW_CONTROL_PADDING = 10; // 80px (10 * 8px spacing)
+
 export default function StatusBar() {
   const {
     hasGit, hasPackageJson, packageName, folderPath, folderName,
@@ -74,7 +77,7 @@ export default function StatusBar() {
         justifyContent: 'space-between',
         height: 32,
         px: 1.5,
-        pl: 10, // Space for window controls on macOS
+        pl: MAC_WINDOW_CONTROL_PADDING, // Space for macOS window controls
         bgcolor: 'grey.100',
         borderBottom: 1,
         borderColor: 'divider',
