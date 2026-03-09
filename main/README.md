@@ -20,6 +20,9 @@ Electron main-process modules. These run in Node.js with full system access and 
 | **`supabase.ts`** | Supabase API — users, storage, tables, SQL execution |
 | **`connectorIpc.ts`** | Connector Registry ↔ IPC bridge for the plugin system |
 | **`debugWindow.ts`** | Opens a secondary window showing AI request/response logs |
+| **`mcpServers.ts`** | MCP (Model Context Protocol) server management |
+| **`storage.ts`** | Generic JSON storage helpers for persisting configs (used by agent configs, MCP servers) |
+| **`workspace.ts`** | Workspace-related utilities |
 
 ## `ipc/` — Modular IPC Handlers
 
@@ -34,6 +37,7 @@ IPC handlers have been split into domain-specific modules. Each file exports a `
 | `ipc/prompts.ipc.ts` | Agent prompt settings |
 | `ipc/integrations.ipc.ts` | Supabase, GitHub, Atlassian integrations |
 | `ipc/window.ipc.ts` | Window management (new window, folder select) |
+| `ipc/mcp.ipc.ts` | MCP server management |
 
 ## Data flow
 
@@ -56,3 +60,4 @@ All persistent data is stored in `getUserDataDir()` (from `core/dataDir.ts`):
 | `app-history.json` | `chatHistory.ts` |
 | `atlassian-connections.json` | `atlassian.ts` |
 | `connector-config-*.json` | `connectorIpc.ts` |
+| `agent-configs.json` | Agent builder configs (persisted via `storage.ts` / `fs.ipc.ts`) |

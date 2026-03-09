@@ -66,11 +66,39 @@ const { folderPath, tree, openTabs, activeTabPath, openFile, saveFile } = useWor
 ## Provider nesting order (in `main.tsx` → `App.tsx`)
 
 ```
-<BackendProvider>          ← main.tsx
-  <WorkspaceProvider>      ← App.tsx
-    <AppLayout />
+<BackendProvider>              ← main.tsx
+  <WorkspaceProvider>          ← App.tsx
+    <AgentExecutionProvider>   ← App.tsx
+      <AppLayout />
+    </AgentExecutionProvider>
   </WorkspaceProvider>
 </BackendProvider>
 ```
 
 `WorkspaceProvider` depends on `useBackend()`, so `BackendProvider` must wrap it.
+`AgentExecutionProvider` depends on `useBackend()` (for config persistence), so it sits inside `BackendProvider`.
+
+### `AgentExecutionContext.tsx`
+
+Bridge between the agent pipeline execution (in `ChatPanel`) and the agent observability UI (in `AgentsPanel`). Combines `useAgentConfigs` and `useAgentTrace` into a single API.
+
+```tsx
+// Used in ChatPanel to get the active agent and trace API:
+const { activeAgent, startTrace, addStep, completeStep, finishTrace } = useAgentExecution();
+
+// Used in AgentsPanel to read traces and configs:
+const { agents, traces, activeTrace, createAgent, updateAgent } = useAgentExecution();
+```
+
+**Exports:**
+| Export | Description |
+|--------|-------------|
+| `AgentExecutionProvider` | Context provider — wraps `useAgentConfigs()` + `useAgentTrace()` |
+| `useAgentExecution()` | Hook — returns the combined `AgentExecutionAPI` |
+
+**`AgentExecutionAPI` shape:**
+
+| Category | Methods / State |
+|----------|-----------------|
+| Config | `agents`, `activeAgent`, `activeAgentId`, `setActiveAgentId`, `loading`, `createAgent`, `updateAgent`, `deleteAgent`, `renameAgent`, `duplicateAgent` |
+| Trace | `traces`, `activeTrace`, `activeTraceId`, `setActiveTraceId`, `startTrace`, `addStep`, `updateStep`, `completeStep`, `failStep`, `finishTrace` |

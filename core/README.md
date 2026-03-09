@@ -25,7 +25,7 @@ The extensibility layer. Defines the `Connector<TConfig>` interface that every i
 
 ### `chat.ts` — Shared AI Chat Logic
 
-Prompt builders, parsers, and SEARCH/REPLACE utilities shared between the desktop renderer, the CLI agent, and the server.
+Prompt builders, parsers, and SEARCH/REPLACE utilities shared between the desktop renderer, the CLI agent, and the server. All prompt builders accept an optional `PromptParameters` object for per-agent customization of templates and limits.
 
 **Key exports:**
 
@@ -33,16 +33,21 @@ Prompt builders, parsers, and SEARCH/REPLACE utilities shared between the deskto
 |--------|-------------|
 | `ChatMessage` | Type: `{ role, content, displayText? }` |
 | `FileActionPlan` | Type: `{ file, action, description }` |
-| `buildSystemContext()` | Builds the system prompt with workspace file listing |
-| `buildResearchPrompt()` | Creates the file-research agent prompt |
-| `buildActionPlanPrompt()` | Creates the action-planner prompt |
-| `buildFileChangePrompt()` | Creates the code-editor prompt per file |
-| `buildVerifyPrompt()` | Creates the verification agent prompt |
+| `PromptParameters` | Type: template strings + numeric limits (optional per-agent override) |
+| `buildSystemContext()` | Builds the system prompt with workspace file listing (parameterizable template + `maxFileListDisplay`) |
+| `buildResearchPrompt()` | Creates the file-research agent prompt (parameterizable min/max files) |
+| `buildActionPlanPrompt()` | Creates the action-planner prompt (parameterizable max files) |
+| `buildFileChangePrompt()` | Creates the code-editor prompt per file (separate create/update templates) |
+| `buildVerifyPrompt()` | Creates the verification agent prompt (parameterizable template) |
+| `buildSearchDecisionPrompt()` | Creates the search strategy agent prompt (parameterizable max queries) |
+| `buildCheckAgentPrompt()` | Creates the triage agent prompt (parameterizable template) |
 | `parseSearchReplaceBlocks()` | Extracts `<<<<<<< SEARCH … >>>>>>> REPLACE` blocks |
 | `applySearchReplaceBlocks()` | Applies SEARCH/REPLACE blocks to file content (with fuzzy fallback) |
 | `stripMarkdownFences()` | Removes ` ``` ` wrappers from AI output |
 
-**Used by:** `cli/index.ts`, `renderer/src/components/ChatPanel.tsx`, `renderer/src/utils/chatPrompts.ts`
+**Parameterization:** When called with a `PromptParameters` object, prompt builders interpolate placeholders like `{{folderPath}}`, `{{fileCount}}`, `{{maxFiles}}` into the template. When called without parameters, the original hardcoded defaults are used (backwards-compatible for CLI).
+
+**Used by:** `cli/index.ts`, `renderer/src/hooks/useAgentPipeline.ts`, `renderer/src/utils/chatPrompts.ts`
 
 ---
 

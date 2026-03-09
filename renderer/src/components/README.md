@@ -39,7 +39,7 @@ All React UI components. The app is structured as a VS Code-style IDE layout:
 | `DatabasePanel.tsx` | Database | Database tables, SQL query input, Supabase auto-detection |
 | `GitHubActionsTab.tsx` | GitHub | Workflows, runs, jobs, logs, issues |
 | `AtlassianPanel.tsx` | Atlassian | Jira connections, projects, issues |
-| `AgentsPanel.tsx` | Agents | (Placeholder for future agent integrations) |
+| `AgentsPanel.tsx` | Agents | Visual agent builder — node editor, per-agent parameters, trace viewer, ParametersEditorModal |
 
 ## Editor Tabs (special)
 
@@ -56,7 +56,7 @@ All React UI components. The app is structured as a VS Code-style IDE layout:
 
 | Component | Description |
 |-----------|-------------|
-| `ChatPanel.tsx` | Main chat orchestrator — mode selection, AI agent loop, streaming |
+| `ChatPanel.tsx` | Main chat orchestrator — mode selection, AI agent loop (with per-agent parameters), streaming |
 | `ChatHistorySidebar.tsx` | Conversation history list with rename, delete |
 | `PromptSettingsModal.tsx` | Edit agent prompts (system, research, planner, editor, verify) |
 | `SettingsModal.tsx` | AI provider settings (Ollama/OpenAI, model, API key) |
@@ -70,6 +70,14 @@ All React UI components. The app is structured as a VS Code-style IDE layout:
 | `ChatComposer.tsx` | Input textarea with file attachment, drag & drop |
 | `ChatWelcome.tsx` | Empty-state with suggested prompts |
 | `AgentActionRow.tsx` | Shows agent progress (research → plan → edit → verify) |
+
+## Agent Builder
+
+| Component / Section | Description |
+|---------------------|-------------|
+| `AgentsPanel.tsx` | Full agent builder UI: agent list, visual node editor, tool selectors, prompt editing, trace viewer |
+| `ParametersEditorModal` | Modal for editing all numeric limits and prompt templates per-agent, with reset-to-default and diff-only persistence |
+| ⚙ Parameters button | Shows count of modified parameters, opens the editor modal |
 
 ## Reusable UI
 

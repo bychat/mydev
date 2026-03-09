@@ -70,6 +70,13 @@ Built output will be in the `dist/` folder.
 │                                                             │
 │  Uses BackendAdapter interface — never talks to backend     │
 │  directly. Same UI works in desktop AND cloud mode.         │
+│                                                             │
+│  ┌──────────────┐  ┌──────────┐  ┌──────────────────────┐  │
+│  │ Agent Builder │  │  Trace   │  │  Chat Panel          │  │
+│  │ (visual node │  │  Viewer  │  │  (AI agent pipeline,  │  │
+│  │  editor +    │  │          │  │   streaming, modes)   │  │
+│  │  parameters) │  │          │  │                       │  │
+│  └──────────────┘  └──────────┘  └──────────────────────┘  │
 └──────────────────────┬──────────────────────────────────────┘
                        │
           ┌────────────┴────────────┐
@@ -99,7 +106,7 @@ Built output will be in the `dist/` folder.
 
 ### Desktop (Open Source)
 
-The Electron app runs the full experience locally — file system access, integrated terminal, Git, AI chat, and all connector plugins via IPC.
+The Electron app runs the full experience locally — file system access, integrated terminal, Git, AI chat, agent builder, and all connector plugins via IPC.
 
 ### Cloud (Enterprise)
 
@@ -108,6 +115,15 @@ The Express server (`npm run server:dev`) exposes the same connector operations 
 ### CLI
 
 The command-line interface (`cli/index.ts`) lets you use bychat from the terminal — no Electron required. It reads your workspace, builds context, and talks to any OpenAI-compatible API.
+
+### Agent Builder & Trace Viewer
+
+The app includes a **visual agent builder** and **execution trace viewer**:
+
+- **Agent Builder** — Define custom agent pipelines with a visual node editor. Each agent has configurable phases (research → classify → plan → execute → verify), per-node tool selectors, custom prompts, and edges.
+- **Agent Parameters** — All hardcoded numbers (max files, retry limits, search limits) and prompt templates are fully editable per-agent via a ⚙ Parameters modal. Parameters use sensible defaults and only non-default values are persisted.
+- **Trace Viewer** — Every agent run produces a detailed trace with timestamped steps, input/output data, token counts, and success/error status. Traces are displayed in the Agents sidebar panel for full observability.
+- **Per-Agent Parameterization** — The pipeline reads parameters from the active agent config and threads them through all prompt builders and parsers. This allows different agents to use different limits and prompt templates.
 
 ## CLI
 
@@ -235,14 +251,14 @@ Each major directory has its own `README.md` with detailed docs:
 | [`renderer/src/components/`](renderer/src/components/README.md) | ✅ | UI components |
 | [`renderer/src/context/`](renderer/src/context/README.md) | ✅ | React context providers |
 | [`renderer/src/hooks/`](renderer/src/hooks/README.md) | ✅ | Custom React hooks |
-| [`renderer/src/types/`](renderer/src/types/README.md) | ✅ | TypeScript type definitions |
+| [`renderer/src/types/`](renderer/src/types/README.md) | ✅ | TypeScript type definitions (including agent builder types) |
 | [`renderer/src/utils/`](renderer/src/utils/README.md) | ✅ | Utility functions |
 
 ```
 core/                        # Framework-agnostic core (shared by desktop, CLI & cloud)
   connector.ts               #   Connector interface, Registry, events
   backend-adapter.ts         #   BackendAdapter interface (IPC vs HTTP)
-  chat.ts                    #   Shared prompt builders, SEARCH/REPLACE utils, types
+  chat.ts                    #   Shared prompt builders (parameterizable), SEARCH/REPLACE utils, types
   dataDir.ts                 #   Shared user-data directory resolver
 
 connectors/                  # Connector plugins
@@ -265,10 +281,28 @@ main/                        # Electron main process
   chatHistory.ts             #   Conversation persistence
   prompts.ts                 #   Agent prompt settings
   debugWindow.ts             #   AI debug window
+  mcpServers.ts              #   MCP server management
+  storage.ts                 #   Generic JSON storage helpers
+  workspace.ts               #   Workspace utilities
+  ipc/                       #   Modular IPC handlers (split by domain)
+    index.ts                 #     Barrel — re-exports all registration functions
+    ai.ipc.ts                #     AI chat, settings, models
+    fs.ipc.ts                #     File system & Git operations
+    history.ipc.ts           #     Chat history & workspaces
+    prompts.ipc.ts           #     Agent prompt settings
+    integrations.ipc.ts      #     Supabase, GitHub, Atlassian
+    window.ipc.ts            #     Window management
+    mcp.ipc.ts               #     MCP server management
 
 server/                      # Enterprise cloud server
   index.ts                   #   Express + WebSocket entrypoint
-  routes.ts                  #   REST API routes (mirrors Electron IPC 1:1)
+  routes/                   #   REST API routes (mirrors Electron IPC 1:1)
+    index.ts                 #     Route barrel — assembles all domain routers
+    ai.routes.ts             #     AI endpoints
+    fs.routes.ts             #     File system & Git endpoints
+    history.routes.ts        #     Chat history endpoints
+    prompts.routes.ts        #     Agent prompt settings endpoints
+    integrations.routes.ts   #     Supabase, GitHub, Atlassian endpoints
 
 cli/                         # Command-line interface
   index.ts                   #   CLI entrypoint (no Electron dependency)
@@ -286,13 +320,19 @@ renderer/                    # React frontend (Vite)
       electron-adapter.ts    #     Electron IPC adapter
       http-adapter.ts        #     HTTP/WS adapter (web mode)
       index.ts               #     Auto-detect & singleton export
-    components/              #   UI components (chat, panels, editor, etc.)
+    components/              #   UI components (chat, panels, editor, agents, etc.)
     context/                 #   React context providers
       BackendContext.tsx      #     useBackend() hook — all components use this
       WorkspaceContext.tsx    #     Workspace state (file tree, git, etc.)
+      AgentExecutionContext.tsx #   Agent trace & config state (bridge between execution & observability)
     hooks/                   #   Custom hooks
+      useAgentPipeline.ts    #     Agent pipeline orchestrator (fully parameterizable)
+      useAgentConfigs.ts     #     Agent config CRUD (persisted to disk)
+      useAgentTrace.ts       #     Execution trace management
     types/                   #   TypeScript type definitions
+      agent.types.ts         #     AgentConfig, AgentParameters, AgentTrace, TraceStep, etc.
     utils/                   #   Utility functions
+      chatPrompts.ts         #     Prompt builder wrappers (threads AgentParameters)
 
 preload.js                   # Electron preload (contextIsolation bridge)
 ```
@@ -495,6 +535,10 @@ npm run web:prod
 ## License
 
 MIT
+
+## Roadmap
+
+See [`ROADMAP.md`](ROADMAP.md) for what's needed to make the app production-ready — including testing, security, performance, AI features, and a milestone plan.
 
 ---
 

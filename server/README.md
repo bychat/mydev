@@ -7,7 +7,13 @@ Express + WebSocket server for web/cloud mode. Exposes the **same** operations a
 | File | Description |
 |------|-------------|
 | `index.ts` | App entrypoint — Express app, WebSocket server, static SPA serving, connector REST API |
-| `routes.ts` | All `/api/*` REST endpoints — delegates to `main/` modules |
+| `helpers.ts` | Shared route helpers — `ok()` and `fail()` response wrappers |
+| `routes/index.ts` | Route barrel — assembles all domain routers into a single parent router |
+| `routes/ai.routes.ts` | AI endpoints (chat, settings, models, Ollama) |
+| `routes/fs.routes.ts` | File system & Git endpoints |
+| `routes/history.routes.ts` | Chat history & workspace endpoints |
+| `routes/prompts.routes.ts` | Agent prompt settings endpoints |
+| `routes/integrations.routes.ts` | Supabase, GitHub, Atlassian integration endpoints |
 | `tsconfig.json` | TypeScript config (not used at runtime — server runs via `tsx`) |
 
 ## Running
