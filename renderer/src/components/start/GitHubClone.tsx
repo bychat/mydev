@@ -50,9 +50,10 @@ export default function GitHubClone({ onWorkspaceCreated }: GitHubCloneProps) {
         setStatus('Clone successful! Opening workspace...');
         
         // Open the cloned folder as a workspace
+        const clonedPath = result.folderPath;
         setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('open-workspace', { detail: { folderPath: result.folderPath } }));
-          onWorkspaceCreated?.(result.folderPath!);
+          window.dispatchEvent(new CustomEvent('open-workspace', { detail: { folderPath: clonedPath } }));
+          onWorkspaceCreated?.(clonedPath);
           setExpanded(false);
           setRepoUrl('');
           setStatus(null);

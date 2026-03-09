@@ -10,6 +10,9 @@ import * as path from 'path';
 import { execSync } from 'child_process';
 import { getUserDataDir } from '../core/dataDir';
 
+/** Git clone timeout in milliseconds (2 minutes for large repositories) */
+const GIT_CLONE_TIMEOUT_MS = 2 * 60 * 1000;
+
 export interface SessionFolderResult {
   success: boolean;
   folderPath?: string;
@@ -123,7 +126,7 @@ export async function cloneGitHubRepo(
     try {
       execSync(`git clone "${cloneUrl}" "${folderPath}"`, {
         encoding: 'utf-8',
-        timeout: 120000, // 2 minute timeout
+        timeout: GIT_CLONE_TIMEOUT_MS,
         stdio: ['pipe', 'pipe', 'pipe'],
       });
     } catch (cloneErr: any) {
