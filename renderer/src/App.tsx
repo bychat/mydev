@@ -1,4 +1,12 @@
+/**
+ * App.tsx - Main application layout
+ * 
+ * Refactored to use Material UI components for core layout.
+ */
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { Box, IconButton, Tooltip } from '@mui/material';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { WorkspaceProvider, useWorkspace } from './context/WorkspaceContext';
 import { useBackend } from './context/BackendContext';
 import { AgentExecutionProvider } from './context/AgentExecutionContext';
@@ -9,7 +17,6 @@ import Editor from './components/Editor';
 import ChatPanel from './components/ChatPanel';
 import Welcome from './components/Welcome';
 import TerminalPanel from './components/TerminalPanel';
-import { ChevronLeftIcon, ChevronRightIcon } from './components/icons';
 
 const SIDEBAR_MIN = 180;
 const SIDEBAR_MAX = 600;
@@ -116,17 +123,19 @@ function AppLayout() {
   // No folder loaded → full-screen welcome
   if (!folderPath) {
     return (
-      <div className="app-layout">
+      <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
         <StatusBar />
-        <main className="main-content"><Welcome /></main>
-      </div>
+        <Box component="main" sx={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', bgcolor: 'background.paper' }}>
+          <Welcome />
+        </Box>
+      </Box>
     );
   }
 
   return (
-    <div className="app-layout">
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
       <StatusBar />
-      <div className="app-body">
+      <Box sx={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <ActivityBar 
           onToggleTerminal={toggleTerminal} 
           terminalVisible={terminalVisible} 
@@ -134,42 +143,128 @@ function AppLayout() {
 
         {/* ── Sidebar (collapsible + resizable) ── */}
         {sidebarCollapsed ? (
-          <div className="panel-collapsed sidebar-collapsed">
-            <button className="panel-expand-btn" onClick={() => setSidebarCollapsed(false)} title="Expand sidebar">
-              <ChevronRightIcon />
-            </button>
-          </div>
+          <Box
+            sx={{
+              width: 28,
+              minWidth: 28,
+              bgcolor: 'grey.100',
+              borderRight: 1,
+              borderColor: 'divider',
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'center',
+              pt: 1,
+            }}
+          >
+            <Tooltip title="Expand sidebar" placement="right">
+              <IconButton
+                size="small"
+                onClick={() => setSidebarCollapsed(false)}
+                sx={{ color: 'text.secondary' }}
+              >
+                <ChevronRightIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Box>
         ) : (
           <>
-            <div style={{ width: sidebarWidth, minWidth: sidebarWidth, maxWidth: sidebarWidth }} className="sidebar-resizable">
+            <Box
+              sx={{
+                width: sidebarWidth,
+                minWidth: sidebarWidth,
+                maxWidth: sidebarWidth,
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+                bgcolor: 'grey.50',
+                borderRight: 1,
+                borderColor: 'divider',
+              }}
+            >
               <Sidebar onCollapse={() => setSidebarCollapsed(true)} />
-            </div>
-            <div className="resize-handle" onMouseDown={onSidebarResizeStart} />
+            </Box>
+            <Box
+              sx={{
+                width: 4,
+                minWidth: 4,
+                bgcolor: 'transparent',
+                cursor: 'col-resize',
+                '&:hover': { bgcolor: 'primary.light' },
+                transition: 'background-color 0.15s',
+              }}
+              onMouseDown={onSidebarResizeStart}
+            />
           </>
         )}
 
-        <div className="main-area">
-          <main className="main-content">{openTabs.length > 0 ? <Editor /> : <div className="empty-editor" />}</main>
+        {/* ── Main content area ── */}
+        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <Box
+            component="main"
+            sx={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', bgcolor: 'background.paper' }}
+          >
+            {openTabs.length > 0 ? <Editor /> : <Box sx={{ flex: 1, bgcolor: 'grey.50' }} />}
+          </Box>
           <TerminalPanel visible={terminalVisible} onClose={() => setTerminalVisible(false)} />
-        </div>
+        </Box>
 
         {/* ── Chat Panel (collapsible + resizable) ── */}
         {chatCollapsed ? (
-          <div className="panel-collapsed chat-collapsed">
-            <button className="panel-expand-btn" onClick={() => setChatCollapsed(false)} title="Expand chat">
-              <ChevronLeftIcon />
-            </button>
-          </div>
+          <Box
+            sx={{
+              width: 28,
+              minWidth: 28,
+              bgcolor: 'grey.100',
+              borderLeft: 1,
+              borderColor: 'divider',
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'center',
+              pt: 1,
+            }}
+          >
+            <Tooltip title="Expand chat" placement="left">
+              <IconButton
+                size="small"
+                onClick={() => setChatCollapsed(false)}
+                sx={{ color: 'text.secondary' }}
+              >
+                <ChevronLeftIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Box>
         ) : (
           <>
-            <div className="resize-handle" onMouseDown={onChatResizeStart} />
-            <div style={{ width: chatWidth, minWidth: chatWidth, maxWidth: chatWidth }} className="chat-resizable">
+            <Box
+              sx={{
+                width: 4,
+                minWidth: 4,
+                bgcolor: 'transparent',
+                cursor: 'col-resize',
+                '&:hover': { bgcolor: 'primary.light' },
+                transition: 'background-color 0.15s',
+              }}
+              onMouseDown={onChatResizeStart}
+            />
+            <Box
+              sx={{
+                width: chatWidth,
+                minWidth: chatWidth,
+                maxWidth: chatWidth,
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+                bgcolor: 'background.paper',
+                borderLeft: 1,
+                borderColor: 'divider',
+              }}
+            >
               <ChatPanel onCollapse={() => setChatCollapsed(true)} />
-            </div>
+            </Box>
           </>
         )}
-      </div>
-    </div>
+      </Box>
+    </Box>
   );
 }
 

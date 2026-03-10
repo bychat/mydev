@@ -1,3 +1,12 @@
+/**
+ * Sidebar - Main sidebar container that switches between different panels
+ * 
+ * Refactored to use Material UI components.
+ */
+import { Box, Typography, Button, IconButton, Tooltip, Chip } from '@mui/material';
+import FolderIcon from '@mui/icons-material/Folder';
+import FolderOpenIcon from '@mui/icons-material/FolderOpen';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import { useWorkspace } from '../context/WorkspaceContext';
 import FileTree from './FileTree';
 import SearchPanel from './SearchPanel';
@@ -10,7 +19,7 @@ import AtlassianPanel from './AtlassianPanel';
 import McpServersPanel from './McpServersPanel';
 import CliProvidersPanel from './CliProvidersPanel';
 import ExplorerGitControls from './ExplorerGitControls';
-import { ChevronLeftIcon } from './icons';
+import { Panel, PanelHeader } from './mui';
 
 interface SidebarProps {
   onCollapse?: () => void;
@@ -19,34 +28,104 @@ interface SidebarProps {
 export default function Sidebar({ onCollapse }: SidebarProps) {
   const { importFolder, folderName, folderPath, tree, activePanel } = useWorkspace();
 
-  if (activePanel === 'search') return <aside className="sidebar"><SearchPanel /></aside>;
-  if (activePanel === 'source-control') return <aside className="sidebar"><SourceControlPanel /></aside>;
-  if (activePanel === 'npm') return <aside className="sidebar"><NpmPanel /></aside>;
-  if (activePanel === 'supabase') return <aside className="sidebar"><SupabasePanel /></aside>;
-  if (activePanel === 'database') return <aside className="sidebar"><DatabasePanel /></aside>;
-  if (activePanel === 'github') return <aside className="sidebar"><GitHubActionsTab /></aside>;
-  if (activePanel === 'atlassian') return <aside className="sidebar"><AtlassianPanel /></aside>;
-  if (activePanel === 'mcp') return <aside className="sidebar"><McpServersPanel /></aside>;
+  // Render different panels based on activePanel
+  if (activePanel === 'search') return <SearchPanel />;
+  if (activePanel === 'source-control') return <SourceControlPanel />;
+  if (activePanel === 'npm') return <NpmPanel />;
+  if (activePanel === 'supabase') return <SupabasePanel />;
+  if (activePanel === 'database') return <DatabasePanel />;
+  if (activePanel === 'github') return <GitHubActionsTab />;
+  if (activePanel === 'atlassian') return <AtlassianPanel />;
+  if (activePanel === 'mcp') return <McpServersPanel />;
   if (activePanel === 'copilot') return <CliProvidersPanel />;
 
+  // Default: Explorer panel
   return (
-    <aside className="sidebar">
-      <div className="sidebar-hdr">
-        <h2>📁 Explorer</h2>
+    <Panel>
+      {/* Header */}
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          px: 1.5,
+          py: 1,
+          borderBottom: 1,
+          borderColor: 'divider',
+          bgcolor: 'background.paper',
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <FolderIcon fontSize="small" sx={{ color: 'primary.main' }} />
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            Explorer
+          </Typography>
+        </Box>
         {onCollapse && (
-          <button className="panel-collapse-btn" onClick={onCollapse} title="Collapse sidebar">
-            <ChevronLeftIcon />
-          </button>
+          <Tooltip title="Collapse sidebar">
+            <IconButton size="small" onClick={onCollapse} sx={{ color: 'text.secondary' }}>
+              <ChevronLeftIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
         )}
-      </div>
-      <div className="sidebar-actions">
-        <button className="btn-import" onClick={importFolder}>📂 Import Folder</button>
-      </div>
-      {folderName && <div className="folder-name">📂 {folderName}</div>}
+      </Box>
+
+      {/* Import folder action */}
+      <Box sx={{ p: 1 }}>
+        <Button
+          variant="outlined"
+          fullWidth
+          startIcon={<FolderOpenIcon />}
+          onClick={importFolder}
+          sx={{
+            borderStyle: 'dashed',
+            color: 'text.secondary',
+            borderColor: 'divider',
+            '&:hover': {
+              borderStyle: 'dashed',
+              borderColor: 'grey.400',
+              bgcolor: 'rgba(0,0,0,0.02)',
+            },
+          }}
+        >
+          Import Folder
+        </Button>
+      </Box>
+
+      {/* Folder name */}
+      {folderName && (
+        <Box
+          sx={{
+            px: 1.5,
+            py: 0.75,
+            bgcolor: 'rgba(0,0,0,0.02)',
+            borderBottom: 1,
+            borderColor: 'divider',
+          }}
+        >
+          <Chip
+            icon={<FolderIcon fontSize="small" />}
+            label={folderName}
+            size="small"
+            variant="outlined"
+            sx={{
+              maxWidth: '100%',
+              '& .MuiChip-label': {
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              },
+            }}
+          />
+        </Box>
+      )}
+
+      {/* Git controls */}
       <ExplorerGitControls />
-      <div className="file-tree">
+
+      {/* File tree */}
+      <Box sx={{ flex: 1, overflow: 'auto', py: 0.5 }}>
         <FileTree items={tree} depth={0} folderPath={folderPath || undefined} />
-      </div>
-    </aside>
+      </Box>
+    </Panel>
   );
 }
