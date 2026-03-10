@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useWorkspace } from '../context/WorkspaceContext';
 import { useBackend } from '../context/BackendContext';
 import type { WorkspaceHistory } from '../types';
+import { StartPageChat, GitHubClone } from './start';
 
 function formatRelativeTime(isoString: string): string {
   const date = new Date(isoString);
@@ -63,42 +64,57 @@ export default function Welcome() {
 
   return (
     <div className="welcome">
-      <div className="welcome-card">
-        <h1>mydev.bychat.io</h1>
-        <p>Import a folder to get started</p>
-        <button className="btn-primary" onClick={importFolder}>📂 Import a Project</button>
-
-        {/* Recent Workspaces */}
-        {!loading && recentWorkspaces.length > 0 && (
-          <div className="recent-workspaces">
-            <h3>Recent Projects</h3>
-            <div className="recent-workspaces-list">
-              {recentWorkspaces.map(ws => (
-                <div
-                  key={ws.folderPath}
-                  className="recent-workspace-item"
-                  onClick={() => openWorkspace(ws.folderPath)}
-                >
-                  <div className="recent-workspace-icon">📁</div>
-                  <div className="recent-workspace-info">
-                    <span className="recent-workspace-name">{ws.folderName}</span>
-                    <span className="recent-workspace-path">{ws.folderPath}</span>
-                    <span className="recent-workspace-meta">
-                      {ws.conversations.length} chat{ws.conversations.length !== 1 ? 's' : ''} · {formatRelativeTime(ws.lastOpened)}
-                    </span>
-                  </div>
-                  <button
-                    className="recent-workspace-remove"
-                    onClick={(e) => removeWorkspace(e, ws.folderPath)}
-                    title="Remove from recent"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
+      <div className="welcome-container">
+        {/* Left side: Recent Projects */}
+        <div className="welcome-card">
+          <h1>mydev.bychat.io</h1>
+          <p>Import a folder to get started</p>
+          
+          <div className="welcome-actions">
+            <button className="btn-primary" onClick={importFolder}>📂 Import a Project</button>
+            <GitHubClone />
           </div>
-        )}
+
+          {/* Recent Workspaces */}
+          {!loading && recentWorkspaces.length > 0 && (
+            <div className="recent-workspaces">
+              <h3>Recent Projects</h3>
+              <div className="recent-workspaces-list">
+                {recentWorkspaces.map(ws => (
+                  <div
+                    key={ws.folderPath}
+                    className="recent-workspace-item"
+                    onClick={() => openWorkspace(ws.folderPath)}
+                  >
+                    <div className="recent-workspace-icon">📁</div>
+                    <div className="recent-workspace-info">
+                      <span className="recent-workspace-name">{ws.folderName}</span>
+                      <span className="recent-workspace-path">{ws.folderPath}</span>
+                      <span className="recent-workspace-meta">
+                        {ws.conversations.length} chat{ws.conversations.length !== 1 ? 's' : ''} · {formatRelativeTime(ws.lastOpened)}
+                      </span>
+                    </div>
+                    <button
+                      className="recent-workspace-remove"
+                      onClick={(e) => removeWorkspace(e, ws.folderPath)}
+                      title="Remove from recent"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Vertical divider */}
+        <div className="welcome-divider" />
+
+        {/* Right side: Quick Chat */}
+        <div className="welcome-chat-panel">
+          <StartPageChat />
+        </div>
       </div>
     </div>
   );

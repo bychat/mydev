@@ -406,10 +406,14 @@ button{font-family:inherit;cursor:pointer}
 @keyframes stop-pulse{0%,100%{opacity:1}50%{opacity:.75}}
 
 /* ── Welcome ─── */
-.welcome{flex:1;display:flex;align-items:center;justify-content:center;background:#f5f5f5}
-.welcome-card{text-align:center;padding:3rem 2.5rem;background:#fff;border:1px solid #e0e0e0;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.04);max-width:480px;width:100%}
+.welcome{flex:1;display:flex;align-items:center;justify-content:center;background:#f5f5f5;padding:2rem}
+.welcome-container{display:flex;gap:2rem;max-width:1000px;width:100%;align-items:stretch}
+.welcome-card{text-align:center;padding:2.5rem 2rem;background:#fff;border:1px solid #e0e0e0;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.04);flex:1;max-width:480px}
 .welcome-card h1{font-size:1.8rem;font-weight:700;color:#333;margin-bottom:.5rem}
 .welcome-card p{font-size:.92rem;color:#999;margin-bottom:1.5rem;line-height:1.5}
+.welcome-actions{display:flex;flex-direction:column;gap:.75rem;align-items:center}
+.welcome-divider{width:1px;background:#e0e0e0;min-height:300px;flex-shrink:0}
+.welcome-chat-panel{flex:1;max-width:400px;display:flex;flex-direction:column}
 .btn-primary{display:inline-flex;align-items:center;gap:.5rem;padding:.65rem 1.5rem;background:#333;color:#fff;border:none;border-radius:8px;font-size:.9rem;font-weight:600;transition:transform .15s,box-shadow .15s}
 .btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(0,0,0,.12)}
 .btn-primary:active{transform:translateY(0)}
@@ -1253,4 +1257,80 @@ button{font-family:inherit;cursor:pointer}
 .chat-tip{font-size:.7rem;color:#888;margin:0;line-height:1.4}
 .chat-tip code{background:#f3f4f6;padding:1px 4px;border-radius:3px;font-size:.66rem;color:#4f46e5}
 .chat-tip strong{color:#666}
+
+/* ── Start Page Chat (Quick Chat without workspace) ─── */
+.start-page-chat-collapsed{display:flex;justify-content:center;padding:1rem}
+.start-page-chat-toggle{display:flex;align-items:center;gap:.5rem;padding:.6rem 1.2rem;background:#fff;border:1px solid #ddd;border-radius:8px;color:#666;font-size:.85rem;cursor:pointer;transition:all .15s}
+.start-page-chat-toggle:hover{background:#f5f5f5;border-color:#ccc;color:#333}
+.start-page-chat-toggle svg{width:18px;height:18px}
+
+.start-page-chat{background:#fff;border:1px solid #e0e0e0;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.04);display:flex;flex-direction:column;height:100%;min-height:400px;overflow:hidden}
+.start-page-chat-header{display:flex;align-items:center;justify-content:space-between;padding:.75rem 1rem;border-bottom:1px solid #eee}
+.start-page-chat-title{display:flex;align-items:center;gap:.5rem;font-size:.9rem;font-weight:600;color:#333}
+.start-page-chat-title svg{width:18px;height:18px;color:#666}
+.start-page-chat-close{background:none;border:none;color:#999;font-size:1.4rem;cursor:pointer;padding:0 4px;line-height:1}
+.start-page-chat-close:hover{color:#c0392b}
+
+.start-page-chat-messages{flex:1;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:.75rem}
+.start-page-chat-empty{text-align:center;padding:2rem 1rem;color:#888;font-size:.85rem}
+.start-page-chat-empty p{margin:.5rem 0}
+.start-page-chat-hint{font-size:.78rem;color:#aaa}
+.start-page-chat-hint .agent-disabled{background:#f0f0f0;padding:2px 6px;border-radius:4px;color:#999;font-weight:500}
+
+.start-page-chat-message{max-width:90%;animation:fadeIn .2s ease}
+.start-page-chat-message.user{align-self:flex-end}
+.start-page-chat-message.bot{align-self:flex-start}
+.start-page-chat-message .message-content{padding:.6rem .9rem;border-radius:12px;font-size:.85rem;line-height:1.5;word-wrap:break-word;white-space:pre-wrap}
+.start-page-chat-message.user .message-content{background:#333;color:#fff;border-bottom-right-radius:4px}
+.start-page-chat-message.bot .message-content{background:#f5f5f5;color:#333;border-bottom-left-radius:4px}
+.start-page-chat-message .message-content.loading{display:flex;gap:4px}
+.start-page-chat-message .message-content.loading .dot{animation:pulse 1.2s infinite;font-size:1.2rem}
+.start-page-chat-message .message-content.loading .dot:nth-child(2){animation-delay:.2s}
+.start-page-chat-message .message-content.loading .dot:nth-child(3){animation-delay:.4s}
+
+.start-page-chat-session-bar{display:flex;align-items:center;justify-content:space-between;padding:.6rem 1rem;background:#f0f9ff;border-top:1px solid #e0f2fe;font-size:.78rem;color:#0369a1}
+.start-page-chat-session-bar button{background:#0369a1;color:#fff;border:none;padding:.35rem .8rem;border-radius:5px;font-size:.75rem;cursor:pointer;transition:background .15s}
+.start-page-chat-session-bar button:hover{background:#075985}
+
+.start-page-chat-composer{display:flex;align-items:flex-end;gap:.5rem;padding:.75rem 1rem;border-top:1px solid #eee}
+.start-page-chat-composer textarea{flex:1;resize:none;border:1px solid #ddd;border-radius:8px;padding:.5rem .75rem;font-size:.85rem;font-family:inherit;outline:none;min-height:38px;max-height:120px;transition:border-color .15s}
+.start-page-chat-composer textarea:focus{border-color:#999}
+.start-page-chat-composer textarea::placeholder{color:#aaa}
+.start-page-chat-send{background:#333;color:#fff;border:none;width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .15s}
+.start-page-chat-send:hover{background:#555}
+.start-page-chat-send:disabled{background:#ddd;cursor:not-allowed}
+.start-page-chat-send svg{width:16px;height:16px}
+
+/* ── GitHub Clone Panel ─── */
+.github-clone-btn{display:flex;align-items:center;gap:.5rem;padding:.6rem 1.2rem;background:#fff;border:1px solid #ddd;border-radius:8px;color:#666;font-size:.85rem;cursor:pointer;transition:all .15s;width:100%;justify-content:center}
+.github-clone-btn:hover{background:#f5f5f5;border-color:#ccc;color:#333}
+.github-clone-btn svg{width:16px;height:16px}
+
+.github-clone-panel{background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:1.25rem;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+.github-clone-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
+.github-clone-title{display:flex;align-items:center;gap:.5rem;font-size:.9rem;font-weight:600;color:#333}
+.github-clone-title svg{width:18px;height:18px}
+.github-clone-close{background:none;border:none;color:#999;font-size:1.4rem;cursor:pointer;padding:0 4px;line-height:1}
+.github-clone-close:hover{color:#c0392b}
+
+.github-clone-form{display:flex;flex-direction:column;gap:1rem}
+.github-clone-field{display:flex;flex-direction:column;gap:.35rem}
+.github-clone-field label{font-size:.78rem;font-weight:600;color:#666}
+.github-clone-field label .optional{font-weight:400;color:#aaa}
+.github-clone-field input{padding:.5rem .75rem;border:1px solid #ddd;border-radius:6px;font-size:.85rem;outline:none;transition:border-color .15s}
+.github-clone-field input:focus{border-color:#999}
+.github-clone-field input::placeholder{color:#bbb}
+
+.github-clone-error{padding:.5rem .75rem;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;color:#dc2626;font-size:.8rem}
+.github-clone-status{padding:.5rem .75rem;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;color:#1d4ed8;font-size:.8rem}
+
+.github-clone-actions{display:flex;gap:.5rem;justify-content:flex-end}
+.github-clone-cancel{padding:.45rem 1rem;background:#f5f5f5;border:1px solid #ddd;border-radius:6px;color:#666;font-size:.82rem;cursor:pointer;transition:all .15s}
+.github-clone-cancel:hover{background:#eee}
+.github-clone-submit{padding:.45rem 1rem;background:#333;border:none;border-radius:6px;color:#fff;font-size:.82rem;font-weight:500;cursor:pointer;transition:all .15s}
+.github-clone-submit:hover{background:#555}
+.github-clone-submit:disabled{background:#ddd;cursor:not-allowed}
+
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 

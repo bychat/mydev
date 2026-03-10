@@ -172,4 +172,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('cli-provider-chat-chunk-done', listener);
   },
   cliProviderChatAbort: () => ipcRenderer.invoke('cli-provider-chat-abort'),
+
+  // Session folder management (for web/Docker mode)
+  sessionCreateFolder: (title) => ipcRenderer.invoke('session-create-folder', title),
+  sessionCloneGitHub: (repoUrl, token) => ipcRenderer.invoke('session-clone-github', repoUrl, token),
+  sessionListFolders: () => ipcRenderer.invoke('session-list-folders'),
+  sessionDeleteFolder: (folderPath) => ipcRenderer.invoke('session-delete-folder', folderPath),
 });

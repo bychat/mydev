@@ -14,6 +14,7 @@ import type { GitHubRepoInfo, GitHubWorkflowsResult, GitHubRunsResult, GitHubJob
 import type { McpServerConfig, McpServersResult, McpToolCallResult } from './mcp.types';
 import type { GhCliStatus, GhCopilotChatResult } from './ghCli.types';
 import type { CliProviderId, CliProviderStatus, CliChatResult } from './cliProvider.types';
+import type { SessionFolderResult, GitCloneResult, SessionFolderInfo } from './session.types';
 
 export interface ElectronAPI {
   // Window management
@@ -138,6 +139,11 @@ export interface ElectronAPI {
   agentLoadConfigs: () => Promise<unknown[]>;
   agentSaveConfig: (config: unknown) => Promise<{ success: boolean }>;
   agentDeleteConfig: (agentId: string) => Promise<{ success: boolean }>;
+  // Session folder management (for web/Docker mode)
+  sessionCreateFolder: (title?: string) => Promise<SessionFolderResult>;
+  sessionCloneGitHub: (repoUrl: string, token?: string) => Promise<GitCloneResult>;
+  sessionListFolders: () => Promise<SessionFolderInfo[]>;
+  sessionDeleteFolder: (folderPath: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 declare global {
