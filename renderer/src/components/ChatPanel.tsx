@@ -36,6 +36,7 @@ import {
 } from './icons';
 import { isCliMode, getCliProviderId, type ChatMode } from '../types/ui.types';
 import { useAgentExecution } from '../context/AgentExecutionContext';
+import { useStreamingBridge } from '../context/StreamingBridgeContext';
 
 interface ChatPanelProps {
   onCollapse?: () => void;
@@ -151,6 +152,49 @@ export default function ChatPanel({ onCollapse }: ChatPanelProps) {
   const { streamResponse, stopMessage } = useMessageStream({
     scrollToBottom, setMessages, setHistory, setLoading,
   });
+
+  // ── Pick up streaming bridge from StartPageChat ──
+  const streamingBridge = useStreamingBridge();
+
+  useEffect(() => {
+    const bridge = streamingBridge.consumeBridge();
+    if (!bridge || bridge.folderPath !== folderPath) return;
+
+    // Load the messages from the bridge into ChatPanel state
+    if (bridge.messages.length > 0) {
+      setMessages(bridge.messages);
+    }
+    if (bridge.chatHistory.length > 0) {
+      setHistory(bridge.chatHistory);
+    }
+
+    // If the bridge is still streaming, show loading state and listen for updates
+    if (bridge.active) {
+      setLoading(true);
+
+      // Subscribe to bridge updates — the StartPageChat's IPC listener
+      // is still running and pushing updates to the bridge
+      const interval = setInterval(() => {
+        const latest = streamingBridge.getLatestMessages();
+        if (latest && latest.length > 0) {
+          setMessages(latest);
+          scrollToBottom();
+        }
+        // Check if bridge is no longer active (stream finished)
+        if (!streamingBridge.pending?.active) {
+          // Final update
+          const finalMsgs = streamingBridge.getLatestMessages();
+          if (finalMsgs && finalMsgs.length > 0) {
+            setMessages(finalMsgs);
+          }
+          setLoading(false);
+          clearInterval(interval);
+        }
+      }, 100);
+
+      return () => clearInterval(interval);
+    }
+  }, [folderPath]); // Only run when workspace changes
 
   // ── Suggested files from open editor tabs ──
   const suggestedFiles = openTabs

@@ -1,14 +1,24 @@
 /**
- * HtmlPreview - Extracted collapsible preview for complete HTML documents.
- * Uses contentDocument.write() to avoid iframe blink on re-renders.
- * Debounces updates during streaming so preview stays smooth.
+ * HtmlPreview - Compact action card for full HTML documents detected in chat.
+ * No inline iframe — just a one-line bar with Open Preview / Copy / Save buttons
+ * and a collapsible source code view.
+ *
+ * Supports two contexts:
+ * - Inside workspace: Preview opens in editor tab
+ * - Start page: Preview opens workspace + preview tab
+ *
+ * Shows real-time line count that updates as HTML streams in.
  */
-import { useState, useCallback, useRef, useEffect, memo } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useBackend } from '../context/BackendContext';
 import { useWorkspace } from '../context/WorkspaceContext';
 
 interface HtmlPreviewProps {
   html: string;
+  /** Optional: session folder path (used on start page to open workspace) */
+  sessionFolderPath?: string | null;
+  /** Whether content is still being streamed */
+  isStreaming?: boolean;
 }
 
 /** Detect whether a code string is a full HTML document (not just a fragment) */
@@ -31,83 +41,54 @@ export function extractPreviewName(html: string): string {
   return 'Preview';
 }
 
-/**
- * Stable iframe that writes HTML via contentDocument instead of srcDoc.
- * This prevents the iframe from being destroyed/recreated on every render.
- */
-function StableIframe({ html, title }: { html: string; title: string }) {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-  const lastWrittenRef = useRef('');
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Debounced write — updates at most every 600ms during streaming
-  useEffect(() => {
-    if (!iframeRef.current) return;
-    // If content hasn't changed, skip
-    if (html === lastWrittenRef.current) return;
-
-    const write = () => {
-      const iframe = iframeRef.current;
-      if (!iframe) return;
-      try {
-        const doc = iframe.contentDocument;
-        if (doc) {
-          doc.open();
-          doc.write(html);
-          doc.close();
-          lastWrittenRef.current = html;
-        }
-      } catch {
-        // fallback: use srcdoc
-        iframe.srcdoc = html;
-        lastWrittenRef.current = html;
-      }
-    };
-
-    // If we have a pending write, clear it
-    if (timerRef.current) clearTimeout(timerRef.current);
-
-    // If this is the first write, do it immediately
-    if (!lastWrittenRef.current) {
-      write();
-    } else {
-      // Otherwise debounce
-      timerRef.current = setTimeout(write, 600);
-    }
-
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [html]);
-
-  return (
-    <iframe
-      ref={iframeRef}
-      className="html-extract-frame"
-      sandbox="allow-scripts"
-      title={title}
-    />
-  );
+/** Extract the first full HTML document from markdown text (inside ```html blocks or raw) */
+export function extractHtmlFromMarkdown(text: string): string | null {
+  const codeBlockRegex = /```html\s*\n([\s\S]*?)```/gi;
+  let match;
+  while ((match = codeBlockRegex.exec(text)) !== null) {
+    const code = match[1].trim();
+    if (isFullHtmlDocument(code)) return code;
+  }
+  if (isFullHtmlDocument(text.trim())) return text.trim();
+  return null;
 }
 
-const HtmlPreview = memo(function HtmlPreview({ html }: HtmlPreviewProps) {
+export default function HtmlPreview({ html, sessionFolderPath, isStreaming }: HtmlPreviewProps) {
   const backend = useBackend();
   const { folderPath, openFile, refreshTree } = useWorkspace();
-  const [previewOpen, setPreviewOpen] = useState(true);
   const [codeOpen, setCodeOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const prevLinesRef = useRef(0);
 
   const name = extractPreviewName(html);
   const lines = html.split('\n').length;
 
-  const handleLivePreview = useCallback(() => {
-    const tabKey = `html-preview:${Date.now()}`;
-    window.dispatchEvent(new CustomEvent('open-html-preview-tab', {
-      detail: { name, tabKey, html }
-    }));
-  }, [html, name]);
+  // Track line count changes for streaming animation
+  const linesChanged = lines !== prevLinesRef.current;
+  useEffect(() => { prevLinesRef.current = lines; }, [lines]);
+
+  // In-workspace preview: open in editor tab
+  // Start page preview: open workspace with preview tab
+  const handleOpenPreview = useCallback(() => {
+    if (folderPath) {
+      // Already in a workspace — just open preview tab
+      window.dispatchEvent(new CustomEvent('open-html-preview-tab', {
+        detail: { name, tabKey: `html-preview:${Date.now()}`, html }
+      }));
+    } else if (sessionFolderPath) {
+      // On start page — open workspace with preview (does NOT interrupt streaming)
+      window.dispatchEvent(new CustomEvent('open-workspace', {
+        detail: {
+          folderPath: sessionFolderPath,
+          openPreview: true,
+          previewHtml: html,
+          previewName: name,
+        }
+      }));
+    }
+  }, [html, name, folderPath, sessionFolderPath]);
 
   const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(html);
@@ -136,49 +117,37 @@ const HtmlPreview = memo(function HtmlPreview({ html }: HtmlPreviewProps) {
   }, [folderPath, html, backend, openFile, refreshTree]);
 
   return (
-    <div className="html-extract">
-      {/* Compact header */}
+    <div className={`html-extract${isStreaming ? ' streaming' : ''}`}>
       <div className="html-extract-header">
         <span className="html-extract-icon">🌐</span>
         <span className="html-extract-name" title={name}>{name}</span>
-        <span className="html-extract-meta">{lines} ln</span>
+        <span className={`html-extract-meta${isStreaming ? ' pulse' : ''}${linesChanged ? ' bump' : ''}`}>
+          {isStreaming && <span className="streaming-dot" />}
+          {lines} ln
+        </span>
         <div className="html-extract-actions">
-          <button className="html-extract-btn" onClick={handleCopy} title="Copy">
+          <button className="html-extract-btn" onClick={handleCopy} title="Copy HTML">
             {copied ? '✓' : '⎘'}
           </button>
-          <button className="html-extract-btn" onClick={handleLivePreview} title="Open in tab">
-            ▶
+          <button className="html-extract-btn primary" onClick={handleOpenPreview} title={folderPath ? 'Open preview in editor' : 'Open workspace with preview'}>
+            ▶ Preview
           </button>
           {folderPath && (
-            <button className="html-extract-btn" onClick={handleSave} disabled={saving} title="Save">
+            <button className="html-extract-btn" onClick={handleSave} disabled={saving} title="Save to workspace">
               {saved ? '✓' : saving ? '…' : '💾'}
             </button>
           )}
         </div>
       </div>
 
-      {/* Preview — always visible by default, collapsible */}
-      <button
-        className={`html-extract-toggle ${previewOpen ? 'open' : ''}`}
-        onClick={() => setPreviewOpen(v => !v)}
-      >
-        <span className="html-extract-chevron">{previewOpen ? '▾' : '▸'}</span>
-        Preview
-      </button>
-      {previewOpen && (
-        <div className="html-extract-preview">
-          <StableIframe html={html} title={name} />
-        </div>
-      )}
-
-      {/* Source code — collapsed by default */}
+      {/* Collapsible source */}
       <button
         className={`html-extract-toggle ${codeOpen ? 'open' : ''}`}
         onClick={() => setCodeOpen(v => !v)}
       >
         <span className="html-extract-chevron">{codeOpen ? '▾' : '▸'}</span>
         Source
-        <span className="html-extract-line-count">{lines} ln</span>
+        <span className={`html-extract-line-count${isStreaming ? ' pulse' : ''}`}>{lines} ln</span>
       </button>
       {codeOpen && (
         <div className="html-extract-code">
@@ -187,6 +156,4 @@ const HtmlPreview = memo(function HtmlPreview({ html }: HtmlPreviewProps) {
       )}
     </div>
   );
-});
-
-export default HtmlPreview;
+}

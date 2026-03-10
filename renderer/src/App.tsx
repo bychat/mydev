@@ -8,6 +8,7 @@ import { Box, IconButton, Tooltip } from '@mui/material';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { WorkspaceProvider, useWorkspace } from './context/WorkspaceContext';
+import { StreamingBridgeProvider } from './context/StreamingBridgeContext';
 import { useBackend } from './context/BackendContext';
 import { AgentExecutionProvider } from './context/AgentExecutionContext';
 import StatusBar from './components/StatusBar';
@@ -270,10 +271,12 @@ function AppLayout() {
 
 export default function App() {
   return (
-    <WorkspaceProvider>
-      <AgentExecutionProvider>
-        <AppLayout />
-      </AgentExecutionProvider>
-    </WorkspaceProvider>
+    <StreamingBridgeProvider>
+      <WorkspaceProvider>
+        <AgentExecutionProvider>
+          <AppLayout />
+        </AgentExecutionProvider>
+      </WorkspaceProvider>
+    </StreamingBridgeProvider>
   );
 }

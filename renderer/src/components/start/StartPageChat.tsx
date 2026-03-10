@@ -6,10 +6,11 @@
  * and carries over the in-progress chat content.
  * Auto-detects HTML in responses → saves to session → opens workspace with preview.
  */
-import { useState, useRef, useCallback, useEffect, type ChangeEvent, type KeyboardEvent } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo, type ChangeEvent, type KeyboardEvent } from 'react';
 import { useBackend } from '../../context/BackendContext';
+import { useStreamingBridge } from '../../context/StreamingBridgeContext';
 import { useAISettings } from '../../hooks';
-import { isFullHtmlDocument } from '../HtmlPreview';
+import HtmlPreview, { isFullHtmlDocument, extractHtmlFromMarkdown, extractPreviewName } from '../HtmlPreview';
 import { SendIcon, StopIcon, MessageCircleIcon } from '../icons';
 import { GitHubClone } from '.';
 import SettingsModal from '../SettingsModal';
@@ -21,8 +22,28 @@ interface StartPageChatProps {
   onWorkspaceCreated?: (folderPath: string) => void;
 }
 
+/** Bot message content with stable HtmlPreview sibling (survives streaming re-renders) */
+function StartBotContent({ text, isStreaming, sessionFolderPath }: { text: string; isStreaming?: boolean; sessionFolderPath?: string | null }) {
+  const extractedHtml = useMemo(() => extractHtmlFromMarkdown(text), [text]);
+  return (
+    <>
+      <div className="md-content">
+        <Markdown>{text}</Markdown>
+      </div>
+      {extractedHtml && (
+        <HtmlPreview
+          html={extractedHtml}
+          isStreaming={isStreaming}
+          sessionFolderPath={sessionFolderPath}
+        />
+      )}
+    </>
+  );
+}
+
 export default function StartPageChat({ importFolder, onWorkspaceCreated }: StartPageChatProps) {
   const backend = useBackend();
+  const streamingBridge = useStreamingBridge();
   const {
     settings,
     models,
@@ -42,6 +63,38 @@ export default function StartPageChat({ importFolder, onWorkspaceCreated }: Star
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const autoOpenedRef = useRef(false); // prevent double auto-open
+  const mountedRef = useRef(true); // track if component is still mounted
+  const streamingRef = useRef(false); // track if we're currently streaming
+
+  // Track mount state
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  // Intercept open-workspace events (e.g. from HtmlPreview's Preview button)
+  // to set up the streaming bridge if currently streaming
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (!detail?.folderPath || !streamingRef.current || !sessionFolderPath) return;
+      // Only intercept if it's our session folder
+      if (detail.folderPath !== sessionFolderPath) return;
+
+      // Set up bridge so ChatPanel picks up the active stream
+      streamingBridge.startBridge({
+        folderPath: sessionFolderPath,
+        messages: [...messages],
+        chatHistory: [...chatHistory],
+        active: true,
+        openPreview: !!detail.openPreview,
+        previewHtml: detail.previewHtml,
+        previewName: detail.previewName,
+      });
+    };
+    window.addEventListener('open-workspace', handler);
+    return () => window.removeEventListener('open-workspace', handler);
+  }, [sessionFolderPath, messages, chatHistory, streamingBridge]);
 
   // Scroll messages container to bottom (without scrolling the whole page)
   const scrollToBottom = useCallback(() => {
@@ -117,8 +170,30 @@ export default function StartPageChat({ importFolder, onWorkspaceCreated }: Star
         // best-effort
       }
 
-      // Open workspace — the html file will auto-open as preview
-      window.dispatchEvent(new CustomEvent('open-workspace', { detail: { folderPath } }));
+      // Use streaming bridge if stream is still in progress
+      const isStreaming = streamingRef.current;
+      if (isStreaming) {
+        const previewName = extractPreviewName(htmlContent);
+        streamingBridge.startBridge({
+          folderPath,
+          messages: allMessages,
+          chatHistory: history,
+          active: true,
+          openPreview: true,
+          previewHtml: htmlContent,
+          previewName,
+        });
+      }
+
+      // Open workspace — with preview flag
+      window.dispatchEvent(new CustomEvent('open-workspace', {
+        detail: {
+          folderPath,
+          openPreview: true,
+          previewHtml: htmlContent,
+          previewName: extractPreviewName(htmlContent),
+        }
+      }));
       onWorkspaceCreated?.(folderPath);
 
       // Background: generate title
@@ -145,7 +220,7 @@ export default function StartPageChat({ importFolder, onWorkspaceCreated }: Star
       console.error('[StartPageChat] Auto-save HTML failed:', err);
       autoOpenedRef.current = false;
     }
-  }, [backend, onWorkspaceCreated, settings, selectedModel]);
+  }, [backend, onWorkspaceCreated, settings, selectedModel, streamingBridge]);
 
   // Create session folder if needed and stream response
   const handleSend = useCallback(async () => {
@@ -211,16 +286,31 @@ export default function StartPageChat({ importFolder, onWorkspaceCreated }: Star
       setMessages(prev => [...prev, { text: '', sender: 'bot' }]);
 
       // Stream the response
+      streamingRef.current = true;
       let streamedText = '';
       const cleanupChunk = backend.onAiChatChunk((chunk: string) => {
         streamedText += chunk;
         const currentText = streamedText;
-        setMessages(prev => {
-          const updated = [...prev];
-          updated[updated.length - 1] = { text: currentText, sender: 'bot' };
-          return updated;
-        });
-        scrollToBottom();
+
+        // Update local state only if still mounted
+        if (mountedRef.current) {
+          setMessages(prev => {
+            const updated = [...prev];
+            updated[updated.length - 1] = { text: currentText, sender: 'bot' };
+            return updated;
+          });
+          scrollToBottom();
+        }
+
+        // Also update the streaming bridge if active (workspace is loading)
+        if (streamingBridge.pending?.active) {
+          const latest = streamingBridge.getLatestMessages();
+          if (latest) {
+            const updated = [...latest];
+            updated[updated.length - 1] = { text: currentText, sender: 'bot' };
+            streamingBridge.updateMessages(updated);
+          }
+        }
       });
 
       try {
@@ -231,21 +321,29 @@ export default function StartPageChat({ importFolder, onWorkspaceCreated }: Star
           history
         );
         cleanupChunk();
+        streamingRef.current = false;
 
         if (result.success && result.reply) {
           const finalMessages: DisplayMessage[] = [];
-          setMessages(prev => {
-            const updated = [...prev];
-            updated[updated.length - 1] = { text: result.reply!, sender: 'bot' };
-            finalMessages.push(...updated);
-            return updated;
-          });
+          if (mountedRef.current) {
+            setMessages(prev => {
+              const updated = [...prev];
+              updated[updated.length - 1] = { text: result.reply!, sender: 'bot' };
+              finalMessages.push(...updated);
+              return updated;
+            });
+          }
           const newHistory = [
             ...chatHistory,
             { role: 'user' as const, content: userMessage },
             { role: 'assistant' as const, content: result.reply! }
           ];
-          setChatHistory(newHistory);
+          if (mountedRef.current) {
+            setChatHistory(newHistory);
+          }
+
+          // Signal bridge that streaming is done
+          streamingBridge.finishBridge();
 
           // Auto-detect HTML and open workspace with preview
           const htmlContent = extractHtmlFromResponse(result.reply!);
@@ -256,7 +354,46 @@ export default function StartPageChat({ importFolder, onWorkspaceCreated }: Star
             }, 300);
           }
         } else if (result.error === 'aborted') {
+          streamingBridge.finishBridge();
           if (streamedText) {
+            if (mountedRef.current) {
+              setMessages(prev => {
+                const updated = [...prev];
+                updated[updated.length - 1] = { text: streamedText + '\n\n⏹ *Response stopped.*', sender: 'bot' };
+                return updated;
+              });
+              setChatHistory(prev => [
+                ...prev,
+                { role: 'user', content: userMessage },
+                { role: 'assistant', content: streamedText }
+              ]);
+            }
+          } else {
+            if (mountedRef.current) {
+              setMessages(prev => {
+                const updated = [...prev];
+                updated[updated.length - 1] = { text: '⏹ Response stopped.', sender: 'bot' };
+                return updated;
+              });
+            }
+          }
+        } else {
+          streamingBridge.finishBridge();
+          if (mountedRef.current) {
+            setMessages(prev => {
+              const updated = [...prev];
+              updated[updated.length - 1] = { text: `⚠️ ${result.error ?? 'Unknown error'}`, sender: 'bot' };
+              return updated;
+            });
+          }
+        }
+      } catch (streamErr: unknown) {
+        cleanupChunk();
+        streamingRef.current = false;
+        streamingBridge.finishBridge();
+        const errMsg = (streamErr as Error).message;
+        if (errMsg?.includes('abort') && streamedText) {
+          if (mountedRef.current) {
             setMessages(prev => {
               const updated = [...prev];
               updated[updated.length - 1] = { text: streamedText + '\n\n⏹ *Response stopped.*', sender: 'bot' };
@@ -267,51 +404,30 @@ export default function StartPageChat({ importFolder, onWorkspaceCreated }: Star
               { role: 'user', content: userMessage },
               { role: 'assistant', content: streamedText }
             ]);
-          } else {
+          }
+        } else {
+          if (mountedRef.current) {
             setMessages(prev => {
               const updated = [...prev];
-              updated[updated.length - 1] = { text: '⏹ Response stopped.', sender: 'bot' };
+              updated[updated.length - 1] = { text: `⚠️ ${errMsg || 'Unknown error'}`, sender: 'bot' };
               return updated;
             });
           }
-        } else {
-          setMessages(prev => {
-            const updated = [...prev];
-            updated[updated.length - 1] = { text: `⚠️ ${result.error ?? 'Unknown error'}`, sender: 'bot' };
-            return updated;
-          });
-        }
-      } catch (streamErr: unknown) {
-        cleanupChunk();
-        const errMsg = (streamErr as Error).message;
-        if (errMsg?.includes('abort') && streamedText) {
-          setMessages(prev => {
-            const updated = [...prev];
-            updated[updated.length - 1] = { text: streamedText + '\n\n⏹ *Response stopped.*', sender: 'bot' };
-            return updated;
-          });
-          setChatHistory(prev => [
-            ...prev,
-            { role: 'user', content: userMessage },
-            { role: 'assistant', content: streamedText }
-          ]);
-        } else {
-          setMessages(prev => {
-            const updated = [...prev];
-            updated[updated.length - 1] = { text: `⚠️ ${errMsg || 'Unknown error'}`, sender: 'bot' };
-            return updated;
-          });
         }
       }
     } catch (err) {
-      setMessages(prev => [...prev, {
-        text: `Error: ${err instanceof Error ? err.message : 'Unknown error'}`,
-        sender: 'bot'
-      }]);
+      if (mountedRef.current) {
+        setMessages(prev => [...prev, {
+          text: `Error: ${err instanceof Error ? err.message : 'Unknown error'}`,
+          sender: 'bot'
+        }]);
+      }
     } finally {
-      setLoading(false);
+      if (mountedRef.current) {
+        setLoading(false);
+      }
     }
-  }, [input, loading, chatHistory, sessionFolderPath, backend, settings, selectedModel, scrollToBottom]);
+  }, [input, loading, chatHistory, sessionFolderPath, backend, settings, selectedModel, scrollToBottom, streamingBridge]);
 
   // Handle Enter key
   const handleKeyDown = useCallback((e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -338,8 +454,11 @@ export default function StartPageChat({ importFolder, onWorkspaceCreated }: Star
   }, []);
 
   // Open as workspace — carry over chat content and generate a title in background
+  // IMPORTANT: Does NOT abort streaming — the stream continues via IPC and the bridge.
   const handleOpenWorkspace = useCallback(async () => {
     if (!sessionFolderPath) return;
+
+    const isCurrentlyStreaming = loading;
 
     // First, persist the current chat history to the workspace so ChatPanel can pick it up
     try {
@@ -363,11 +482,9 @@ export default function StartPageChat({ importFolder, onWorkspaceCreated }: Star
       ];
 
       // If there's a streaming message in progress, include it
-      if (loading && messages.length > 0) {
+      if (isCurrentlyStreaming && messages.length > 0) {
         const lastMsg = messages[messages.length - 1];
         if (lastMsg.sender === 'bot' && lastMsg.text) {
-          // The last user message is already in chatHistory from handleSend,
-          // but the assistant response might not be finalized yet
           const lastUserMsg = messages.filter(m => m.sender === 'user').pop();
           if (lastUserMsg && !chatHistory.some(m => m.role === 'user' && m.content === lastUserMsg.text)) {
             fullHistory.push({ role: 'user', content: lastUserMsg.text });
@@ -387,7 +504,25 @@ export default function StartPageChat({ importFolder, onWorkspaceCreated }: Star
       console.error('[StartPageChat] Failed to persist chat before opening workspace:', err);
     }
 
-    // Open workspace — the ChatPanel's useChatHistory will load the persisted conversation
+    // If streaming, set up the bridge so ChatPanel can pick up the live stream
+    if (isCurrentlyStreaming) {
+      // Check if there's HTML being streamed — detect for preview
+      const lastBot = messages.filter(m => m.sender === 'bot').pop();
+      const partialHtml = lastBot ? extractHtmlFromMarkdown(lastBot.text) : null;
+      const previewName = partialHtml ? extractPreviewName(partialHtml) : undefined;
+
+      streamingBridge.startBridge({
+        folderPath: sessionFolderPath,
+        messages: [...messages],
+        chatHistory: [...chatHistory],
+        active: true,
+        openPreview: !!partialHtml,
+        previewHtml: partialHtml || undefined,
+        previewName,
+      });
+    }
+
+    // Open workspace — the ChatPanel will load persisted conversation + pick up bridge
     window.dispatchEvent(new CustomEvent('open-workspace', { detail: { folderPath: sessionFolderPath } }));
     onWorkspaceCreated?.(sessionFolderPath);
 
@@ -422,7 +557,7 @@ export default function StartPageChat({ importFolder, onWorkspaceCreated }: Star
         // best-effort, don't block workspace opening
       }
     }
-  }, [sessionFolderPath, onWorkspaceCreated, settings, selectedModel, messages, chatHistory, loading, backend]);
+  }, [sessionFolderPath, onWorkspaceCreated, settings, selectedModel, messages, chatHistory, loading, backend, streamingBridge]);
 
   return (
     <div className="start-page-chat">
@@ -503,9 +638,11 @@ export default function StartPageChat({ importFolder, onWorkspaceCreated }: Star
                     <span className="dot">•</span>
                   </div>
                 ) : msg.sender === 'bot' ? (
-                  <div className="md-content">
-                    <Markdown>{msg.text}</Markdown>
-                  </div>
+                  <StartBotContent
+                    text={msg.text}
+                    isStreaming={isStreaming}
+                    sessionFolderPath={sessionFolderPath}
+                  />
                 ) : (
                   msg.text
                 )}
@@ -515,11 +652,13 @@ export default function StartPageChat({ importFolder, onWorkspaceCreated }: Star
         })}
       </div>
 
-      {/* Session bar */}
+      {/* Session bar — always accessible, even during streaming */}
       {sessionFolderPath && (
-        <div className="start-page-chat-session-bar">
-          <span>Session created</span>
-          <button onClick={handleOpenWorkspace}>Open as Workspace →</button>
+        <div className={`start-page-chat-session-bar${loading ? ' streaming' : ''}`}>
+          <span>{loading ? 'Streaming…' : 'Session created'}</span>
+          <button onClick={handleOpenWorkspace}>
+            {loading ? '⚡ View in Workspace →' : 'Open as Workspace →'}
+          </button>
         </div>
       )}
 

@@ -201,8 +201,26 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   // Listen for open-workspace events from Welcome component
   useEffect(() => {
     const handler = async (e: Event) => {
-      const customEvent = e as CustomEvent<{ folderPath: string }>;
-      if (customEvent.detail?.folderPath) await openWorkspaceByPath(customEvent.detail.folderPath);
+      const customEvent = e as CustomEvent<{
+        folderPath: string;
+        openPreview?: boolean;
+        previewHtml?: string;
+        previewName?: string;
+      }>;
+      const detail = customEvent.detail;
+      if (detail?.folderPath) {
+        await openWorkspaceByPath(detail.folderPath);
+
+        // After workspace loads, auto-open HTML preview tab if requested
+        if (detail.openPreview && detail.previewHtml) {
+          const tabKey = `html-preview:${Date.now()}`;
+          const name = detail.previewName || 'Preview';
+          // Small delay to ensure workspace state has settled
+          setTimeout(() => {
+            tabManager.openHtmlPreview(tabKey, name, detail.previewHtml!);
+          }, 100);
+        }
+      }
     };
     window.addEventListener('open-workspace', handler);
     return () => window.removeEventListener('open-workspace', handler);

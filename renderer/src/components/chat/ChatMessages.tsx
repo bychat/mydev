@@ -1,5 +1,6 @@
-import { type RefObject } from 'react';
+import { type RefObject, useMemo } from 'react';
 import Markdown from '../Markdown';
+import HtmlPreview, { extractHtmlFromMarkdown } from '../HtmlPreview';
 import AgentActionRow from './AgentActionRow';
 import { getFileIcon } from '../../utils/fileIcons';
 import type { FileActionProgress, DisplayMessage } from '../../types';
@@ -18,6 +19,36 @@ interface ChatMessagesProps {
   workspaceFiles: Set<string>;
   onFileClick: (relativePath: string) => void;
   endRef: RefObject<HTMLDivElement>;
+}
+
+/**
+ * Bot message content — renders Markdown + a stable HtmlPreview sibling.
+ * The HtmlPreview is outside ReactMarkdown's tree so its state (collapsed/expanded)
+ * persists across streaming re-renders.
+ */
+function BotMessageContent({
+  text,
+  workspaceFiles,
+  onFileClick,
+  isStreaming,
+}: {
+  text: string;
+  workspaceFiles: Set<string>;
+  onFileClick: (relativePath: string) => void;
+  isStreaming?: boolean;
+}) {
+  const extractedHtml = useMemo(() => extractHtmlFromMarkdown(text), [text]);
+
+  return (
+    <>
+      <div className="md-content">
+        <Markdown workspaceFiles={workspaceFiles} onFileClick={onFileClick}>
+          {text}
+        </Markdown>
+      </div>
+      {extractedHtml && <HtmlPreview html={extractedHtml} isStreaming={isStreaming} />}
+    </>
+  );
 }
 
 /**
@@ -90,11 +121,12 @@ export default function ChatMessages({
               isCli ? (
                 <pre className="cli-terminal-output">{msg.text || '\u00A0'}</pre>
               ) : (
-                <div className="md-content">
-                  <Markdown workspaceFiles={workspaceFiles} onFileClick={onFileClick}>
-                    {msg.text}
-                  </Markdown>
-                </div>
+                <BotMessageContent
+                  text={msg.text}
+                  workspaceFiles={workspaceFiles}
+                  onFileClick={onFileClick}
+                  isStreaming={isStreaming}
+                />
               )
             ) : (
               !msg.isAgentProgress && msg.text

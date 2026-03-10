@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo, type ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { TreeEntry } from '../types';
-import HtmlPreview, { isFullHtmlDocument } from './HtmlPreview';
+import { isFullHtmlDocument } from './HtmlPreview';
 
 interface MarkdownProps {
   children: string;
@@ -48,6 +48,40 @@ function CopyButton({ text }: { text: string }) {
     <button className="md-copy-btn" onClick={handleCopy} title="Copy">
       {copied ? '✓' : '⎘'}
     </button>
+  );
+}
+
+/** Collapsible code block — collapsed by default for long blocks */
+function CollapsibleCode({ lang, code, className, children, rest }: {
+  lang: string;
+  code: string;
+  className?: string;
+  children: React.ReactNode;
+  rest: Record<string, unknown>;
+}) {
+  const lines = code.split('\n').length;
+  const isLong = lines > 15;
+  const [open, setOpen] = useState(!isLong);
+
+  return (
+    <div className="md-code-block">
+      <div className="md-code-header">
+        <button className="md-code-collapse" onClick={() => setOpen(v => !v)}>
+          <span className="md-code-chevron">{open ? '▾' : '▸'}</span>
+          <span className="md-code-lang">{lang}</span>
+          {!open && <span className="md-code-lines">{lines} lines</span>}
+        </button>
+        <CopyButton text={code} />
+      </div>
+      {open && (
+        <pre className="md-pre"><code className={className} {...rest}>{children}</code></pre>
+      )}
+      {!open && (
+        <div className="md-code-collapsed-hint" onClick={() => setOpen(true)}>
+          {lines} lines — click to expand
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -127,19 +161,20 @@ export default function Markdown({ children, workspaceFiles, onFileClick }: Mark
           const lang = match?.[1]?.toLowerCase();
           const isHtmlDoc = lang === 'html' && isFullHtmlDocument(codeStr);
 
-          // Full HTML document → replace the entire code block with the collapsible preview
+          // Full HTML document → hide it from markdown (rendered as sibling HtmlPreview)
           if (isHtmlDoc) {
-            return <HtmlPreview html={codeStr} />;
+            return null;
           }
 
           return (
-            <div className="md-code-block">
-              <div className="md-code-header">
-                <span className="md-code-lang">{match?.[1] ?? 'code'}</span>
-                <CopyButton text={codeStr} />
-              </div>
-              <pre className="md-pre"><code className={className} {...rest}>{codeChildren}</code></pre>
-            </div>
+            <CollapsibleCode
+              lang={match?.[1] ?? 'code'}
+              code={codeStr}
+              className={className}
+              rest={rest}
+            >
+              {codeChildren}
+            </CollapsibleCode>
           );
         },
         /* Tables */
