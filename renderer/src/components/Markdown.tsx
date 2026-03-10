@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo, type ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { TreeEntry } from '../types';
+import HtmlPreview, { isFullHtmlDocument } from './HtmlPreview';
 
 interface MarkdownProps {
   children: string;
@@ -120,6 +121,15 @@ export default function Markdown({ children, workspaceFiles, onFileClick }: Mark
               );
             }
             return <code className="md-inline-code" {...rest}>{codeChildren}</code>;
+          }
+
+          // Detect full HTML documents — extract them, don't show raw code
+          const lang = match?.[1]?.toLowerCase();
+          const isHtmlDoc = lang === 'html' && isFullHtmlDocument(codeStr);
+
+          // Full HTML document → replace the entire code block with the collapsible preview
+          if (isHtmlDoc) {
+            return <HtmlPreview html={codeStr} />;
           }
 
           return (

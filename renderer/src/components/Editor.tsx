@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, type KeyboardEvent, type ChangeEvent } from 'react';
+import { useState, useEffect, useRef, useCallback, type KeyboardEvent, type ChangeEvent } from 'react';
 import { useWorkspace } from '../context/WorkspaceContext';
 import EditorTabs from './EditorTabs';
 import DiffViewer from './DiffViewer';
@@ -13,6 +13,7 @@ export default function Editor() {
   const { openTabs, activeTabPath, updateTabContent, saveFile } = useWorkspace();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const lineNumRef = useRef<HTMLPreElement>(null);
+  const [htmlFileViewMode, setHtmlFileViewMode] = useState<'preview' | 'code'>('preview');
   const activeTab = openTabs.find(t => t.path === activeTabPath);
 
   const isDiff = activeTab?.path.startsWith('diff:');
@@ -21,6 +22,13 @@ export default function Editor() {
   const isSqlResult = activeTab?.path.startsWith('sql-result:');
   const isGitHubLogs = activeTab?.path.startsWith('github-logs:');
   const isAgents = activeTab?.path === 'agents:flow';
+  const isHtmlPreview = activeTab?.path.startsWith('html-preview:');
+  const isHtmlFile = !isDiff && !isHtmlPreview && activeTab?.path.endsWith('.html');
+
+  // Reset to preview mode when switching to a different html file
+  useEffect(() => {
+    if (isHtmlFile) setHtmlFileViewMode('preview');
+  }, [activeTabPath]);
 
   useEffect(() => {
     const handler = (e: globalThis.KeyboardEvent) => {
@@ -124,6 +132,87 @@ export default function Editor() {
       <div className="editor-container">
         <EditorTabs />
         <AgentsPanel />
+      </div>
+    );
+  }
+
+  // HTML Preview tab — renders full HTML in a sandboxed iframe
+  if (isHtmlPreview) {
+    return (
+      <div className="editor-container">
+        <EditorTabs />
+        <div className="html-preview-tab">
+          <div className="html-preview-tab-toolbar">
+            <span className="html-preview-tab-label">🌐 {activeTab.name.replace('🌐 ', '')}</span>
+            <span className="html-preview-tab-badge">Preview</span>
+          </div>
+          <iframe
+            className="html-preview-tab-frame"
+            srcDoc={activeTab.content}
+            sandbox="allow-scripts allow-same-origin"
+            title={activeTab.name}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Regular .html file — show as iframe preview with code toggle
+  if (isHtmlFile) {
+    return (
+      <div className="editor-container">
+        <EditorTabs />
+        <div className="html-preview-tab">
+          <div className="html-preview-tab-toolbar">
+            <span className="html-preview-tab-label">🌐 {activeTab.name}</span>
+            <div className="html-preview-tab-toggle">
+              <button
+                className={`html-preview-tab-toggle-btn ${htmlFileViewMode === 'preview' ? 'active' : ''}`}
+                onClick={() => setHtmlFileViewMode('preview')}
+              >
+                Preview
+              </button>
+              <button
+                className={`html-preview-tab-toggle-btn ${htmlFileViewMode === 'code' ? 'active' : ''}`}
+                onClick={() => setHtmlFileViewMode('code')}
+              >
+                Code
+              </button>
+            </div>
+            <div className="editor-actions">
+              {activeTab.readOnly ? (
+                <span className="readonly-badge">Read Only</span>
+              ) : (
+                <>
+                  <span className={activeTab.modified ? 'modified' : 'saved'}>{activeTab.modified ? 'Modified' : 'Saved'}</span>
+                  <button className="btn-save" onClick={() => saveFile(activeTabPath!)}>💾 Save</button>
+                </>
+              )}
+            </div>
+          </div>
+          {htmlFileViewMode === 'preview' ? (
+            <iframe
+              className="html-preview-tab-frame"
+              srcDoc={activeTab.content}
+              sandbox="allow-scripts allow-same-origin"
+              title={activeTab.name}
+            />
+          ) : (
+            <div className="editor-body">
+              <pre className="line-numbers" ref={lineNumRef} />
+              <textarea
+                ref={textareaRef}
+                className="code-area"
+                value={activeTab.content}
+                onChange={handleChange}
+                onScroll={handleScroll}
+                onKeyDown={handleKeyDown}
+                readOnly={activeTab.readOnly}
+                spellCheck={false}
+              />
+            </div>
+          )}
+        </div>
       </div>
     );
   }

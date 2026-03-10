@@ -406,21 +406,42 @@ button{font-family:inherit;cursor:pointer}
 @keyframes stop-pulse{0%,100%{opacity:1}50%{opacity:.75}}
 
 /* ── Welcome ─── */
-.welcome{flex:1;display:flex;align-items:center;justify-content:center;background:#f5f5f5;padding:2rem}
-.welcome-container{display:flex;gap:2rem;max-width:1000px;width:100%;align-items:stretch}
-.welcome-card{text-align:center;padding:2.5rem 2rem;background:#fff;border:1px solid #e0e0e0;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.04);flex:1;max-width:480px}
-.welcome-card h1{font-size:1.8rem;font-weight:700;color:#333;margin-bottom:.5rem}
-.welcome-card p{font-size:.92rem;color:#999;margin-bottom:1.5rem;line-height:1.5}
-.welcome-actions{display:flex;flex-direction:column;gap:.75rem;align-items:center}
-.welcome-divider{width:1px;background:#e0e0e0;min-height:300px;flex-shrink:0}
-.welcome-chat-panel{flex:1;max-width:400px;display:flex;flex-direction:column}
+.welcome{flex:1;display:flex;flex-direction:column;align-items:center;background:#f5f5f5;padding:2rem;overflow-y:auto}
+.welcome-container{display:flex;flex-direction:column;gap:2rem;max-width:640px;width:100%;padding-bottom:3rem}
+.welcome-chat-section{width:100%}
+.welcome-chat-section .start-page-chat{min-height:420px;max-height:600px}
+.welcome-history-section{background:#fff;border:1px solid #e0e0e0;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.04);padding:1.5rem 2rem;text-align:left}
+.welcome-history-section h3{font-size:.75rem;font-weight:600;color:#999;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.75rem}
+
+/* ── Welcome Tabs (Projects / All Chats) ─── */
+.welcome-tabs-section{background:#fff;border:1px solid #e0e0e0;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.04);overflow:hidden}
+.welcome-tabs{display:flex;border-bottom:1px solid #eee;background:#fafafa}
+.welcome-tab{flex:1;display:flex;align-items:center;justify-content:center;gap:.4rem;padding:.65rem 1rem;background:none;border:none;border-bottom:2px solid transparent;font-size:.8rem;font-weight:500;color:#888;cursor:pointer;transition:all .15s;font-family:inherit}
+.welcome-tab:hover{color:#555;background:rgba(0,0,0,.02)}
+.welcome-tab.active{color:#333;font-weight:600;border-bottom-color:#333;background:#fff}
+.welcome-tab-count{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;background:#eee;border-radius:9px;font-size:.65rem;font-weight:600;color:#888}
+.welcome-tab.active .welcome-tab-count{background:#333;color:#fff}
+.welcome-tab-content{padding:1rem 1.5rem}
+
+/* ── All Chats list ─── */
+.welcome-chats-empty{text-align:center;padding:1.5rem;color:#aaa;font-size:.82rem}
+.welcome-chats-list{display:flex;flex-direction:column;gap:2px}
+.welcome-chat-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;cursor:pointer;transition:background .12s}
+.welcome-chat-item:hover{background:rgba(0,0,0,.04)}
+.welcome-chat-item-icon{font-size:1.1rem;flex-shrink:0}
+.welcome-chat-item-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.welcome-chat-item-title{font-size:.84rem;font-weight:600;color:#333;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.welcome-chat-item-meta{display:flex;align-items:center;gap:4px;font-size:.68rem;color:#aaa;flex-wrap:wrap}
+.welcome-chat-item-workspace{color:#0369a1;font-weight:500}
+.welcome-chat-item-sep{color:#ddd}
+.btn-import{display:inline-flex;align-items:center;gap:.6rem;padding:.85rem 2.2rem;background:#333;color:#fff;border:none;border-radius:10px;font-size:1.05rem;font-weight:600;transition:transform .15s,box-shadow .15s;width:100%;justify-content:center}
+.btn-import:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(0,0,0,.12)}
+.btn-import:active{transform:translateY(0)}
 .btn-primary{display:inline-flex;align-items:center;gap:.5rem;padding:.65rem 1.5rem;background:#333;color:#fff;border:none;border-radius:8px;font-size:.9rem;font-weight:600;transition:transform .15s,box-shadow .15s}
 .btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(0,0,0,.12)}
 .btn-primary:active{transform:translateY(0)}
 
 /* ── Recent Workspaces ─── */
-.recent-workspaces{margin-top:2rem;text-align:left;border-top:1px solid #eee;padding-top:1.5rem}
-.recent-workspaces h3{font-size:.75rem;font-weight:600;color:#999;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.75rem}
 .recent-workspaces-list{display:flex;flex-direction:column;gap:4px}
 .recent-workspace-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;cursor:pointer;transition:background .12s;position:relative}
 .recent-workspace-item:hover{background:rgba(0,0,0,.04)}
@@ -1259,15 +1280,22 @@ button{font-family:inherit;cursor:pointer}
 .chat-tip strong{color:#666}
 
 /* ── Start Page Chat (Quick Chat without workspace) ─── */
-.start-page-chat-collapsed{display:flex;justify-content:center;padding:1rem}
-.start-page-chat-toggle{display:flex;align-items:center;gap:.5rem;padding:.6rem 1.2rem;background:#fff;border:1px solid #ddd;border-radius:8px;color:#666;font-size:.85rem;cursor:pointer;transition:all .15s}
-.start-page-chat-toggle:hover{background:#f5f5f5;border-color:#ccc;color:#333}
-.start-page-chat-toggle svg{width:18px;height:18px}
 
 .start-page-chat{background:#fff;border:1px solid #e0e0e0;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.04);display:flex;flex-direction:column;height:100%;min-height:400px;overflow:hidden}
 .start-page-chat-header{display:flex;align-items:center;justify-content:space-between;padding:.75rem 1rem;border-bottom:1px solid #eee}
-.start-page-chat-title{display:flex;align-items:center;gap:.5rem;font-size:.9rem;font-weight:600;color:#333}
+.start-page-chat-header-actions{display:flex;align-items:center;gap:4px}
+.start-page-chat-title{display:flex;align-items:center;gap:.5rem;font-size:.95rem;font-weight:700;color:#333}
 .start-page-chat-title svg{width:18px;height:18px;color:#666}
+.start-page-chat-new-btn{background:none;border:1px solid #ddd;color:#666;font-size:.85rem;cursor:pointer;padding:2px 8px;border-radius:6px;transition:all .12s;font-family:inherit}
+.start-page-chat-new-btn:hover{background:rgba(0,0,0,.05);border-color:#bbb;color:#333}
+.start-page-chat-settings-btn{background:none;border:none;font-size:1.1rem;cursor:pointer;padding:2px 6px;border-radius:6px;transition:background .12s}
+.start-page-chat-settings-btn:hover{background:rgba(0,0,0,.05)}
+
+/* Workspace info badge */
+.start-page-chat-workspace-badge{display:flex;align-items:center;gap:6px;padding:4px 1rem;background:#f0f9ff;border-bottom:1px solid #e0f2fe;font-size:.72rem;color:#0369a1}
+.workspace-badge-icon{font-size:.75rem}
+.workspace-badge-path{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px;font-family:'SF Mono','Fira Code',monospace;font-size:.7rem}
+.workspace-badge-label{margin-left:auto;background:#e0f2fe;padding:1px 6px;border-radius:4px;font-size:.65rem;font-weight:500;color:#0369a1}
 .start-page-chat-close{background:none;border:none;color:#999;font-size:1.4rem;cursor:pointer;padding:0 4px;line-height:1}
 .start-page-chat-close:hover{color:#c0392b}
 
@@ -1276,6 +1304,20 @@ button{font-family:inherit;cursor:pointer}
 .start-page-chat-empty p{margin:.5rem 0}
 .start-page-chat-hint{font-size:.78rem;color:#aaa}
 .start-page-chat-hint .agent-disabled{background:#f0f0f0;padding:2px 6px;border-radius:4px;color:#999;font-weight:500}
+
+.start-page-chat-welcome-actions{display:flex;flex-direction:column;gap:.75rem;align-items:center;padding:0 1rem}
+.start-page-chat-welcome-actions .btn-import{max-width:320px}
+.start-page-chat-welcome-actions .github-clone-btn{max-width:320px}
+.start-page-chat-divider{display:flex;align-items:center;gap:.75rem;margin:1rem 0 .5rem;color:#bbb;font-size:.76rem}
+.start-page-chat-divider::before,.start-page-chat-divider::after{content:'';flex:1;height:1px;background:#e8e8e8}
+.start-page-chat-configure-link{background:none;border:none;color:#555;font-size:.78rem;font-weight:600;cursor:pointer;padding:0;text-decoration:underline}
+.start-page-chat-configure-link:hover{color:#333}
+
+.start-page-chat-toolbar{display:flex;align-items:center;gap:.5rem;padding:.5rem 1rem;border-top:1px solid #f0f0f0;background:#fafafa;border-radius:0 0 12px 12px}
+.start-page-model-select{flex:1;padding:.35rem .5rem;background:#fff;border:1px solid #ddd;border-radius:6px;font-size:.78rem;color:#555;outline:none;cursor:pointer;appearance:none;font-family:inherit}
+.start-page-model-select:focus{border-color:#999}
+.start-page-configure-btn{flex:1;padding:.35rem .5rem;background:none;border:1px dashed #ccc;border-radius:6px;font-size:.78rem;color:#999;cursor:pointer;transition:all .15s;font-family:inherit}
+.start-page-configure-btn:hover{border-color:#999;color:#555;background:#f5f5f5}
 
 .start-page-chat-message{max-width:90%;animation:fadeIn .2s ease}
 .start-page-chat-message.user{align-self:flex-end}
@@ -1334,3 +1376,50 @@ button{font-family:inherit;cursor:pointer}
 @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 
+/* ── HTML Preview ─── */
+.html-preview-container{border-top:1px solid #eee;margin-top:0}
+.html-preview-actions{display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;background:#fafafa}
+.html-preview-toggle{display:inline-flex;align-items:center;gap:.35rem;padding:.3rem .7rem;background:#fff;border:1px solid #ddd;border-radius:6px;font-size:.76rem;font-weight:600;color:#555;cursor:pointer;transition:all .15s}
+.html-preview-toggle:hover{background:#f0f0f0;border-color:#ccc}
+.html-preview-toggle.active{background:#e8f4fd;border-color:#7cc4f5;color:#0369a1}
+.html-preview-save{display:inline-flex;align-items:center;gap:.35rem;padding:.3rem .7rem;background:#fff;border:1px solid #ddd;border-radius:6px;font-size:.76rem;font-weight:500;color:#555;cursor:pointer;transition:all .15s}
+.html-preview-save:hover{background:#f0f0f0;border-color:#ccc}
+.html-preview-save:disabled{opacity:.5;cursor:not-allowed}
+.html-preview-frame-wrap{padding:.5rem .75rem .75rem;background:#fafafa}
+.html-preview-frame{width:100%;min-height:200px;max-height:500px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;display:block}
+
+/* ── Extracted HTML Preview Card (replaces raw code blocks) ─── */
+.html-extract{margin:.4em 0;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.html-extract-header{display:flex;align-items:center;gap:5px;padding:4px 8px;background:#f8fafc;border-bottom:1px solid #eef1f5}
+.html-extract-icon{font-size:.75rem;flex-shrink:0}
+.html-extract-name{font-size:.72rem;font-weight:700;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
+.html-extract-meta{font-size:.58rem;color:#94a3b8;font-weight:500;white-space:nowrap}
+.html-extract-actions{display:flex;align-items:center;gap:3px;margin-left:auto;flex-shrink:0}
+.html-extract-btn{display:inline-flex;align-items:center;justify-content:center;padding:2px 6px;background:none;border:1px solid #d4d8de;border-radius:4px;font-size:.62rem;font-weight:600;color:#64748b;cursor:pointer;transition:all .12s;font-family:inherit;line-height:1.2}
+.html-extract-btn:hover{background:#eef2f7;border-color:#94a3b8;color:#1e293b}
+.html-extract-btn:disabled{opacity:.4;cursor:not-allowed}
+
+.html-extract-toggle{display:flex;align-items:center;gap:4px;width:100%;padding:3px 8px;background:none;border:none;border-top:1px solid #f1f5f9;font-size:.64rem;font-weight:600;color:#94a3b8;cursor:pointer;transition:color .1s;font-family:inherit;text-align:left}
+.html-extract-toggle:hover{color:#475569;background:#fafbfc}
+.html-extract-toggle.open{color:#475569}
+.html-extract-chevron{font-size:.55rem;width:8px;flex-shrink:0}
+.html-extract-line-count{margin-left:auto;font-size:.56rem;font-weight:400;color:#cbd5e1}
+
+.html-extract-preview{border-top:1px solid #f1f5f9;background:#fafbfc;padding:0}
+.html-extract-frame{width:100%;min-height:120px;height:260px;border:none;display:block;background:#fff}
+
+.html-extract-code{border-top:1px solid #f1f5f9;max-height:300px;overflow:auto}
+.html-extract-pre{margin:0;padding:8px 10px;font-family:'SF Mono','Fira Code',monospace;font-size:.66em;line-height:1.45;color:#334155;background:#f8fafc;white-space:pre;overflow-x:auto}
+.html-extract-pre code{background:none;padding:0;color:inherit;font-size:inherit}
+
+/* ── HTML Preview Tab (Editor) ─── */
+.html-preview-tab{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.html-preview-tab-toolbar{display:flex;align-items:center;gap:.5rem;padding:.5rem 1rem;border-bottom:1px solid #eee;background:#fafafa}
+.html-preview-tab-label{font-size:.82rem;font-weight:600;color:#333}
+.html-preview-tab-badge{font-size:.65rem;font-weight:500;padding:1px 6px;background:#e8f4fd;color:#0369a1;border-radius:4px}
+.html-preview-tab-frame{flex:1;width:100%;border:none;background:#fff;display:block}
+.html-preview-tab-toggle{display:flex;border:1px solid #ddd;border-radius:6px;overflow:hidden;background:#fff}
+.html-preview-tab-toggle-btn{padding:3px 10px;border:none;background:none;font-size:.72rem;font-weight:500;color:#888;cursor:pointer;transition:all .12s;font-family:inherit}
+.html-preview-tab-toggle-btn:hover{color:#555;background:#f5f5f5}
+.html-preview-tab-toggle-btn.active{background:#333;color:#fff}
+.html-preview-tab-toolbar .editor-actions{margin-left:auto;display:flex;align-items:center;gap:.5rem}

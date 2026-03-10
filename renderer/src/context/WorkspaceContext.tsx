@@ -155,10 +155,11 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     const supabase = await backend.detectSupabase(result.folderPath);
     setSupabaseConfig(supabase);
 
-    // Auto-open README or first root file
+    // Auto-open: prefer .html files (shown as preview), then README, then first file
     const rootFiles = result.tree.filter(e => e.type === 'file');
+    const htmlFile = rootFiles.find(f => f.name.toLowerCase().endsWith('.html'));
     const readme = rootFiles.find(f => f.name.toLowerCase().startsWith('readme'));
-    const toOpen = readme ?? rootFiles[0];
+    const toOpen = htmlFile ?? readme ?? rootFiles[0];
     if (toOpen) {
       const res = await backend.readFile(toOpen.path);
       if (res.success && res.content) {
@@ -225,6 +226,15 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     window.addEventListener('open-github-logs-tab', handler as EventListener);
     return () => window.removeEventListener('open-github-logs-tab', handler as EventListener);
   }, [tabManager.openTabs]);
+
+  // Listen for custom event to open HTML preview tab
+  useEffect(() => {
+    const handler = (e: CustomEvent<{ name: string; tabKey: string; html: string }>) => {
+      tabManager.openHtmlPreview(e.detail.tabKey, e.detail.name, e.detail.html);
+    };
+    window.addEventListener('open-html-preview-tab', handler as EventListener);
+    return () => window.removeEventListener('open-html-preview-tab', handler as EventListener);
+  }, [tabManager.openHtmlPreview]);
 
   const runNpmScript = useCallback((projectPath: string, scriptName: string) => {
     window.dispatchEvent(new CustomEvent('show-terminal'));
