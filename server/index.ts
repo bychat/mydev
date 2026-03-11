@@ -28,12 +28,8 @@ import path from 'path';
 import { WebSocketServer, WebSocket } from 'ws';
 import { getConnectorRegistry } from '../core/connector';
 import { registerBuiltInConnectors } from '../connectors';
-import {
-  loadConnectorConfigs,
-  saveConnectorConfig,
-  saveConnectorState,
-  loadSingleConnectorConfig,
-} from '../main/storage';
+import { restoreConnectorStates } from '../core/connector-bootstrap';
+import { getStorage } from '../core/storage';
 import apiRoutes from './routes';
 
 const app = express();
@@ -60,20 +56,10 @@ app.use(express.static(rendererDist));
 
 registerBuiltInConnectors();
 const registry = getConnectorRegistry();
+const storage = getStorage();
 
-// Restore saved connector configs and states from disk
-const savedConfigs = loadConnectorConfigs();
-for (const [connectorId, persisted] of Object.entries(savedConfigs)) {
-  if (registry.get(connectorId) && persisted.config && Object.keys(persisted.config).length > 0) {
-    registry.setConfig(connectorId, persisted.config);
-    if (persisted.state && persisted.state.status === 'connected') {
-      registry.setState(connectorId, {
-        status: 'connected',
-        lastConnected: persisted.state.lastConnected,
-      });
-    }
-  }
-}
+// Restore saved connector configs and states from disk (shared logic)
+restoreConnectorStates(registry, storage.loadConnectorConfigs() as Record<string, import('../core/storage').PersistedConnectorData>);
 
 // ─── Middleware placeholder for enterprise auth ───
 
@@ -119,9 +105,9 @@ app.post('/api/connectors/:id/test', async (req, res) => {
   try {
     const result = await registry.testConnection(req.params.id, req.body.config);
     const state = registry.getState(req.params.id);
-    saveConnectorState(req.params.id, state);
+    storage.saveConnectorState(req.params.id, state);
     if (result.success) {
-      saveConnectorConfig(req.params.id, req.body.config, state);
+      storage.saveConnectorConfig(req.params.id, req.body.config, state);
     }
     res.json(result);
   } catch (err) {
@@ -131,12 +117,12 @@ app.post('/api/connectors/:id/test', async (req, res) => {
 
 app.post('/api/connectors/:id/config', (req, res) => {
   registry.setConfig(req.params.id, req.body.config);
-  saveConnectorConfig(req.params.id, req.body.config);
+  storage.saveConnectorConfig(req.params.id, req.body.config);
   res.json({ success: true });
 });
 
 app.get('/api/connectors/:id/config', (req, res) => {
-  const config = registry.getConfig(req.params.id) ?? loadSingleConnectorConfig(req.params.id);
+  const config = registry.getConfig(req.params.id) ?? storage.loadSingleConnectorConfig(req.params.id);
   res.json(config ?? null);
 });
 

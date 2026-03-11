@@ -157,6 +157,14 @@ export interface ElectronAPI {
   connectorSaveConfig: (connectorId: string, config: Record<string, unknown>) => Promise<{ success: boolean }>;
   connectorLoadConfig: (connectorId: string) => Promise<Record<string, unknown> | null>;
   connectorExecute: (connectorId: string, actionId: string, params?: Record<string, unknown>) => Promise<{ success: boolean; data?: unknown; error?: string }>;
+  // Orchestrator — Agent Profiles & Workflows
+  orchestratorListProfiles: () => Promise<unknown[]>;
+  orchestratorSaveProfile: (profile: unknown) => Promise<{ success: boolean }>;
+  orchestratorDeleteProfile: (profileId: string) => Promise<{ success: boolean; error?: string }>;
+  orchestratorListWorkflows: () => Promise<unknown[]>;
+  orchestratorGetWorkflow: (workflowId: string) => Promise<unknown | null>;
+  orchestratorSaveWorkflow: (workflow: unknown) => Promise<{ success: boolean }>;
+  orchestratorDeleteWorkflow: (workflowId: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 declare global {

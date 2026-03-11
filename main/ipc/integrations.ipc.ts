@@ -1,15 +1,22 @@
 /**
- * Integration IPC handlers — NPM, Supabase, GitHub, Atlassian, Shell
+ * Integration IPC handlers — NPM, Shell, and legacy per-connector IPC.
+ *
+ * NOTE: The per-connector handlers (Supabase, GitHub, Atlassian) below are
+ * LEGACY — they exist for backward compatibility with any renderer code that
+ * still calls them directly. New code should use the generic connector IPC
+ * (`connector-execute`) registered in `main/connectorIpc.ts`.
  */
 import { ipcMain, shell } from 'electron';
 import { findNpmProjects } from '../workspace';
+
+// Import from self-contained connector packages (not from main/)
 import {
   detectSupabaseConfig,
   fetchSupabaseUsers,
   fetchSupabaseStorage,
   fetchSupabaseTables,
   executeSupabaseQuery,
-} from '../supabase';
+} from '../../connectors/supabase/api';
 import {
   extractRepoInfo,
   listWorkflows,
@@ -20,13 +27,13 @@ import {
   rerunWorkflow,
   listIssues,
   type GitHubIssueFilterState,
-} from '../github';
+} from '../../connectors/github/api';
 import {
   testConnection,
   fetchProjects,
   fetchProjectIssues,
   type AtlassianConnection,
-} from '../atlassian';
+} from '../../connectors/atlassian/api';
 import { loadAtlassianConnections, saveAtlassianConnections } from '../storage';
 
 export function registerIntegrationsIpc(): void {

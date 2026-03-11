@@ -10,6 +10,8 @@
 
 import { ipcMain } from 'electron';
 import { getConnectorRegistry } from '../connectors';
+import { restoreConnectorStates } from '../core/connector-bootstrap';
+import type { PersistedConnectorData } from '../core/storage';
 import {
   loadConnectorConfigs,
   saveConnectorConfig,
@@ -21,18 +23,7 @@ export function registerConnectorIpcHandlers(): void {
   const registry = getConnectorRegistry();
 
   // Restore saved configs AND states from disk into the in-memory registry
-  const saved = loadConnectorConfigs();
-  for (const [connectorId, persisted] of Object.entries(saved)) {
-    if (registry.get(connectorId) && persisted.config && Object.keys(persisted.config).length > 0) {
-      registry.setConfig(connectorId, persisted.config);
-      if (persisted.state && persisted.state.status === 'connected') {
-        registry.setState(connectorId, {
-          status: 'connected',
-          lastConnected: persisted.state.lastConnected,
-        });
-      }
-    }
-  }
+  restoreConnectorStates(registry, loadConnectorConfigs() as Record<string, PersistedConnectorData>);
 
   // List all connectors
   ipcMain.handle('connector-list', async () => {

@@ -11,6 +11,7 @@ export { registerMcpIpc } from './mcp.ipc';
 export { registerCliProviderIpc } from './cliProvider.ipc';
 export { registerAgentIpc } from './agent.ipc';
 export { registerSessionIpc } from './session.ipc';
+export { registerOrchestratorIpc } from './orchestrator.ipc';
 
 /** @deprecated Use registerCliProviderIpc — this re-export exists for backward compat */
 export { registerGhCliIpc } from './ghCli.ipc';

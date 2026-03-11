@@ -301,5 +301,20 @@ export function createHttpAdapter(): BackendAPI {
     connectorSaveConfig: (id, config) => post(`/api/connectors/${id}/config`, { config }),
     connectorLoadConfig: (id) => get(`/api/connectors/${id}/config`),
     connectorExecute: (id, actionId, params) => post(`/api/connectors/${id}/actions/${actionId}`, { params }),
+
+    // ── Orchestrator ──
+    orchestratorListProfiles: () => get('/api/orchestrator/profiles'),
+    orchestratorSaveProfile: (p) => post('/api/orchestrator/profiles', p),
+    orchestratorDeleteProfile: async (id) => {
+      const res = await fetch(`${baseUrl()}/api/orchestrator/profiles/${id}`, { method: 'DELETE' });
+      return res.json();
+    },
+    orchestratorListWorkflows: () => get('/api/orchestrator/workflows'),
+    orchestratorGetWorkflow: (id) => get(`/api/orchestrator/workflows/${id}`),
+    orchestratorSaveWorkflow: (w) => post('/api/orchestrator/workflows', w),
+    orchestratorDeleteWorkflow: async (id) => {
+      const res = await fetch(`${baseUrl()}/api/orchestrator/workflows/${id}`, { method: 'DELETE' });
+      return res.json();
+    },
   };
 }

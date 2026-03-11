@@ -187,4 +187,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   connectorSaveConfig: (connectorId, config) => ipcRenderer.invoke('connector-save-config', connectorId, config),
   connectorLoadConfig: (connectorId) => ipcRenderer.invoke('connector-load-config', connectorId),
   connectorExecute: (connectorId, actionId, params) => ipcRenderer.invoke('connector-execute', connectorId, actionId, params),
+
+  // Orchestrator — Agent Profiles & Workflows
+  orchestratorListProfiles: () => ipcRenderer.invoke('orchestrator-list-profiles'),
+  orchestratorSaveProfile: (profile) => ipcRenderer.invoke('orchestrator-save-profile', profile),
+  orchestratorDeleteProfile: (profileId) => ipcRenderer.invoke('orchestrator-delete-profile', profileId),
+  orchestratorListWorkflows: () => ipcRenderer.invoke('orchestrator-list-workflows'),
+  orchestratorGetWorkflow: (workflowId) => ipcRenderer.invoke('orchestrator-get-workflow', workflowId),
+  orchestratorSaveWorkflow: (workflow) => ipcRenderer.invoke('orchestrator-save-workflow', workflow),
+  orchestratorDeleteWorkflow: (workflowId) => ipcRenderer.invoke('orchestrator-delete-workflow', workflowId),
 });

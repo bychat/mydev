@@ -8,6 +8,7 @@ import promptsRoutes from './prompts.routes';
 import historyRoutes from './history.routes';
 import integrationsRoutes from './integrations.routes';
 import sessionRoutes from './session.routes';
+import orchestratorRoutes from './orchestrator.routes';
 
 const router = Router();
 
@@ -17,5 +18,6 @@ router.use(promptsRoutes);
 router.use(historyRoutes);
 router.use(integrationsRoutes);
 router.use('/session', sessionRoutes);
+router.use('/orchestrator', orchestratorRoutes);
 
 export default router;

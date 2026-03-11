@@ -4,10 +4,14 @@
  * All JSON settings / credential files that live in the user-data directory
  * are read / written through this module. Domain modules (ai, prompts,
  * atlassian, etc.) stay pure — they never know *where* data is stored.
+ *
+ * Connector-related persistence is delegated to `core/storage.ts` (StoragePort).
  */
 import * as fs from 'fs';
 import * as path from 'path';
 import { getUserDataDir } from '../core/dataDir';
+import { getStorage } from '../core/storage';
+export type { PersistedConnectorData, StoragePort } from '../core/storage';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -136,43 +140,63 @@ export function resetPromptSettings(): PromptSettings {
 }
 
 // ── Atlassian Connections ────────────────────────────────────────────────────
+// MIGRATION: Reads from generic connector config first, falls back to legacy file.
 
 import type { AtlassianConnection } from './atlassian';
 
 const ATLASSIAN_FILE = () => dataFile('atlassian-connections.json');
 
 /**
- * Load Atlassian connections from JSON file, merging in any connection
- * defined via environment variables (ATLASSIAN_DOMAIN, ATLASSIAN_EMAIL,
- * ATLASSIAN_API_TOKEN). The env-based connection is always first and
- * won't be duplicated if it already exists in the saved file.
+ * Load Atlassian connections. Reads from the generic connector config store
+ * first (connector id "atlassian"). Falls back to the legacy JSON file.
+ * Environment variables still take precedence.
  */
 export function loadAtlassianConnections(): AtlassianConnection[] {
-  const saved = readJSON<AtlassianConnection[]>(ATLASSIAN_FILE(), []);
+  // Try generic connector config first
+  const connectorConfig = getStorage().loadSingleConnectorConfig('atlassian') as Record<string, unknown> | null;
+  if (connectorConfig && connectorConfig.domain && connectorConfig.email && connectorConfig.apiToken) {
+    const connections: AtlassianConnection[] = [{
+      domain: connectorConfig.domain as string,
+      email: connectorConfig.email as string,
+      apiToken: connectorConfig.apiToken as string,
+    }];
+    return mergeAtlassianEnvConnection(connections);
+  }
 
-  // Check for env-based connection
+  // Fallback: legacy atlassian-connections.json
+  const saved = readJSON<AtlassianConnection[]>(ATLASSIAN_FILE(), []);
+  return mergeAtlassianEnvConnection(saved);
+}
+
+function mergeAtlassianEnvConnection(saved: AtlassianConnection[]): AtlassianConnection[] {
   const domain = process.env.ATLASSIAN_DOMAIN;
   const email = process.env.ATLASSIAN_EMAIL;
   const apiToken = process.env.ATLASSIAN_API_TOKEN;
 
   if (domain && email && apiToken) {
     const envConnection: AtlassianConnection = { domain, email, apiToken };
-    // Don't duplicate if this domain+email already exists
     const exists = saved.some(c => c.domain === domain && c.email === email);
-    if (!exists) {
-      return [envConnection, ...saved];
-    }
-    // Update token in case it changed in env
+    if (!exists) return [envConnection, ...saved];
     return saved.map(c =>
       c.domain === domain && c.email === email ? { ...c, apiToken } : c,
     );
   }
-
   return saved;
 }
 
 export function saveAtlassianConnections(connections: AtlassianConnection[]): void {
+  // Write to legacy file for backward compat
   writeJSON(ATLASSIAN_FILE(), connections);
+
+  // Also sync to generic connector config (first connection becomes the config)
+  if (connections.length > 0) {
+    const first = connections[0];
+    getStorage().saveConnectorConfig('atlassian', {
+      domain: first.domain,
+      email: first.email,
+      apiToken: first.apiToken,
+    }, { status: 'connected', lastConnected: new Date().toISOString() });
+  }
 }
 
 // ── MCP Servers ──────────────────────────────────────────────────────────────
@@ -231,70 +255,31 @@ export function deleteAgentConfig(agentId: string): boolean {
   return true;
 }
 
-// ── Connector Configs ────────────────────────────────────────────────────────
+// ── Connector Configs (delegated to core/storage.ts StoragePort) ─────────────
 
-interface ConnectorPersisted {
-  config: Record<string, unknown>;
-  state: { status: string; error?: string; lastConnected?: string };
+/**
+ * All connector persistence is delegated to the StoragePort.
+ * These re-exports keep existing callsites working without changes.
+ */
+export function loadConnectorConfigs() {
+  return getStorage().loadConnectorConfigs();
 }
 
-const CONNECTOR_CONFIGS_FILE = () => dataFile('connector-configs.json');
-
-/** Load all connector data from disk. Returns a map of connectorId → { config, state }. */
-export function loadConnectorConfigs(): Record<string, ConnectorPersisted> {
-  const raw = readJSON<Record<string, unknown>>(CONNECTOR_CONFIGS_FILE(), {});
-  const result: Record<string, ConnectorPersisted> = {};
-
-  for (const [id, value] of Object.entries(raw)) {
-    if (value && typeof value === 'object') {
-      const obj = value as Record<string, unknown>;
-      // New format: has { config: {...}, state: {...} }
-      if (obj.config && typeof obj.config === 'object' && obj.state && typeof obj.state === 'object') {
-        result[id] = obj as unknown as ConnectorPersisted;
-      } else {
-        // Old format: the value IS the config directly — migrate it
-        result[id] = {
-          config: obj as Record<string, unknown>,
-          state: { status: 'connected', lastConnected: new Date().toISOString() },
-        };
-      }
-    }
-  }
-  return result;
-}
-
-/** Save a single connector's config + state to disk (merges with existing). */
 export function saveConnectorConfig(
   connectorId: string,
   config: Record<string, unknown>,
   state?: { status: string; error?: string; lastConnected?: string },
 ): void {
-  const all = loadConnectorConfigs();
-  if (Object.keys(config).length === 0) {
-    delete all[connectorId];
-  } else {
-    all[connectorId] = {
-      config,
-      state: state ?? all[connectorId]?.state ?? { status: 'disconnected' },
-    };
-  }
-  writeJSON(CONNECTOR_CONFIGS_FILE(), all);
+  getStorage().saveConnectorConfig(connectorId, config, state);
 }
 
-/** Update just the state for a connector on disk. */
 export function saveConnectorState(
   connectorId: string,
   state: { status: string; error?: string; lastConnected?: string },
 ): void {
-  const all = loadConnectorConfigs();
-  if (all[connectorId]) {
-    all[connectorId].state = state;
-    writeJSON(CONNECTOR_CONFIGS_FILE(), all);
-  }
+  getStorage().saveConnectorState(connectorId, state);
 }
 
-/** Load a single connector's config from disk. */
 export function loadSingleConnectorConfig(connectorId: string): Record<string, unknown> | null {
-  const all = loadConnectorConfigs();
-  return all[connectorId]?.config ?? null;
+  return getStorage().loadSingleConnectorConfig(connectorId) as Record<string, unknown> | null;
 }

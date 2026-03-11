@@ -13,9 +13,9 @@
  */
 
 import { getConnectorRegistry, type Connector } from '../core/connector';
-import { githubConnector } from './github.connector';
-import { atlassianConnector } from './atlassian.connector';
-import { supabaseConnector } from './supabase.connector';
+import { githubConnector } from './github';
+import { atlassianConnector } from './atlassian';
+import { supabaseConnector } from './supabase';
 
 /**
  * All built-in connectors. Add new ones here.

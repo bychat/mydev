@@ -10,40 +10,39 @@
  */
 
 import type { ConnectorMetadata, ConnectorState, ConnectorConfigField, ConnectorAction, ConnectorActionResult } from './connector';
+import type { AgentProfile, Workflow } from './orchestrator';
 
 // ─── Connector Operations ───
 
 export interface ConnectorOperations {
-  /** List all available connectors (metadata only) */
-  listConnectors(): Promise<ConnectorMetadata[]>;
+  // ...existing code...
+}
 
-  /** Get config fields for a specific connector */
-  getConfigFields(connectorId: string): Promise<ConnectorConfigField[]>;
+// ─── Orchestrator Operations ───
 
-  /** Get available actions for a connector */
-  getActions(connectorId: string): Promise<ConnectorAction[]>;
+export interface OrchestratorOperations {
+  /** List all agent profiles */
+  listProfiles(): Promise<AgentProfile[]>;
+  /** Save (create or update) an agent profile */
+  saveProfile(profile: AgentProfile): Promise<void>;
+  /** Delete an agent profile */
+  deleteProfile(profileId: string): Promise<boolean>;
 
-  /** Get current state (connected/disconnected/error) */
-  getState(connectorId: string): Promise<ConnectorState>;
-
-  /** Test connection with given config */
-  testConnection(connectorId: string, config: Record<string, unknown>): Promise<{ success: boolean; error?: string }>;
-
-  /** Save connector configuration */
-  saveConfig(connectorId: string, config: Record<string, unknown>): Promise<void>;
-
-  /** Load saved connector configuration */
-  loadConfig(connectorId: string): Promise<Record<string, unknown> | null>;
-
-  /** Execute a connector action */
-  executeAction(connectorId: string, actionId: string, params?: Record<string, unknown>): Promise<ConnectorActionResult>;
+  /** List all workflows */
+  listWorkflows(): Promise<Workflow[]>;
+  /** Get a specific workflow */
+  getWorkflow(workflowId: string): Promise<Workflow | null>;
+  /** Save (create or update) a workflow */
+  saveWorkflow(workflow: Workflow): Promise<void>;
+  /** Delete a workflow */
+  deleteWorkflow(workflowId: string): Promise<boolean>;
 }
 
 // ─── Full Backend Adapter ───
 
 /**
- * The BackendAdapter combines connector operations with any
- * other backend capabilities (file system, AI, terminal, etc.).
+ * The BackendAdapter combines connector operations, orchestrator operations,
+ * and any other backend capabilities (file system, AI, terminal, etc.).
  * 
  * For open-source desktop: ElectronBackendAdapter (uses IPC)
  * For enterprise cloud: HttpBackendAdapter (uses REST API)
@@ -51,6 +50,9 @@ export interface ConnectorOperations {
 export interface BackendAdapter {
   /** Connector plugin operations */
   connectors: ConnectorOperations;
+
+  /** Orchestrator operations (agent profiles, workflows) */
+  orchestrator: OrchestratorOperations;
 
   /** 
    * The mode this adapter is running in.

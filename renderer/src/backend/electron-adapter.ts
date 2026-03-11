@@ -174,5 +174,14 @@ export function createElectronAdapter(): BackendAPI {
     connectorSaveConfig: (id, config) => api.connectorSaveConfig(id, config),
     connectorLoadConfig: (id) => api.connectorLoadConfig(id),
     connectorExecute: (id, actionId, params) => api.connectorExecute(id, actionId, params),
+
+    // ── Orchestrator ──
+    orchestratorListProfiles: () => api.orchestratorListProfiles(),
+    orchestratorSaveProfile: (p) => api.orchestratorSaveProfile(p),
+    orchestratorDeleteProfile: (id) => api.orchestratorDeleteProfile(id),
+    orchestratorListWorkflows: () => api.orchestratorListWorkflows(),
+    orchestratorGetWorkflow: (id) => api.orchestratorGetWorkflow(id),
+    orchestratorSaveWorkflow: (w) => api.orchestratorSaveWorkflow(w),
+    orchestratorDeleteWorkflow: (id) => api.orchestratorDeleteWorkflow(id),
   };
 }
