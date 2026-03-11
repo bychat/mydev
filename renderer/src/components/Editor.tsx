@@ -7,6 +7,7 @@ import SupabaseStorageTab from './SupabaseStorageTab';
 import SqlQueryResultTab from './SqlQueryResultTab';
 import GitHubLogsViewer from './GitHubLogsViewer';
 import AgentsPanel from './AgentsPanel';
+import WorkflowEditor from './WorkflowEditor';
 import type { DiffResult } from '../types';
 
 export default function Editor() {
@@ -22,6 +23,7 @@ export default function Editor() {
   const isSqlResult = activeTab?.path.startsWith('sql-result:');
   const isGitHubLogs = activeTab?.path.startsWith('github-logs:');
   const isAgents = activeTab?.path === 'agents:flow';
+  const isWorkflow = activeTab?.path.startsWith('workflow:');
   const isHtmlPreview = activeTab?.path.startsWith('html-preview:');
   const isHtmlFile = !isDiff && !isHtmlPreview && activeTab?.path.endsWith('.html');
 
@@ -132,6 +134,16 @@ export default function Editor() {
       <div className="editor-container">
         <EditorTabs />
         <AgentsPanel />
+      </div>
+    );
+  }
+
+  // Workflow editor view
+  if (isWorkflow) {
+    return (
+      <div className="editor-container">
+        <EditorTabs />
+        <WorkflowEditor />
       </div>
     );
   }

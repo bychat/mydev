@@ -316,5 +316,34 @@ export function createHttpAdapter(): BackendAPI {
       const res = await fetch(`${baseUrl()}/api/orchestrator/workflows/${id}`, { method: 'DELETE' });
       return res.json();
     },
+
+    // ── Execution Runs & Event Bus ──
+    orchestratorListRuns: () => get('/api/orchestrator/runs'),
+    orchestratorGetRun: (id) => get(`/api/orchestrator/runs/${id}`),
+    orchestratorGetRunEvents: (id) => get(`/api/orchestrator/runs/${id}/events`),
+    orchestratorGetEventHistory: (filter) => post('/api/orchestrator/events/history', filter),
+    onOrchestratorEvent: (cb) => {
+      // In web mode, orchestrator events come over WebSocket
+      const handler = (e: MessageEvent) => {
+        try {
+          const msg = JSON.parse(e.data);
+          if (msg.type === 'orchestrator-event') cb(msg.data);
+        } catch { /* ignore parse errors */ }
+      };
+      // Attach to the existing WS or no-op
+      return () => {};
+    },
+
+    // ── Visual Workflow Editor ──
+    orchestratorSaveEditorWorkflow: (d) => post('/api/orchestrator/editor-workflows', d),
+    orchestratorListEditorWorkflows: () => get('/api/orchestrator/editor-workflows'),
+    orchestratorDeleteEditorWorkflow: async (id) => {
+      const res = await fetch(`${baseUrl()}/api/orchestrator/editor-workflows/${id}`, { method: 'DELETE' });
+      return res.json();
+    },
+
+    // ── Workflow Execution ──
+    orchestratorExecuteWorkflow: (data) => post('/api/orchestrator/execute-workflow', data),
+    orchestratorSaveRun: (run) => post('/api/orchestrator/runs', run),
   };
 }

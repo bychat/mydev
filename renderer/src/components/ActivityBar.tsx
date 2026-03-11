@@ -14,6 +14,7 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import StorageIcon from '@mui/icons-material/Storage';
 import HubIcon from '@mui/icons-material/Hub';
 import ExtensionIcon from '@mui/icons-material/Extension';
+import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import { useWorkspace } from '../context/WorkspaceContext';
 import { useBackend } from '../context/BackendContext';
 import type { SidePanel } from '../types';
@@ -82,7 +83,7 @@ interface ActivityBarProps {
 }
 
 export default function ActivityBar({ onToggleTerminal, terminalVisible }: ActivityBarProps) {
-  const { activePanel, setActivePanel, hasGit, npmProjects, gitSplitChanges, openAgentsTab } = useWorkspace();
+  const { activePanel, setActivePanel, hasGit, npmProjects, gitSplitChanges, openAgentsTab, openWorkflowEditor } = useWorkspace();
   const backend = useBackend();
   const [promptSettingsOpen, setPromptSettingsOpen] = useState(false);
 
@@ -241,6 +242,25 @@ export default function ActivityBar({ onToggleTerminal, terminalVisible }: Activ
             }}
           >
             <TuneIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+
+        {/* Workflow Editor */}
+        <Tooltip title="Workflow Editor" placement="right">
+          <IconButton
+            onClick={() => openWorkflowEditor()}
+            sx={{
+              width: 40,
+              height: 40,
+              borderRadius: 1.5,
+              color: 'text.secondary',
+              '&:hover': {
+                bgcolor: 'rgba(0,0,0,0.05)',
+                color: 'text.primary',
+              },
+            }}
+          >
+            <AccountTreeIcon fontSize="small" />
           </IconButton>
         </Tooltip>
 

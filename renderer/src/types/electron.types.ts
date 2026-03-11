@@ -165,6 +165,19 @@ export interface ElectronAPI {
   orchestratorGetWorkflow: (workflowId: string) => Promise<unknown | null>;
   orchestratorSaveWorkflow: (workflow: unknown) => Promise<{ success: boolean }>;
   orchestratorDeleteWorkflow: (workflowId: string) => Promise<{ success: boolean; error?: string }>;
+  // Execution Runs & Event Bus
+  orchestratorListRuns: () => Promise<unknown[]>;
+  orchestratorGetRun: (runId: string) => Promise<unknown | null>;
+  orchestratorGetRunEvents: (correlationId: string) => Promise<unknown[]>;
+  orchestratorGetEventHistory: (filter?: Record<string, string>) => Promise<unknown[]>;
+  onOrchestratorEvent: (cb: (event: unknown) => void) => () => void;
+  // Visual Workflow Editor
+  orchestratorSaveEditorWorkflow: (data: unknown) => Promise<{ success: boolean }>;
+  orchestratorListEditorWorkflows: () => Promise<unknown[]>;
+  orchestratorDeleteEditorWorkflow: (workflowId: string) => Promise<{ success: boolean }>;
+  // Workflow Execution
+  orchestratorExecuteWorkflow: (workflowData: { id: string; name: string; nodes: unknown[]; edges: unknown[] }) => Promise<{ success: boolean; run?: unknown }>;
+  orchestratorSaveRun: (run: unknown) => Promise<{ success: boolean }>;
 }
 
 declare global {

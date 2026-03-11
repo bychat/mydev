@@ -27,6 +27,7 @@ export interface TabManagerActions {
   openSqlQueryTab: (query: string) => void;
   openAgentsTab: () => void;
   openHtmlPreview: (tabKey: string, name: string, html: string) => void;
+  openWorkflowEditor: (workflowId?: string, workflowName?: string) => void;
 }
 
 export function useTabManager(folderPath: string | null): TabManagerState & TabManagerActions {
@@ -115,6 +116,20 @@ export function useTabManager(folderPath: string | null): TabManagerState & TabM
     setActiveTabPath(tabKey);
   }, [openTabs]);
 
+  const openWorkflowEditor = useCallback((workflowId?: string, workflowName?: string) => {
+    const tabKey = workflowId ? `workflow:${workflowId}` : 'workflow:new';
+    const existing = openTabs.find(t => t.path === tabKey);
+    if (existing) { setActiveTabPath(tabKey); return; }
+    setOpenTabs(prev => [...prev, {
+      name: `⚡ ${workflowName || 'Workflow Editor'}`,
+      path: tabKey,
+      content: workflowId || '',
+      modified: false,
+      readOnly: true,
+    }]);
+    setActiveTabPath(tabKey);
+  }, [openTabs]);
+
   const closeTab = useCallback((filePath: string) => {
     setOpenTabs(prev => {
       const next = prev.filter(t => t.path !== filePath);
@@ -181,5 +196,6 @@ export function useTabManager(folderPath: string | null): TabManagerState & TabM
     openSqlQueryTab,
     openAgentsTab,
     openHtmlPreview,
+    openWorkflowEditor,
   };
 }

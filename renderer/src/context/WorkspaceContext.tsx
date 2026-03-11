@@ -53,6 +53,7 @@ interface WorkspaceContextValue {
   openSupabaseTab: (tabType: 'users' | 'storage') => void;
   openSqlQueryTab: (query: string) => void;
   openAgentsTab: () => void;
+  openWorkflowEditor: (workflowId?: string, workflowName?: string) => void;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
@@ -254,6 +255,15 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('open-html-preview-tab', handler as EventListener);
   }, [tabManager.openHtmlPreview]);
 
+  // Listen for custom event to open Workflow Editor tab
+  useEffect(() => {
+    const handler = (e: CustomEvent<{ workflowId?: string; workflowName?: string }>) => {
+      tabManager.openWorkflowEditor(e.detail?.workflowId, e.detail?.workflowName);
+    };
+    window.addEventListener('open-workflow-editor-tab', handler as EventListener);
+    return () => window.removeEventListener('open-workflow-editor-tab', handler as EventListener);
+  }, [tabManager.openWorkflowEditor]);
+
   const runNpmScript = useCallback((projectPath: string, scriptName: string) => {
     window.dispatchEvent(new CustomEvent('show-terminal'));
     const projectName = projectPath.split('/').pop() || projectPath;
@@ -290,6 +300,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       openSupabaseTab: tabManager.openSupabaseTab,
       openSqlQueryTab: tabManager.openSqlQueryTab,
       openAgentsTab: tabManager.openAgentsTab,
+      openWorkflowEditor: tabManager.openWorkflowEditor,
     }}>
       {children}
     </WorkspaceContext.Provider>

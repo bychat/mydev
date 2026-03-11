@@ -183,5 +183,21 @@ export function createElectronAdapter(): BackendAPI {
     orchestratorGetWorkflow: (id) => api.orchestratorGetWorkflow(id),
     orchestratorSaveWorkflow: (w) => api.orchestratorSaveWorkflow(w),
     orchestratorDeleteWorkflow: (id) => api.orchestratorDeleteWorkflow(id),
+
+    // ── Execution Runs & Event Bus ──
+    orchestratorListRuns: () => api.orchestratorListRuns(),
+    orchestratorGetRun: (id) => api.orchestratorGetRun(id),
+    orchestratorGetRunEvents: (id) => api.orchestratorGetRunEvents(id),
+    orchestratorGetEventHistory: (f) => api.orchestratorGetEventHistory(f),
+    onOrchestratorEvent: (cb) => api.onOrchestratorEvent(cb),
+
+    // ── Visual Workflow Editor ──
+    orchestratorSaveEditorWorkflow: (d) => api.orchestratorSaveEditorWorkflow(d),
+    orchestratorListEditorWorkflows: () => api.orchestratorListEditorWorkflows(),
+    orchestratorDeleteEditorWorkflow: (id) => api.orchestratorDeleteEditorWorkflow(id),
+
+    // ── Workflow Execution ──
+    orchestratorExecuteWorkflow: (data) => api.orchestratorExecuteWorkflow(data),
+    orchestratorSaveRun: (run) => api.orchestratorSaveRun(run),
   };
 }

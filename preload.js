@@ -196,4 +196,24 @@ contextBridge.exposeInMainWorld('electronAPI', {
   orchestratorGetWorkflow: (workflowId) => ipcRenderer.invoke('orchestrator-get-workflow', workflowId),
   orchestratorSaveWorkflow: (workflow) => ipcRenderer.invoke('orchestrator-save-workflow', workflow),
   orchestratorDeleteWorkflow: (workflowId) => ipcRenderer.invoke('orchestrator-delete-workflow', workflowId),
+
+  // Execution Runs & Event Bus
+  orchestratorListRuns: () => ipcRenderer.invoke('orchestrator-list-runs'),
+  orchestratorGetRun: (runId) => ipcRenderer.invoke('orchestrator-get-run', runId),
+  orchestratorGetRunEvents: (correlationId) => ipcRenderer.invoke('orchestrator-get-run-events', correlationId),
+  orchestratorGetEventHistory: (filter) => ipcRenderer.invoke('orchestrator-get-event-history', filter),
+  onOrchestratorEvent: (cb) => {
+    const listener = (_event, busEvent) => cb(busEvent);
+    ipcRenderer.on('orchestrator-event', listener);
+    return () => ipcRenderer.removeListener('orchestrator-event', listener);
+  },
+
+  // Visual Workflow Editor
+  orchestratorSaveEditorWorkflow: (data) => ipcRenderer.invoke('orchestrator-save-editor-workflow', data),
+  orchestratorListEditorWorkflows: () => ipcRenderer.invoke('orchestrator-list-editor-workflows'),
+  orchestratorDeleteEditorWorkflow: (workflowId) => ipcRenderer.invoke('orchestrator-delete-editor-workflow', workflowId),
+
+  // Workflow Execution
+  orchestratorExecuteWorkflow: (workflowData) => ipcRenderer.invoke('orchestrator-execute-workflow', workflowData),
+  orchestratorSaveRun: (run) => ipcRenderer.invoke('orchestrator-save-run', run),
 });

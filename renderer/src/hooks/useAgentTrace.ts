@@ -3,8 +3,12 @@
  *
  * Creates trace objects, appends steps in real time, and provides
  * the data needed to render the trace viewer in the UI.
+ *
+ * Also bridges to the orchestrator event bus so that agent runs
+ * are visible in the WorkflowEditor execution log.
  */
 import { useState, useCallback, useRef } from 'react';
+import { useBackend } from '../context/BackendContext';
 import type { AgentTrace, TraceStep, TraceStepStatus, PhaseCategory } from '../types/agent.types';
 
 let stepCounter = 0;
@@ -16,6 +20,7 @@ export function useAgentTrace() {
   const [traces, setTraces] = useState<AgentTrace[]>([]);
   const [activeTraceId, setActiveTraceId] = useState<string | null>(null);
   const traceRef = useRef<AgentTrace | null>(null);
+  const backend = useBackend();
 
   const activeTrace = traces.find(t => t.id === activeTraceId) || null;
 
@@ -34,8 +39,18 @@ export function useAgentTrace() {
     traceRef.current = trace;
     setTraces(prev => [trace, ...prev]);
     setActiveTraceId(id);
+
+    // Bridge: save as an execution run so it appears in WorkflowEditor logs
+    backend.orchestratorSaveRun({
+      id,
+      workflowId: `agent:${agentId}`,
+      status: 'running',
+      startedAt: trace.startedAt,
+      steps: [],
+    }).catch(() => { /* ignore — non-critical */ });
+
     return id;
-  }, []);
+  }, [backend]);
 
   /** Add a step to the current trace */
   const addStep = useCallback((
@@ -115,10 +130,29 @@ export function useAgentTrace() {
         finishedAt: new Date().toISOString(),
         totalDurationMs: Date.now() - new Date(t.startedAt).getTime(),
       };
+
+      // Bridge: update execution run with final status & steps
+      backend.orchestratorSaveRun({
+        id: finished.id,
+        workflowId: `agent:${finished.agentId}`,
+        status: status === 'success' ? 'completed' : 'failed',
+        startedAt: finished.startedAt,
+        finishedAt: finished.finishedAt,
+        steps: finished.steps.map(s => ({
+          nodeId: s.nodeId,
+          label: s.nodeLabel,
+          status: s.status === 'success' ? 'completed' : s.status === 'error' ? 'failed' : s.status,
+          durationMs: s.durationMs,
+          input: s.input,
+          output: s.output,
+          error: s.error,
+        })),
+      }).catch(() => { /* ignore */ });
+
       traceRef.current = null;
       return finished;
     }));
-  }, []);
+  }, [backend]);
 
   return {
     traces,
