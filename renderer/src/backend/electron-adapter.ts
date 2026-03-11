@@ -165,5 +165,14 @@ export function createElectronAdapter(): BackendAPI {
     sessionCloneGitHub: (u, t) => api.sessionCloneGitHub(u, t),
     sessionListFolders: () => api.sessionListFolders(),
     sessionDeleteFolder: (p) => api.sessionDeleteFolder(p),
+
+    // ── Connectors ──
+    connectorList: () => api.connectorList(),
+    connectorGet: (id) => api.connectorGet(id),
+    connectorGetState: (id) => api.connectorGetState(id),
+    connectorTest: (id, config) => api.connectorTest(id, config),
+    connectorSaveConfig: (id, config) => api.connectorSaveConfig(id, config),
+    connectorLoadConfig: (id) => api.connectorLoadConfig(id),
+    connectorExecute: (id, actionId, params) => api.connectorExecute(id, actionId, params),
   };
 }

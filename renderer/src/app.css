@@ -413,7 +413,11 @@ button{font-family:inherit;cursor:pointer}
 
 /* ── Welcome ─── */
 .welcome{flex:1;display:flex;flex-direction:column;align-items:center;background:#f5f5f5;padding:2rem;overflow-y:auto}
-.welcome-container{display:flex;flex-direction:column;gap:2rem;max-width:640px;width:100%;padding-bottom:3rem}
+.welcome-two-col{display:flex;gap:2rem;width:100%;max-width:1100px;align-items:flex-start}
+.welcome-left{flex:1;min-width:0;max-width:640px}
+.welcome-right{width:320px;min-width:280px;flex-shrink:0;position:sticky;top:0}
+@media (max-width:900px){.welcome-two-col{flex-direction:column;max-width:640px}.welcome-right{width:100%;position:static}}
+.welcome-container{display:flex;flex-direction:column;gap:2rem;width:100%;padding-bottom:3rem}
 .welcome-chat-section{width:100%}
 .welcome-chat-section .start-page-chat{min-height:420px;max-height:600px}
 .welcome-history-section{background:#fff;border:1px solid #e0e0e0;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.04);padding:1.5rem 2rem;text-align:left}
@@ -988,7 +992,7 @@ button{font-family:inherit;cursor:pointer}
 
 /* GitHub Logs Viewer */
 .gh-logs-viewer{display:flex;flex-direction:column;height:100%;background:#1e1e1e;color:#d4d4d4;font-family:'SF Mono','Fira Code',monospace}
-.gh-logs-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#252526;border-bottom:1px solid #3c3c3c}
+.gh-logs-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#252526;border-bottom:1px solid #313244}
 .gh-logs-title{display:flex;align-items:center;gap:10px}
 .gh-logs-title svg{color:#fff}
 .gh-logs-title h2{font-size:.85rem;font-weight:500;color:#fff;margin:0}
@@ -1356,11 +1360,11 @@ button{font-family:inherit;cursor:pointer}
 .github-clone-btn:hover{background:#f5f5f5;border-color:#ccc;color:#333}
 .github-clone-btn svg{width:16px;height:16px}
 
-.github-clone-panel{background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:1.25rem;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+.github-clone-panel{background:#fff;border:1px solid #e0e0e0;border-radius:12px;padding:1.25rem;box-shadow:0 2px 12px rgba(0,0,0,.04)}
 .github-clone-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem}
-.github-clone-title{display:flex;align-items:center;gap:.5rem;font-size:.9rem;font-weight:600;color:#333}
+.github-clone-title{display:flex;align-items:center;gap:.5rem;font-size:.9rem;font-weight:700;color:#333}
 .github-clone-title svg{width:18px;height:18px}
-.github-clone-close{background:none;border:none;color:#999;font-size:1.4rem;cursor:pointer;padding:0 4px;line-height:1}
+.github-clone-close{background:none;border:1px solid transparent;color:#999;font-size:1.4rem;cursor:pointer;padding:0 4px;line-height:1}
 .github-clone-close:hover{color:#c0392b}
 
 .github-clone-form{display:flex;flex-direction:column;gap:1rem}
@@ -1389,64 +1393,59 @@ button{font-family:inherit;cursor:pointer}
 .html-preview-actions{display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;background:#fafafa}
 .html-preview-toggle{display:inline-flex;align-items:center;gap:.35rem;padding:.3rem .7rem;background:#fff;border:1px solid #ddd;border-radius:6px;font-size:.76rem;font-weight:600;color:#555;cursor:pointer;transition:all .15s}
 .html-preview-toggle:hover{background:#f0f0f0;border-color:#ccc}
-.html-preview-toggle.active{background:#e8f4fd;border-color:#7cc4f5;color:#0369a1}
-.html-preview-save{display:inline-flex;align-items:center;gap:.35rem;padding:.3rem .7rem;background:#fff;border:1px solid #ddd;border-radius:6px;font-size:.76rem;font-weight:500;color:#555;cursor:pointer;transition:all .15s}
-.html-preview-save:hover{background:#f0f0f0;border-color:#ccc}
-.html-preview-save:disabled{opacity:.5;cursor:not-allowed}
-.html-preview-frame-wrap{padding:.5rem .75rem .75rem;background:#fafafa}
-.html-preview-frame{width:100%;min-height:200px;max-height:500px;border:1px solid #e0e0e0;border-radius:8px;background:#fff;display:block}
+.html-preview-toggle.active{background:#333;color:#fff}
 
-/* ── Extracted HTML Card (compact action bar, no inline preview) ─── */
-.html-extract{margin:.4em 0;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.04)}
-.html-extract-header{display:flex;align-items:center;gap:5px;padding:5px 10px;background:#f8fafc;border-bottom:1px solid #eef1f5}
-.html-extract-icon{font-size:.78rem;flex-shrink:0}
-.html-extract-name{font-size:.74rem;font-weight:700;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px}
-.html-extract-meta{font-size:.6rem;color:#94a3b8;font-weight:500;white-space:nowrap}
-.html-extract-actions{display:flex;align-items:center;gap:4px;margin-left:auto;flex-shrink:0}
-.html-extract-btn{display:inline-flex;align-items:center;gap:3px;padding:3px 8px;background:#fff;border:1px solid #d4d8de;border-radius:5px;font-size:.64rem;font-weight:600;color:#64748b;cursor:pointer;transition:all .12s;font-family:inherit;line-height:1.2;white-space:nowrap}
-.html-extract-btn:hover{background:#eef2f7;border-color:#94a3b8;color:#1e293b}
-.html-extract-btn:disabled{opacity:.4;cursor:not-allowed}
-.html-extract-btn.primary{background:#1e293b;border-color:#1e293b;color:#fff}
-.html-extract-btn.primary:hover{background:#334155}
+/* ── Welcome Connections Panel ─── */
+.welcome-connections{background:#fff;border:1px solid #e0e0e0;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.04);padding:1.25rem;overflow:hidden}
+.welcome-connections-header{display:flex;align-items:center;gap:.5rem;margin-bottom:.25rem}
+.welcome-connections-icon{font-size:1.1rem}
+.welcome-connections-title{font-size:.9rem;font-weight:700;color:#333}
+.welcome-connections-count{margin-left:auto;font-size:.65rem;font-weight:600;background:#eee;color:#888;padding:1px 7px;border-radius:9px}
+.welcome-connections-subtitle{font-size:.72rem;color:#999;margin:0 0 1rem 0;line-height:1.4}
+.welcome-connections-loading,.welcome-connections-empty{text-align:center;padding:2rem 1rem;color:#aaa;font-size:.8rem}
+.welcome-connections-list{display:flex;flex-direction:column;gap:.75rem}
 
-.html-extract-toggle{display:flex;align-items:center;gap:4px;width:100%;padding:4px 10px;background:none;border:none;border-top:1px solid #f1f5f9;font-size:.66rem;font-weight:600;color:#94a3b8;cursor:pointer;transition:color .1s;font-family:inherit;text-align:left}
-.html-extract-toggle:hover{color:#475569;background:#fafbfc}
-.html-extract-toggle.open{color:#475569}
-.html-extract-chevron{font-size:.55rem;width:8px;flex-shrink:0}
-.html-extract-line-count{margin-left:auto;font-size:.58rem;font-weight:400;color:#cbd5e1}
+/* Connector Card */
+.welcome-connector-card{border:1px solid #e8e8e8;border-radius:10px;padding:.875rem;transition:all .15s}
+.welcome-connector-card.connected{border-color:#d1e7dd;background:#f8fdf9}
+.welcome-connector-card.disconnected{opacity:.55;filter:grayscale(.3)}
+.welcome-connector-card.disconnected:hover{opacity:.85;filter:none}
+.welcome-connector-card.configuring{opacity:1!important;filter:none!important;border-color:#c0c0c0;box-shadow:0 2px 8px rgba(0,0,0,.06)}
 
-.html-extract-code{border-top:1px solid #f1f5f9;max-height:350px;overflow:auto}
-.html-extract-pre{margin:0;padding:8px 10px;font-family:'SF Mono','Fira Code',monospace;font-size:.68em;line-height:1.45;color:#d4d4d4;background:#1e1e1e;white-space:pre;overflow-x:auto}
-.html-extract-pre code{background:none;padding:0;color:inherit;font-size:inherit}
+/* Card header */
+.welcome-connector-header{display:flex;align-items:flex-start;gap:.65rem}
+.welcome-connector-icon-wrap{width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:#f0f0f0;border-radius:8px;flex-shrink:0;font-size:1.05rem}
+.welcome-connector-card.connected .welcome-connector-icon-wrap{background:#d1e7dd}
+.welcome-connector-info{flex:1;min-width:0}
+.welcome-connector-name-row{display:flex;align-items:center;gap:.4rem}
+.welcome-connector-name{font-size:.82rem;font-weight:600;color:#333}
+.welcome-connector-status-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.welcome-connector-status-dot.online{background:#22c55e}
+.welcome-connector-status-dot.offline{background:#ccc}
+.welcome-connector-desc{display:block;font-size:.68rem;color:#999;line-height:1.35;margin-top:2px}
 
-/* ── HTML Extract Streaming States ─── */
-.html-extract.streaming{border-color:#60a5fa;box-shadow:0 0 0 1px rgba(96,165,250,.2),0 1px 4px rgba(96,165,250,.1)}
-.html-extract.streaming .html-extract-header{background:linear-gradient(90deg,#f0f7ff,#f8fafc)}
+/* Actions row */
+.welcome-connector-actions{display:flex;align-items:center;justify-content:space-between;margin-top:.6rem;gap:.5rem}
+.welcome-connector-connected-label{font-size:.7rem;font-weight:600;color:#16a34a}
+.welcome-connector-btn-connect{display:inline-flex;align-items:center;gap:.3rem;padding:.35rem .75rem;border:1px dashed #bbb;border-radius:7px;background:none;font-size:.72rem;font-weight:500;color:#666;cursor:pointer;transition:all .12s;font-family:inherit}
+.welcome-connector-btn-connect:hover{border-color:#888;color:#333;background:rgba(0,0,0,.02)}
+.welcome-connector-btn-disconnect{padding:.3rem .6rem;border:1px solid #e0e0e0;border-radius:6px;background:none;font-size:.68rem;font-weight:500;color:#999;cursor:pointer;transition:all .12s;font-family:inherit}
+.welcome-connector-btn-disconnect:hover{border-color:#ef4444;color:#ef4444}
+.welcome-connector-actions-count{font-size:.65rem;color:#aaa;margin-top:.4rem}
 
-.html-extract-meta.pulse{color:#3b82f6;font-weight:700}
-.html-extract-meta.bump{animation:line-bump .3s ease}
-.html-extract-line-count.pulse{color:#3b82f6;font-weight:500}
-
-.streaming-dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:#3b82f6;margin-right:3px;animation:streaming-pulse 1s ease-in-out infinite}
-
-@keyframes streaming-pulse{
-  0%,100%{opacity:.3;transform:scale(.8)}
-  50%{opacity:1;transform:scale(1.1)}
-}
-@keyframes line-bump{
-  0%{transform:scale(1)}
-  50%{transform:scale(1.15)}
-  100%{transform:scale(1)}
-}
-
-/* ── HTML Preview Tab (Editor) ─── */
-.html-preview-tab{flex:1;display:flex;flex-direction:column;overflow:hidden}
-.html-preview-tab-toolbar{display:flex;align-items:center;gap:.5rem;padding:.5rem 1rem;border-bottom:1px solid #eee;background:#fafafa}
-.html-preview-tab-label{font-size:.82rem;font-weight:600;color:#333}
-.html-preview-tab-badge{font-size:.65rem;font-weight:500;padding:1px 6px;background:#e8f4fd;color:#0369a1;border-radius:4px}
-.html-preview-tab-frame{flex:1;width:100%;border:none;background:#fff;display:block}
-.html-preview-tab-toggle{display:flex;border:1px solid #ddd;border-radius:6px;overflow:hidden;background:#fff}
-.html-preview-tab-toggle-btn{padding:3px 10px;border:none;background:none;font-size:.72rem;font-weight:500;color:#888;cursor:pointer;transition:all .12s;font-family:inherit}
-.html-preview-tab-toggle-btn:hover{color:#555;background:#f5f5f5}
-.html-preview-tab-toggle-btn.active{background:#333;color:#fff}
-.html-preview-tab-toolbar .editor-actions{margin-left:auto;display:flex;align-items:center;gap:.5rem}
+/* Config form */
+.welcome-connector-config{margin-top:.75rem;display:flex;flex-direction:column;gap:.6rem}
+.welcome-connector-field{display:flex;flex-direction:column;gap:3px}
+.welcome-connector-field-label{font-size:.7rem;font-weight:600;color:#555}
+.welcome-connector-field-label .required-star{color:#ef4444;margin-left:2px}
+.welcome-connector-field-input{padding:.4rem .6rem;border:1px solid #ddd;border-radius:6px;font-size:.75rem;font-family:inherit;outline:none;transition:border-color .12s}
+.welcome-connector-field-input:focus{border-color:#333}
+.welcome-connector-field-help{font-size:.62rem;color:#aaa;line-height:1.3}
+.welcome-connector-error{font-size:.7rem;color:#ef4444;padding:.4rem .6rem;background:#fef2f2;border-radius:6px}
+.welcome-connector-success{font-size:.7rem;color:#16a34a;padding:.4rem .6rem;background:#f0fdf4;border-radius:6px}
+.welcome-connector-config-actions{display:flex;gap:.5rem;justify-content:flex-end;margin-top:.25rem}
+.welcome-connector-btn-cancel{padding:.35rem .7rem;border:1px solid #ddd;border-radius:6px;background:none;font-size:.72rem;font-weight:500;color:#888;cursor:pointer;font-family:inherit;transition:all .12s}
+.welcome-connector-btn-cancel:hover{border-color:#999;color:#555}
+.welcome-connector-btn-save{padding:.35rem .75rem;border:none;border-radius:6px;background:#333;color:#fff;font-size:.72rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .12s}
+.welcome-connector-btn-save:hover{background:#111}
+.welcome-connector-btn-save:disabled,.welcome-connector-btn-cancel:disabled{opacity:.5;cursor:not-allowed}

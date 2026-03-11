@@ -230,3 +230,71 @@ export function deleteAgentConfig(agentId: string): boolean {
   saveAgentConfigs(filtered);
   return true;
 }
+
+// ── Connector Configs ────────────────────────────────────────────────────────
+
+interface ConnectorPersisted {
+  config: Record<string, unknown>;
+  state: { status: string; error?: string; lastConnected?: string };
+}
+
+const CONNECTOR_CONFIGS_FILE = () => dataFile('connector-configs.json');
+
+/** Load all connector data from disk. Returns a map of connectorId → { config, state }. */
+export function loadConnectorConfigs(): Record<string, ConnectorPersisted> {
+  const raw = readJSON<Record<string, unknown>>(CONNECTOR_CONFIGS_FILE(), {});
+  const result: Record<string, ConnectorPersisted> = {};
+
+  for (const [id, value] of Object.entries(raw)) {
+    if (value && typeof value === 'object') {
+      const obj = value as Record<string, unknown>;
+      // New format: has { config: {...}, state: {...} }
+      if (obj.config && typeof obj.config === 'object' && obj.state && typeof obj.state === 'object') {
+        result[id] = obj as unknown as ConnectorPersisted;
+      } else {
+        // Old format: the value IS the config directly — migrate it
+        result[id] = {
+          config: obj as Record<string, unknown>,
+          state: { status: 'connected', lastConnected: new Date().toISOString() },
+        };
+      }
+    }
+  }
+  return result;
+}
+
+/** Save a single connector's config + state to disk (merges with existing). */
+export function saveConnectorConfig(
+  connectorId: string,
+  config: Record<string, unknown>,
+  state?: { status: string; error?: string; lastConnected?: string },
+): void {
+  const all = loadConnectorConfigs();
+  if (Object.keys(config).length === 0) {
+    delete all[connectorId];
+  } else {
+    all[connectorId] = {
+      config,
+      state: state ?? all[connectorId]?.state ?? { status: 'disconnected' },
+    };
+  }
+  writeJSON(CONNECTOR_CONFIGS_FILE(), all);
+}
+
+/** Update just the state for a connector on disk. */
+export function saveConnectorState(
+  connectorId: string,
+  state: { status: string; error?: string; lastConnected?: string },
+): void {
+  const all = loadConnectorConfigs();
+  if (all[connectorId]) {
+    all[connectorId].state = state;
+    writeJSON(CONNECTOR_CONFIGS_FILE(), all);
+  }
+}
+
+/** Load a single connector's config from disk. */
+export function loadSingleConnectorConfig(connectorId: string): Record<string, unknown> | null {
+  const all = loadConnectorConfigs();
+  return all[connectorId]?.config ?? null;
+}

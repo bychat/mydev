@@ -28,6 +28,12 @@ import path from 'path';
 import { WebSocketServer, WebSocket } from 'ws';
 import { getConnectorRegistry } from '../core/connector';
 import { registerBuiltInConnectors } from '../connectors';
+import {
+  loadConnectorConfigs,
+  saveConnectorConfig,
+  saveConnectorState,
+  loadSingleConnectorConfig,
+} from '../main/storage';
 import apiRoutes from './routes';
 
 const app = express();
@@ -54,6 +60,20 @@ app.use(express.static(rendererDist));
 
 registerBuiltInConnectors();
 const registry = getConnectorRegistry();
+
+// Restore saved connector configs and states from disk
+const savedConfigs = loadConnectorConfigs();
+for (const [connectorId, persisted] of Object.entries(savedConfigs)) {
+  if (registry.get(connectorId) && persisted.config && Object.keys(persisted.config).length > 0) {
+    registry.setConfig(connectorId, persisted.config);
+    if (persisted.state && persisted.state.status === 'connected') {
+      registry.setState(connectorId, {
+        status: 'connected',
+        lastConnected: persisted.state.lastConnected,
+      });
+    }
+  }
+}
 
 // ─── Middleware placeholder for enterprise auth ───
 
@@ -91,9 +111,18 @@ app.get('/api/connectors/:id', (req, res) => {
   });
 });
 
+app.get('/api/connectors/:id/state', (req, res) => {
+  res.json(registry.getState(req.params.id));
+});
+
 app.post('/api/connectors/:id/test', async (req, res) => {
   try {
     const result = await registry.testConnection(req.params.id, req.body.config);
+    const state = registry.getState(req.params.id);
+    saveConnectorState(req.params.id, state);
+    if (result.success) {
+      saveConnectorConfig(req.params.id, req.body.config, state);
+    }
     res.json(result);
   } catch (err) {
     res.status(500).json({ success: false, error: (err as Error).message });
@@ -102,12 +131,13 @@ app.post('/api/connectors/:id/test', async (req, res) => {
 
 app.post('/api/connectors/:id/config', (req, res) => {
   registry.setConfig(req.params.id, req.body.config);
+  saveConnectorConfig(req.params.id, req.body.config);
   res.json({ success: true });
 });
 
 app.get('/api/connectors/:id/config', (req, res) => {
-  const config = registry.getConfig(req.params.id);
-  res.json({ config: config ?? null });
+  const config = registry.getConfig(req.params.id) ?? loadSingleConnectorConfig(req.params.id);
+  res.json(config ?? null);
 });
 
 app.post('/api/connectors/:id/actions/:actionId', async (req, res) => {

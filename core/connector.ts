@@ -231,6 +231,14 @@ export class ConnectorRegistry {
   }
 
   /**
+   * Directly set the state of a connector (used to restore persisted state on startup).
+   */
+  setState(connectorId: string, state: ConnectorState): void {
+    this.states.set(connectorId, state);
+    this.emit({ type: 'state-changed', connectorId });
+  }
+
+  /**
    * Test connection for a connector with the given config.
    */
   async testConnection(connectorId: string, config: unknown): Promise<{ success: boolean; error?: string }> {

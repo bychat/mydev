@@ -289,5 +289,17 @@ export function createHttpAdapter(): BackendAPI {
     sessionCloneGitHub: (u, t) => post('/api/session/clone-github', { repoUrl: u, token: t }),
     sessionListFolders: () => get('/api/session/list-folders'),
     sessionDeleteFolder: (p) => post('/api/session/delete-folder', { folderPath: p }),
+
+    // ── Connectors ──
+    connectorList: async () => {
+      const res = await get<{ connectors: any[] }>('/api/connectors');
+      return res.connectors;
+    },
+    connectorGet: (id) => get(`/api/connectors/${id}`),
+    connectorGetState: (id) => get(`/api/connectors/${id}/state`),
+    connectorTest: (id, config) => post(`/api/connectors/${id}/test`, { config }),
+    connectorSaveConfig: (id, config) => post(`/api/connectors/${id}/config`, { config }),
+    connectorLoadConfig: (id) => get(`/api/connectors/${id}/config`),
+    connectorExecute: (id, actionId, params) => post(`/api/connectors/${id}/actions/${actionId}`, { params }),
   };
 }

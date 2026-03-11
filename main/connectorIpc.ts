@@ -10,9 +10,29 @@
 
 import { ipcMain } from 'electron';
 import { getConnectorRegistry } from '../connectors';
+import {
+  loadConnectorConfigs,
+  saveConnectorConfig,
+  saveConnectorState,
+  loadSingleConnectorConfig,
+} from './storage';
 
 export function registerConnectorIpcHandlers(): void {
   const registry = getConnectorRegistry();
+
+  // Restore saved configs AND states from disk into the in-memory registry
+  const saved = loadConnectorConfigs();
+  for (const [connectorId, persisted] of Object.entries(saved)) {
+    if (registry.get(connectorId) && persisted.config && Object.keys(persisted.config).length > 0) {
+      registry.setConfig(connectorId, persisted.config);
+      if (persisted.state && persisted.state.status === 'connected') {
+        registry.setState(connectorId, {
+          status: 'connected',
+          lastConnected: persisted.state.lastConnected,
+        });
+      }
+    }
+  }
 
   // List all connectors
   ipcMain.handle('connector-list', async () => {
@@ -36,20 +56,29 @@ export function registerConnectorIpcHandlers(): void {
     return registry.getState(connectorId);
   });
 
-  // Test connection
+  // Test connection — persist state to disk after result
   ipcMain.handle('connector-test', async (_event, connectorId: string, config: Record<string, unknown>) => {
-    return registry.testConnection(connectorId, config);
+    const result = await registry.testConnection(connectorId, config);
+    // Persist the resulting state to disk
+    const state = registry.getState(connectorId);
+    saveConnectorState(connectorId, state);
+    // If test succeeded, also persist the config (testConnection stores it in memory)
+    if (result.success) {
+      saveConnectorConfig(connectorId, config, state);
+    }
+    return result;
   });
 
-  // Save config
+  // Save config — persist to disk as well
   ipcMain.handle('connector-save-config', async (_event, connectorId: string, config: Record<string, unknown>) => {
     registry.setConfig(connectorId, config);
+    saveConnectorConfig(connectorId, config);
     return { success: true };
   });
 
-  // Load config
+  // Load config — try in-memory first, then disk
   ipcMain.handle('connector-load-config', async (_event, connectorId: string) => {
-    return registry.getConfig(connectorId) ?? null;
+    return registry.getConfig(connectorId) ?? loadSingleConnectorConfig(connectorId);
   });
 
   // Execute action

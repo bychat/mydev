@@ -178,4 +178,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   sessionCloneGitHub: (repoUrl, token) => ipcRenderer.invoke('session-clone-github', repoUrl, token),
   sessionListFolders: () => ipcRenderer.invoke('session-list-folders'),
   sessionDeleteFolder: (folderPath) => ipcRenderer.invoke('session-delete-folder', folderPath),
+
+  // Connectors
+  connectorList: () => ipcRenderer.invoke('connector-list'),
+  connectorGet: (connectorId) => ipcRenderer.invoke('connector-get', connectorId),
+  connectorGetState: (connectorId) => ipcRenderer.invoke('connector-get-state', connectorId),
+  connectorTest: (connectorId, config) => ipcRenderer.invoke('connector-test', connectorId, config),
+  connectorSaveConfig: (connectorId, config) => ipcRenderer.invoke('connector-save-config', connectorId, config),
+  connectorLoadConfig: (connectorId) => ipcRenderer.invoke('connector-load-config', connectorId),
+  connectorExecute: (connectorId, actionId, params) => ipcRenderer.invoke('connector-execute', connectorId, actionId, params),
 });

@@ -234,4 +234,18 @@ export interface BackendAPI {
   sessionCloneGitHub(repoUrl: string, token?: string): Promise<GitCloneResult>;
   sessionListFolders(): Promise<SessionFolderInfo[]>;
   sessionDeleteFolder(folderPath: string): Promise<{ success: boolean; error?: string }>;
+
+  // ── Connectors ──
+  connectorList(): Promise<Array<{ id: string; name: string; description: string; icon: string; category: string; version: string }>>;
+  connectorGet(connectorId: string): Promise<{
+    metadata: { id: string; name: string; description: string; icon: string; category: string; version: string };
+    configFields: Array<{ key: string; label: string; type: string; placeholder?: string; required: boolean; helpText?: string }>;
+    actions: Array<{ id: string; name: string; description: string }>;
+    state: { status: string; error?: string; lastConnected?: string };
+  } | null>;
+  connectorGetState(connectorId: string): Promise<{ status: string; error?: string; lastConnected?: string }>;
+  connectorTest(connectorId: string, config: Record<string, unknown>): Promise<{ success: boolean; error?: string }>;
+  connectorSaveConfig(connectorId: string, config: Record<string, unknown>): Promise<{ success: boolean }>;
+  connectorLoadConfig(connectorId: string): Promise<Record<string, unknown> | null>;
+  connectorExecute(connectorId: string, actionId: string, params?: Record<string, unknown>): Promise<{ success: boolean; data?: unknown; error?: string }>;
 }
