@@ -56,7 +56,7 @@ jobs:
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: mydev-bychat-io-mac-${{ needs.meta.outputs.label }}
+          name: flovia-mac-${{ needs.meta.outputs.label }}
           path: |
             dist/*.dmg
           if-no-files-found: error
@@ -87,7 +87,7 @@ jobs:
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: mydev-bychat-io-win-x64-${{ needs.meta.outputs.label }}
+          name: flovia-win-x64-${{ needs.meta.outputs.label }}
           path: |
             dist/*.exe
           if-no-files-found: error
@@ -118,7 +118,7 @@ jobs:
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: mydev-bychat-io-linux-x64-${{ needs.meta.outputs.label }}
+          name: flovia-linux-x64-${{ needs.meta.outputs.label }}
           path: |
             dist/*.AppImage
           if-no-files-found: error
