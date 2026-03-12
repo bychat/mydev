@@ -13,6 +13,7 @@ import TuneIcon from '@mui/icons-material/Tune';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import StorageIcon from '@mui/icons-material/Storage';
 import HubIcon from '@mui/icons-material/Hub';
+import EmailIcon from '@mui/icons-material/Email';
 import ExtensionIcon from '@mui/icons-material/Extension';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import { useWorkspace } from '../context/WorkspaceContext';
@@ -74,6 +75,7 @@ const panels: PanelConfig[] = [
   { id: 'database', label: 'Database', icon: <DatabaseIcon size={18} /> },
   { id: 'github', label: 'GitHub Actions', icon: <ActionsIcon />, gitOnly: true },
   { id: 'atlassian', label: 'Atlassian', icon: <AtlassianIcon /> },
+  { id: 'gmail', label: 'Gmail', icon: <EmailIcon fontSize="small" sx={{ color: '#EA4335' }} /> },
   { id: 'mcp', label: 'MCP Servers', icon: <HubIcon fontSize="small" sx={{ color: '#7c3aed' }} /> },
 ];
 

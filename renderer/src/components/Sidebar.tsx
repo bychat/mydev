@@ -18,6 +18,7 @@ import GitHubActionsTab from './GitHubActionsTab';
 import AtlassianPanel from './AtlassianPanel';
 import McpServersPanel from './McpServersPanel';
 import CliProvidersPanel from './CliProvidersPanel';
+import GmailPanel from './GmailPanel';
 import ExplorerGitControls from './ExplorerGitControls';
 import { Panel, PanelHeader } from './mui';
 
@@ -38,6 +39,7 @@ export default function Sidebar({ onCollapse }: SidebarProps) {
   if (activePanel === 'atlassian') return <AtlassianPanel />;
   if (activePanel === 'mcp') return <McpServersPanel />;
   if (activePanel === 'copilot') return <CliProvidersPanel />;
+  if (activePanel === 'gmail') return <GmailPanel />;
 
   // Default: Explorer panel
   return (
