@@ -53,6 +53,7 @@ function defaultsFromEnv(): AISettings {
   const openaiKey = process.env.OPENAI_API_KEY?.trim();
   const openaiBase = process.env.OPENAI_BASE_URL?.trim();
   const ollamaBase = process.env.OLLAMA_BASE_URL?.trim();
+  const ollamaKey = process.env.OLLAMA_API_KEY?.trim();
   const defaultModel = process.env.BYCHAT_MODEL?.trim() || '';
 
   if (anthropicKey) {
@@ -64,7 +65,7 @@ function defaultsFromEnv(): AISettings {
   return {
     provider: 'ollama',
     baseUrl: ollamaBase || 'http://localhost:11434/v1',
-    apiKey: 'ollama',
+    apiKey: ollamaKey || 'ollama',
     selectedModel: defaultModel,
   };
 }
@@ -113,7 +114,8 @@ export function loadEnvApiKeys(): Record<string, { apiKey: string; baseUrl: stri
   }
 
   const ollamaBase = process.env.OLLAMA_BASE_URL?.trim();
-  result.ollama = { apiKey: 'ollama', baseUrl: ollamaBase || 'http://localhost:11434/v1' };
+  const ollamaKey = process.env.OLLAMA_API_KEY?.trim();
+  result.ollama = { apiKey: ollamaKey || '', baseUrl: ollamaBase || 'http://localhost:11434/v1' };
 
   return result;
 }

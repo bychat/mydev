@@ -88,7 +88,7 @@ export default function SettingsModal({ open, onClose, onSaved }: Props) {
     const env = envKeys[p];
     if (p === 'ollama') {
       setBaseUrl(env?.baseUrl || 'http://localhost:11434/v1');
-      setApiKey('ollama');
+      setApiKey(env?.apiKey || 'ollama');
     } else if (p === 'openai') {
       setBaseUrl(env?.baseUrl || 'https://api.openai.com/v1');
       setApiKey(env?.apiKey || '');
@@ -148,13 +148,17 @@ export default function SettingsModal({ open, onClose, onSaved }: Props) {
           </div>
 
           {/* Ollama status notice */}
-          {provider === 'ollama' && ollamaAvailable === false && (
+          {provider === 'ollama' && ollamaAvailable === false && !baseUrl.includes('ollama.com') && baseUrl.includes('localhost') && (
             <div className="modal-notice warn">
               Ollama is not running locally.{' '}
               <a href="https://ollama.com/download" target="_blank" rel="noreferrer">
                 Download Ollama
               </a>{' '}
-              and start it, then click Refresh.
+              and start it, or use{' '}
+              <a href="https://ollama.com/blog/cloud" target="_blank" rel="noreferrer">
+                Ollama Cloud
+              </a>{' '}
+              by setting the base URL to <code>https://ollama.com/v1</code> with your API key.
               <button className="btn-link" onClick={fetchModels}>Refresh</button>
             </div>
           )}

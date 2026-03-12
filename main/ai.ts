@@ -17,6 +17,47 @@ export async function checkOllama(): Promise<boolean> {
   }
 }
 
+/**
+ * Normalize an Ollama-style base URL for OpenAI-compatible endpoints.
+ * e.g. "https://ollama.com/api/v1" → "https://ollama.com/v1"
+ */
+function normalizeBaseUrl(baseUrl: string): string {
+  try {
+    const url = new URL(baseUrl);
+    if (url.pathname === '/api/v1' || url.pathname === '/api/v1/') {
+      url.pathname = '/v1';
+      return url.toString().replace(/\/$/, '');
+    }
+    return baseUrl;
+  } catch {
+    return baseUrl;
+  }
+}
+
+/**
+ * List models using the native Ollama /api/tags endpoint (with Bearer auth).
+ * Works for both local and Ollama Cloud instances.
+ */
+async function listOllamaModels(baseUrl: string, apiKey: string): Promise<string[]> {
+  const url = new URL(baseUrl);
+  const ollamaBase = `${url.protocol}//${url.host}`;
+
+  const headers: Record<string, string> = {};
+  if (apiKey && apiKey !== 'ollama') {
+    headers['Authorization'] = `Bearer ${apiKey}`;
+  }
+
+  const res = await fetch(`${ollamaBase}/api/tags`, {
+    headers,
+    signal: AbortSignal.timeout(10000),
+  });
+
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+  const data = await res.json() as { models?: { name?: string; model?: string }[] };
+  return (data.models || []).map((m) => m.name || m.model || '').filter(Boolean).sort();
+}
+
 export async function listModels(baseUrl: string, apiKey: string): Promise<string[]> {
   // ── Anthropic ──
   if (baseUrl.includes('anthropic.com') || baseUrl === 'anthropic') {
@@ -24,16 +65,22 @@ export async function listModels(baseUrl: string, apiKey: string): Promise<strin
   }
   // ── OpenAI-compatible (Ollama, OpenAI, etc.) ──
   try {
-    const client = new OpenAI({ baseURL: baseUrl, apiKey });
+    const normalized = normalizeBaseUrl(baseUrl);
+    const client = new OpenAI({ baseURL: normalized, apiKey });
     const list = await client.models.list();
     const models: string[] = [];
     for await (const m of list) {
       models.push(m.id);
     }
-    return models.sort();
-  } catch {
-    return [];
-  }
+    if (models.length > 0) return models.sort();
+  } catch { /* fall through to Ollama native fallback */ }
+
+  // ── Fallback: native Ollama /api/tags (handles Ollama Cloud & local) ──
+  try {
+    return await listOllamaModels(baseUrl, apiKey);
+  } catch { /* ignore */ }
+
+  return [];
 }
 
 /** List available Anthropic models via the /v1/models endpoint */
@@ -64,7 +111,8 @@ export async function chatComplete(
     return anthropicChatComplete(apiKey, model, messages, signal);
   }
   // ── OpenAI-compatible ──
-  const client = new OpenAI({ baseURL: baseUrl, apiKey });
+  const normalized = normalizeBaseUrl(baseUrl);
+  const client = new OpenAI({ baseURL: normalized, apiKey });
   const response = await client.chat.completions.create(
     { model, messages },
     { signal },
@@ -121,7 +169,8 @@ export async function chatCompleteStream(
     return anthropicChatCompleteStream(apiKey, model, messages, onChunk, signal);
   }
   // ── OpenAI-compatible ──
-  const client = new OpenAI({ baseURL: baseUrl, apiKey });
+  const normalized = normalizeBaseUrl(baseUrl);
+  const client = new OpenAI({ baseURL: normalized, apiKey });
   const stream = await client.chat.completions.create(
     { model, messages, stream: true },
     { signal },
