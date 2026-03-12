@@ -4,6 +4,27 @@
   "description": "flovia.io — AI-powered developer workspace (Desktop, Web, CLI)",
   "main": "dist-main/main/index.js",
   "private": true,
+  "bin": {
+    "flovia": "./bin/launch.js"
+  },
+  "keywords": [
+    "ai",
+    "electron",
+    "desktop",
+    "coding-assistant",
+    "developer-tools",
+    "flovia"
+  ],
+  "author": "flovia-io",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bychat/mydev"
+  },
+  "homepage": "https://flovia.io",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "//── Desktop (Electron) ──": "",
     "dev": "npm run build:main && concurrently \"npm run dev:renderer\" \"npm run dev:electron\"",
@@ -68,9 +89,6 @@
       "target": "AppImage"
     }
   },
-  "keywords": [],
-  "author": "",
-  "license": "MIT",
   "devDependencies": {
     "@electron/rebuild": "^4.0.3",
     "@types/cors": "^2.8.19",
