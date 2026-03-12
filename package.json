@@ -19,7 +19,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/bychat/mydev"
+    "url": "https://github.com/flovia-io/flovia"
   },
   "homepage": "https://flovia.io",
   "engines": {
