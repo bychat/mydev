@@ -12,6 +12,10 @@ export interface WfNodeData {
   config: Record<string, unknown>;
   status?: 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
   subtitle?: string;
+  itemCount?: number;
+  durationMs?: number;
+  output?: unknown;
+  error?: string;
   [key: string]: unknown;
 }
 
@@ -43,6 +47,7 @@ export interface RunStep {
   label: string;
   status: string;
   durationMs?: number;
+  itemCount?: number;
   input?: unknown;
   output?: unknown;
   error?: string;

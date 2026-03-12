@@ -176,7 +176,7 @@ export interface ElectronAPI {
   orchestratorListEditorWorkflows: () => Promise<unknown[]>;
   orchestratorDeleteEditorWorkflow: (workflowId: string) => Promise<{ success: boolean }>;
   // Workflow Execution
-  orchestratorExecuteWorkflow: (workflowData: { id: string; name: string; nodes: unknown[]; edges: unknown[] }) => Promise<{ success: boolean; run?: unknown }>;
+  orchestratorExecuteWorkflow: (workflowData: { id: string; name: string; nodes: unknown[]; edges: unknown[]; triggerInput?: unknown }) => Promise<{ success: boolean; run?: unknown }>;
   orchestratorSaveRun: (run: unknown) => Promise<{ success: boolean }>;
 }
 

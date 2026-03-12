@@ -6,12 +6,14 @@
  *  • Connector action picker when adding Action nodes
  *  • Decision node with if/switch routing rules
  *  • Execution log panel showing step-by-step run data
- *  • Past runs list (Run 1, Run 2, Run 3) with greyed-out history
+ *  • Past runs list with item counts per node
+ *  • Real-time step status, item counts, and duration during execution
+ *  • Chat Input trigger for interactive workflow execution
  *  • Persist workflows to storage via IPC
  *
  * Sub-components live in ./workflow/ — this file is orchestration only.
  */
-import { useCallback, useMemo, useState, useEffect } from 'react';
+import { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import {
   ReactFlow,
   Background,
@@ -41,11 +43,19 @@ import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
+import TextField from '@mui/material/TextField';
+import Chip from '@mui/material/Chip';
+import Paper from '@mui/material/Paper';
+import Typography from '@mui/material/Typography';
+import LinearProgress from '@mui/material/LinearProgress';
 
 import AddIcon from '@mui/icons-material/Add';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import StopIcon from '@mui/icons-material/Stop';
 import SaveIcon from '@mui/icons-material/Save';
+import SendIcon from '@mui/icons-material/Send';
+import ChatIcon from '@mui/icons-material/Chat';
+import DeleteIcon from '@mui/icons-material/Delete';
 
 import { useBackend } from '../context/BackendContext';
 
@@ -91,8 +101,16 @@ export default function WorkflowEditor() {
   const [runs, setRuns] = useState<RunLog[]>([]);
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
   const [executing, setExecuting] = useState(false);
+  const [chatInput, setChatInput] = useState('');
+  const chatInputRef = useRef<HTMLInputElement>(null);
 
   const activeWorkflow = workflows.find(w => w.id === activeWorkflowId);
+
+  // Check if current workflow has a chat-input trigger
+  const hasChatTrigger = useMemo(() =>
+    nodes.some(n => n.data.nodeType === 'trigger' && (n.data.config as any)?.triggerType === 'chat-input'),
+    [nodes]
+  );
 
   // ── Load workflows on mount ──
   useEffect(() => {
@@ -122,11 +140,21 @@ export default function WorkflowEditor() {
   // ── Subscribe to real-time events ──
   useEffect(() => {
     const unsub = backend.onOrchestratorEvent((event: any) => {
-      if (event.category === 'step' || event.category === 'workflow') {
-        if (event.data?.stepId) {
+      if (event.category === 'step') {
+        const { stepId, status, itemCount, durationMs, error } = event.data || {};
+        if (stepId) {
           setNodes(prev => prev.map(n =>
-            n.id === event.data.stepId
-              ? { ...n, data: { ...n.data, status: event.data.status } }
+            n.id === stepId
+              ? {
+                  ...n,
+                  data: {
+                    ...n.data,
+                    status: status || n.data.status,
+                    ...(itemCount != null && { itemCount }),
+                    ...(durationMs != null && { durationMs }),
+                    ...(error != null && { error }),
+                  },
+                }
               : n
           ));
         }
@@ -253,13 +281,14 @@ export default function WorkflowEditor() {
   );
 
   // ── Execute current workflow ──
-  const executeWorkflow = useCallback(async () => {
+  const executeWorkflow = useCallback(async (triggerInput?: unknown) => {
     if (!activeWorkflowId || executing) return;
     setExecuting(true);
 
+    // Reset all node statuses
     setNodes(prev => prev.map(n => ({
       ...n,
-      data: { ...n.data, status: 'pending' as const },
+      data: { ...n.data, status: 'pending' as const, itemCount: undefined, durationMs: undefined, error: undefined, output: undefined },
     })));
 
     try {
@@ -270,35 +299,68 @@ export default function WorkflowEditor() {
         name: activeWorkflow?.name || 'Untitled',
         nodes,
         edges,
+        triggerInput,
       });
 
-      if (result.success && result.run) {
+      if (result.run) {
         const run = result.run as RunLog;
         setRuns(prev => [...prev, run]);
         setActiveRunId(run.id);
 
-        setNodes(prev => prev.map(n => ({
-          ...n,
-          data: { ...n.data, status: 'completed' as const },
-        })));
+        // Update node statuses from run steps
+        if (run.steps) {
+          setNodes(prev => prev.map(n => {
+            const step = run.steps.find((s: any) => s.nodeId === n.id);
+            if (step) {
+              return {
+                ...n,
+                data: {
+                  ...n.data,
+                  status: step.status as any,
+                  itemCount: (step as any).itemCount,
+                  durationMs: step.durationMs,
+                  error: step.error,
+                  output: step.output,
+                },
+              };
+            }
+            return n;
+          }));
+        }
       }
     } catch (err) {
       console.error('Workflow execution failed:', err);
       setNodes(prev => prev.map(n => ({
         ...n,
-        data: { ...n.data, status: n.data.status === 'completed' ? 'completed' : 'failed' as const },
+        data: {
+          ...n.data,
+          status: n.data.status === 'completed' ? 'completed' : 'failed' as const,
+        },
       })));
     } finally {
       setExecuting(false);
     }
   }, [activeWorkflowId, activeWorkflow, nodes, edges, executing, saveWorkflow, backend]);
 
+  // ── Handle chat input submission ──
+  const handleChatSubmit = useCallback(() => {
+    if (!chatInput.trim() || executing) return;
+    const input = chatInput.trim();
+    setChatInput('');
+    executeWorkflow({ message: input, timestamp: new Date().toISOString() });
+  }, [chatInput, executing, executeWorkflow]);
+
   // ── Render ──
 
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* Top bar */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 1, borderBottom: 1, borderColor: 'divider', bgcolor: 'grey.50' }}>
+      <Box sx={{
+        display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 1,
+        borderBottom: 1, borderColor: 'divider',
+        bgcolor: '#fafbfc',
+        backdropFilter: 'blur(8px)',
+      }}>
         <FormControl size="small" sx={{ minWidth: 200 }}>
           <InputLabel>Workflow</InputLabel>
           <Select
@@ -323,33 +385,53 @@ export default function WorkflowEditor() {
           <IconButton size="small" onClick={createWorkflow}><AddIcon /></IconButton>
         </Tooltip>
 
+        {activeWorkflowId && (
+          <Tooltip title="Delete Workflow">
+            <IconButton size="small" color="error" onClick={deleteWorkflow}><DeleteIcon /></IconButton>
+          </Tooltip>
+        )}
+
         <Divider orientation="vertical" flexItem />
 
         <Tabs value={activeTab} onChange={(_, v) => setActiveTab(v)} sx={{ minHeight: 36 }}>
           <Tab label="Editor" value="editor" sx={{ minHeight: 36, py: 0 }} />
-          <Tab label="Executions" value="executions" sx={{ minHeight: 36, py: 0 }} />
+          <Tab
+            label={
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                Executions
+                {runs.length > 0 && (
+                  <Chip label={workflowRuns.length} size="small" sx={{ height: 18, fontSize: 10, fontWeight: 700 }} />
+                )}
+              </Box>
+            }
+            value="executions"
+            sx={{ minHeight: 36, py: 0 }}
+          />
         </Tabs>
 
         <Box sx={{ flex: 1 }} />
 
-        <Button size="small" startIcon={<SaveIcon />} onClick={saveWorkflow} variant="outlined">
+        <Button size="small" startIcon={<SaveIcon />} onClick={saveWorkflow} variant="outlined" sx={{ borderRadius: 6 }}>
           Save
         </Button>
         <Button
           size="small"
           startIcon={executing ? <StopIcon /> : <PlayArrowIcon />}
           variant="contained"
-          color="error"
-          sx={{ borderRadius: 6 }}
-          onClick={executeWorkflow}
-          disabled={!activeWorkflowId || (executing && false)}
+          color={executing ? 'warning' : 'success'}
+          sx={{ borderRadius: 6, fontWeight: 700 }}
+          onClick={() => executeWorkflow()}
+          disabled={!activeWorkflowId || executing}
         >
-          {executing ? 'Executing…' : 'Execute workflow'}
+          {executing ? 'Running…' : 'Execute'}
         </Button>
       </Box>
 
+      {/* Progress bar during execution */}
+      {executing && <LinearProgress sx={{ height: 3 }} />}
+
       {activeTab === 'editor' ? (
-        <Box sx={{ flex: 1, display: 'flex', position: 'relative' }}>
+        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative' }}>
           {/* ReactFlow Canvas */}
           <Box sx={{ flex: 1 }}>
             <ReactFlow
@@ -361,7 +443,10 @@ export default function WorkflowEditor() {
               onNodeClick={onNodeClick}
               nodeTypes={nodeTypes}
               fitView
-              defaultEdgeOptions={{ animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } }}
+              defaultEdgeOptions={{
+                animated: true,
+                style: { stroke: '#94a3b8', strokeWidth: 2 },
+              }}
             >
               <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#e2e8f0" />
               <Controls />
@@ -381,7 +466,7 @@ export default function WorkflowEditor() {
               variant="contained"
               sx={{
                 position: 'absolute',
-                bottom: 24,
+                bottom: hasChatTrigger ? 80 : 24,
                 left: '50%',
                 transform: 'translateX(-50%)',
                 borderRadius: 8,
@@ -394,6 +479,66 @@ export default function WorkflowEditor() {
               Add Step
             </Button>
           </Tooltip>
+
+          {/* Chat Input Trigger Bar */}
+          {hasChatTrigger && (
+            <Paper
+              elevation={3}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1,
+                px: 2,
+                py: 1,
+                borderTop: 1,
+                borderColor: 'divider',
+                bgcolor: '#fff',
+              }}
+            >
+              <ChatIcon sx={{ color: 'primary.main', fontSize: 20 }} />
+              <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, mr: 0.5 }}>
+                Chat Input:
+              </Typography>
+              <TextField
+                inputRef={chatInputRef}
+                size="small"
+                fullWidth
+                placeholder="Type a message to trigger the workflow…"
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleChatSubmit();
+                  }
+                }}
+                disabled={executing}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 6,
+                    bgcolor: '#f8f9fa',
+                  },
+                }}
+              />
+              <Tooltip title="Send & Execute">
+                <span>
+                  <IconButton
+                    color="primary"
+                    onClick={handleChatSubmit}
+                    disabled={!chatInput.trim() || executing}
+                    sx={{
+                      bgcolor: 'primary.main',
+                      color: '#fff',
+                      '&:hover': { bgcolor: 'primary.dark' },
+                      '&.Mui-disabled': { bgcolor: '#e0e0e0' },
+                    }}
+                  >
+                    <SendIcon fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            </Paper>
+          )}
 
           {/* Node Palette Drawer */}
           <NodePaletteDrawer

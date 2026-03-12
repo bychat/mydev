@@ -298,6 +298,7 @@ function TriggerConfig({ node, cfg, onUpdate }: ConfigProps) {
         <MenuItem value="event">Event</MenuItem>
         <MenuItem value="on-chat">On Chat Message</MenuItem>
         <MenuItem value="on-commit">On Git Commit</MenuItem>
+        <MenuItem value="chat-input">Chat Input (interactive)</MenuItem>
       </Select>
     </FormControl>
   );
