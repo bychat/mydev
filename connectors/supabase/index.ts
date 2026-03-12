@@ -31,11 +31,17 @@ export const supabaseConnector: Connector<SupabaseConnectorConfig> = {
   ],
 
   actions: [
-    { id: 'detect-config', name: 'Detect Config', description: 'Scan workspace for Supabase env files' },
-    { id: 'get-users', name: 'Get Users', description: 'List all auth users' },
-    { id: 'get-storage', name: 'Get Storage', description: 'List storage buckets' },
-    { id: 'get-tables', name: 'Get Tables', description: 'List database tables' },
-    { id: 'execute-query', name: 'Execute SQL', description: 'Run a SQL query' },
+    {
+      id: 'detect-config', name: 'Detect Config', description: 'Scan workspace for Supabase env files',
+      inputSchema: { folderPath: { type: 'string', label: 'Folder Path', required: false, placeholder: '/path/to/project' } },
+    },
+    { id: 'get-users', name: 'Get Users', description: 'List all auth users', inputSchema: {} },
+    { id: 'get-storage', name: 'Get Storage', description: 'List storage buckets', inputSchema: {} },
+    { id: 'get-tables', name: 'Get Tables', description: 'List database tables', inputSchema: {} },
+    {
+      id: 'execute-query', name: 'Execute SQL', description: 'Run a SQL query',
+      inputSchema: { query: { type: 'string', label: 'SQL Query', required: true, placeholder: 'SELECT * FROM users LIMIT 10' } },
+    },
   ],
 
   async testConnection(config) {

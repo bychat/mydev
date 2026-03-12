@@ -41,13 +41,47 @@ export const digitaloceanConnector: Connector<DigitalOceanConnectorConfig> = {
   ],
 
   actions: [
-    { id: 'list-apps', name: 'List Apps', description: 'List all App Platform apps' },
-    { id: 'get-app', name: 'Get App', description: 'Get details for a specific app' },
-    { id: 'list-deployments', name: 'List Deployments', description: 'List deployments for an app' },
-    { id: 'get-deployment', name: 'Get Deployment', description: 'Get details for a specific deployment' },
-    { id: 'create-deployment', name: 'Deploy', description: 'Trigger a new deployment for an app' },
-    { id: 'cancel-deployment', name: 'Cancel Deployment', description: 'Cancel a running deployment' },
-    { id: 'get-deployment-logs', name: 'Get Logs', description: 'View build logs for a deployment' },
+    { id: 'list-apps', name: 'List Apps', description: 'List all App Platform apps', inputSchema: {} },
+    {
+      id: 'get-app', name: 'Get App', description: 'Get details for a specific app',
+      inputSchema: { appId: { type: 'string', label: 'App ID', required: true, placeholder: 'app-uuid' } },
+    },
+    {
+      id: 'list-deployments', name: 'List Deployments', description: 'List deployments for an app',
+      inputSchema: {
+        appId: { type: 'string', label: 'App ID', required: true, placeholder: 'app-uuid' },
+        perPage: { type: 'number', label: 'Per Page', required: false, placeholder: '10' },
+      },
+    },
+    {
+      id: 'get-deployment', name: 'Get Deployment', description: 'Get details for a specific deployment',
+      inputSchema: {
+        appId: { type: 'string', label: 'App ID', required: true, placeholder: 'app-uuid' },
+        deploymentId: { type: 'string', label: 'Deployment ID', required: true, placeholder: 'deployment-uuid' },
+      },
+    },
+    {
+      id: 'create-deployment', name: 'Deploy', description: 'Trigger a new deployment for an app',
+      inputSchema: {
+        appId: { type: 'string', label: 'App ID', required: true, placeholder: 'app-uuid' },
+        forceBuild: { type: 'boolean', label: 'Force Build', required: false },
+      },
+    },
+    {
+      id: 'cancel-deployment', name: 'Cancel Deployment', description: 'Cancel a running deployment',
+      inputSchema: {
+        appId: { type: 'string', label: 'App ID', required: true, placeholder: 'app-uuid' },
+        deploymentId: { type: 'string', label: 'Deployment ID', required: true, placeholder: 'deployment-uuid' },
+      },
+    },
+    {
+      id: 'get-deployment-logs', name: 'Get Logs', description: 'View build logs for a deployment',
+      inputSchema: {
+        appId: { type: 'string', label: 'App ID', required: true, placeholder: 'app-uuid' },
+        deploymentId: { type: 'string', label: 'Deployment ID', required: true, placeholder: 'deployment-uuid' },
+        componentName: { type: 'string', label: 'Component Name', required: false, placeholder: 'web' },
+      },
+    },
   ],
 
   async testConnection(config) {

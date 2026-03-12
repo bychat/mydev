@@ -1,5 +1,5 @@
 /**
- * GmailPanel - Gmail integration with OAuth token-based connection, labels and messages
+ * GmailPanel - Gmail integration using IMAP with Google App Passwords
  */
 import { useState, useEffect, useCallback } from 'react';
 import { useBackend } from '../context/BackendContext';
@@ -41,7 +41,7 @@ export default function GmailPanel() {
   const [formError, setFormError] = useState('');
   const [formTesting, setFormTesting] = useState(false);
   const [email, setEmail] = useState('');
-  const [accessToken, setAccessToken] = useState('');
+  const [appPassword, setAppPassword] = useState('');
   const [messages, setMessages] = useState<GmailMessage[]>([]);
   const [labels, setLabels] = useState<GmailLabel[]>([]);
   const [selectedLabel, setSelectedLabel] = useState('INBOX');
@@ -57,10 +57,10 @@ export default function GmailPanel() {
     (async () => {
       try {
         const config = await backend.connectorLoadConfig('gmail');
-        if (config && (config as Record<string, string>).accessToken) {
-          const c = config as { email: string; accessToken: string };
+        if (config && (config as Record<string, string>).appPassword) {
+          const c = config as { email: string; appPassword: string };
           setEmail(c.email);
-          setAccessToken(c.accessToken);
+          setAppPassword(c.appPassword);
           setConnected(true);
         }
       } catch {
@@ -91,10 +91,10 @@ export default function GmailPanel() {
   }, [backend, selectedLabel]);
 
   useEffect(() => {
-    if (connected && accessToken) {
+    if (connected && appPassword) {
       loadMessages();
     }
-  }, [connected, accessToken, selectedLabel, loadMessages]);
+  }, [connected, appPassword, selectedLabel, loadMessages]);
 
   const loadLabels = async () => {
     setLoadingLabels(true);
@@ -124,7 +124,7 @@ export default function GmailPanel() {
     setFormError('');
 
     try {
-      const result = await backend.connectorTest('gmail', { email: emailVal, accessToken: token });
+      const result = await backend.connectorTest('gmail', { email: emailVal, appPassword: token });
       if (!result.success) {
         setFormError(result.error || 'Connection failed. Check your credentials.');
         setFormTesting(false);
@@ -137,9 +137,9 @@ export default function GmailPanel() {
     }
 
     // Save config
-    await backend.connectorSaveConfig('gmail', { email: emailVal, accessToken: token });
+    await backend.connectorSaveConfig('gmail', { email: emailVal, appPassword: token });
     setEmail(emailVal);
-    setAccessToken(token);
+    setAppPassword(token);
     setConnected(true);
     setShowForm(false);
     setFormEmail('');
@@ -151,7 +151,7 @@ export default function GmailPanel() {
   const handleDisconnect = async () => {
     setConnected(false);
     setEmail('');
-    setAccessToken('');
+    setAppPassword('');
     setMessages([]);
     setLabels([]);
     setLabelsFetched(false);
@@ -267,16 +267,20 @@ export default function GmailPanel() {
             onChange={e => setFormEmail(e.target.value)}
             placeholder="you@gmail.com"
           />
-          <label className="gm-form-label">Access Token</label>
+          <label className="gm-form-label">App Password</label>
           <input
             className="gm-form-input"
             type="password"
             value={formToken}
             onChange={e => setFormToken(e.target.value)}
-            placeholder="OAuth2 access token"
+            placeholder="xxxx xxxx xxxx xxxx"
           />
           <p className="gm-form-help">
-            Use an OAuth2 access token from the Gmail API.
+            Generate an App Password at{' '}
+            <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer">
+              myaccount.google.com/apppasswords
+            </a>{' '}
+            (requires 2-Step Verification).
           </p>
           {formError && <div className="gm-form-error">{formError}</div>}
           <div className="gm-form-actions">

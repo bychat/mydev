@@ -14,6 +14,7 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import StorageIcon from '@mui/icons-material/Storage';
 import HubIcon from '@mui/icons-material/Hub';
 import EmailIcon from '@mui/icons-material/Email';
+import WaterDropIcon from '@mui/icons-material/WaterDrop';
 import ExtensionIcon from '@mui/icons-material/Extension';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import { useWorkspace } from '../context/WorkspaceContext';
@@ -76,6 +77,7 @@ const panels: PanelConfig[] = [
   { id: 'github', label: 'GitHub Actions', icon: <ActionsIcon />, gitOnly: true },
   { id: 'atlassian', label: 'Atlassian', icon: <AtlassianIcon /> },
   { id: 'gmail', label: 'Gmail', icon: <EmailIcon fontSize="small" sx={{ color: '#EA4335' }} /> },
+  { id: 'digitalocean', label: 'DigitalOcean', icon: <WaterDropIcon fontSize="small" sx={{ color: '#0080FF' }} /> },
   { id: 'mcp', label: 'MCP Servers', icon: <HubIcon fontSize="small" sx={{ color: '#7c3aed' }} /> },
 ];
 

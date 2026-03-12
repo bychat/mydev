@@ -34,9 +34,15 @@ export const atlassianConnector: Connector<AtlassianConnectorConfig> = {
   ],
 
   actions: [
-    { id: 'test-connection', name: 'Test Connection', description: 'Verify credentials are valid' },
-    { id: 'list-projects', name: 'List Projects', description: 'Fetch all Jira projects' },
-    { id: 'list-issues', name: 'List Issues', description: 'Fetch issues for a project' },
+    { id: 'test-connection', name: 'Test Connection', description: 'Verify credentials are valid', inputSchema: {} },
+    { id: 'list-projects', name: 'List Projects', description: 'Fetch all Jira projects', inputSchema: {} },
+    {
+      id: 'list-issues', name: 'List Issues', description: 'Fetch issues for a project',
+      inputSchema: {
+        projectKey: { type: 'string', label: 'Project Key', required: true, placeholder: 'PROJ' },
+        maxResults: { type: 'number', label: 'Max Results', required: false, placeholder: '50' },
+      },
+    },
   ],
 
   async testConnection(config) {

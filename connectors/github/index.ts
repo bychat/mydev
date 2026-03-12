@@ -34,14 +34,67 @@ export const githubConnector: Connector<GitHubConnectorConfig> = {
   ],
 
   actions: [
-    { id: 'extract-repo-info', name: 'Extract Repo Info', description: 'Parse owner/repo from a git remote URL' },
-    { id: 'list-workflows', name: 'List Workflows', description: 'List GitHub Actions workflows for a repo' },
-    { id: 'list-workflow-runs', name: 'List Workflow Runs', description: 'List recent runs for a workflow' },
-    { id: 'list-run-jobs', name: 'List Run Jobs', description: 'List jobs within a workflow run' },
-    { id: 'get-run-logs', name: 'Get Run Logs', description: 'Download logs for a workflow run' },
-    { id: 'get-job-logs', name: 'Get Job Logs', description: 'Download logs for a specific job' },
-    { id: 'rerun-workflow', name: 'Rerun Workflow', description: 'Re-run a failed or completed workflow' },
-    { id: 'list-issues', name: 'List Issues', description: 'List issues for a repository' },
+    {
+      id: 'extract-repo-info', name: 'Extract Repo Info', description: 'Parse owner/repo from a git remote URL',
+      inputSchema: { remoteUrl: { type: 'string', label: 'Remote URL', required: true, placeholder: 'https://github.com/owner/repo.git' } },
+    },
+    {
+      id: 'list-workflows', name: 'List Workflows', description: 'List GitHub Actions workflows for a repo',
+      inputSchema: {
+        owner: { type: 'string', label: 'Owner', required: true, placeholder: 'octocat' },
+        repo: { type: 'string', label: 'Repository', required: true, placeholder: 'hello-world' },
+      },
+    },
+    {
+      id: 'list-workflow-runs', name: 'List Workflow Runs', description: 'List recent runs for a workflow',
+      inputSchema: {
+        owner: { type: 'string', label: 'Owner', required: true, placeholder: 'octocat' },
+        repo: { type: 'string', label: 'Repository', required: true, placeholder: 'hello-world' },
+        workflowId: { type: 'number', label: 'Workflow ID', required: false },
+        perPage: { type: 'number', label: 'Per Page', required: false, placeholder: '10' },
+      },
+    },
+    {
+      id: 'list-run-jobs', name: 'List Run Jobs', description: 'List jobs within a workflow run',
+      inputSchema: {
+        owner: { type: 'string', label: 'Owner', required: true, placeholder: 'octocat' },
+        repo: { type: 'string', label: 'Repository', required: true, placeholder: 'hello-world' },
+        runId: { type: 'number', label: 'Run ID', required: true },
+      },
+    },
+    {
+      id: 'get-run-logs', name: 'Get Run Logs', description: 'Download logs for a workflow run',
+      inputSchema: {
+        owner: { type: 'string', label: 'Owner', required: true, placeholder: 'octocat' },
+        repo: { type: 'string', label: 'Repository', required: true, placeholder: 'hello-world' },
+        runId: { type: 'number', label: 'Run ID', required: true },
+      },
+    },
+    {
+      id: 'get-job-logs', name: 'Get Job Logs', description: 'Download logs for a specific job',
+      inputSchema: {
+        owner: { type: 'string', label: 'Owner', required: true, placeholder: 'octocat' },
+        repo: { type: 'string', label: 'Repository', required: true, placeholder: 'hello-world' },
+        jobId: { type: 'number', label: 'Job ID', required: true },
+      },
+    },
+    {
+      id: 'rerun-workflow', name: 'Rerun Workflow', description: 'Re-run a failed or completed workflow',
+      inputSchema: {
+        owner: { type: 'string', label: 'Owner', required: true, placeholder: 'octocat' },
+        repo: { type: 'string', label: 'Repository', required: true, placeholder: 'hello-world' },
+        runId: { type: 'number', label: 'Run ID', required: true },
+      },
+    },
+    {
+      id: 'list-issues', name: 'List Issues', description: 'List issues for a repository',
+      inputSchema: {
+        owner: { type: 'string', label: 'Owner', required: true, placeholder: 'octocat' },
+        repo: { type: 'string', label: 'Repository', required: true, placeholder: 'hello-world' },
+        state: { type: 'string', label: 'State', required: false, placeholder: 'open' },
+        perPage: { type: 'number', label: 'Per Page', required: false, placeholder: '30' },
+      },
+    },
   ],
 
   async testConnection(config) {

@@ -240,7 +240,7 @@ export interface BackendAPI {
   connectorGet(connectorId: string): Promise<{
     metadata: { id: string; name: string; description: string; icon: string; category: string; version: string };
     configFields: Array<{ key: string; label: string; type: string; placeholder?: string; required: boolean; helpText?: string }>;
-    actions: Array<{ id: string; name: string; description: string }>;
+    actions: Array<{ id: string; name: string; description: string; inputSchema?: Record<string, unknown> }>;
     state: { status: string; error?: string; lastConnected?: string };
   } | null>;
   connectorGetState(connectorId: string): Promise<{ status: string; error?: string; lastConnected?: string }>;

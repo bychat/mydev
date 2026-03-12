@@ -1,18 +1,55 @@
 /**
  * Gmail Connector
- * 
- * Integrates with the Gmail API for reading and sending emails.
- * Uses OAuth2 access token for authentication.
+ *
+ * Integrates with Gmail via IMAP (read) and SMTP (send) using
+ * Google App Passwords — no OAuth2 flow required.
+ *
+ * Prerequisites for the user:
+ *  1. Enable 2-Step Verification on Google Account
+ *  2. Generate an App Password at https://myaccount.google.com/apppasswords
+ *  3. Enter their Gmail address + the 16-char app password in the connector form
  */
 
 import type { Connector, ConnectorActionResult } from '../core/connector';
+import { ImapFlow } from 'imapflow';
+import { simpleParser } from 'mailparser';
+import nodemailer from 'nodemailer';
 
 export interface GmailConnectorConfig {
-  accessToken: string;
+  appPassword: string;
   email: string;
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
+
+// ─── helpers ───
+
+/** Create a short-lived IMAP client, run a callback, then close. */
+async function withImap<T>(
+  config: GmailConnectorConfig,
+  fn: (client: ImapFlow) => Promise<T>,
+): Promise<T> {
+  const client = new ImapFlow({
+    host: 'imap.gmail.com',
+    port: 993,
+    secure: true,
+    auth: { user: config.email, pass: config.appPassword },
+    logger: false as any,          // silence noisy logs
+  });
+  await client.connect();
+  try {
+    return await fn(client);
+  } finally {
+    await client.logout().catch(() => {});
+  }
+}
+
+/** Map an IMAP mailbox name to a user-friendly label. */
+function friendlyLabel(path: string): string {
+  return path.replace(/^\[Gmail]\//i, '').replace(/\//g, ' / ');
+}
+
+// ─── connector ───
 
 export const gmailConnector: Connector<GmailConnectorConfig> = {
   metadata: {
@@ -21,7 +58,7 @@ export const gmailConnector: Connector<GmailConnectorConfig> = {
     description: 'Gmail email integration — view inbox, read and send emails',
     icon: 'gmail',
     category: 'communication',
-    version: '1.0.0',
+    version: '2.0.0',
   },
 
   configFields: [
@@ -34,156 +71,189 @@ export const gmailConnector: Connector<GmailConnectorConfig> = {
       helpText: 'Your Gmail email address',
     },
     {
-      key: 'accessToken',
-      label: 'Access Token',
+      key: 'appPassword',
+      label: 'App Password',
       type: 'password',
-      placeholder: 'ya29.a0AfH6SM...',
+      placeholder: 'xxxx xxxx xxxx xxxx',
       required: true,
-      helpText: 'OAuth2 access token or app password for Gmail API',
+      helpText: 'Google App Password (generate at myaccount.google.com/apppasswords)',
     },
   ],
 
   actions: [
-    { id: 'list-messages', name: 'List Messages', description: 'Fetch recent emails from inbox' },
-    { id: 'get-message', name: 'Get Message', description: 'Get a specific email by ID' },
-    { id: 'list-labels', name: 'List Labels', description: 'List all Gmail labels' },
-    { id: 'send-message', name: 'Send Message', description: 'Send a new email' },
+    {
+      id: 'list-messages', name: 'List Messages', description: 'Fetch recent emails from a mailbox',
+      inputSchema: {
+        mailbox: { type: 'string', label: 'Mailbox', required: false, placeholder: 'INBOX' },
+        maxResults: { type: 'number', label: 'Max Results', required: false, placeholder: '20' },
+      },
+    },
+    {
+      id: 'get-message', name: 'Get Message', description: 'Get a specific email by UID',
+      inputSchema: {
+        messageId: { type: 'string', label: 'Message UID', required: true },
+        mailbox: { type: 'string', label: 'Mailbox', required: false, placeholder: 'INBOX' },
+      },
+    },
+    { id: 'list-labels', name: 'List Labels', description: 'List all IMAP mailboxes / labels', inputSchema: {} },
+    {
+      id: 'send-message', name: 'Send Message', description: 'Send a new email via SMTP',
+      inputSchema: {
+        to: { type: 'string', label: 'To', required: true, placeholder: 'recipient@example.com' },
+        subject: { type: 'string', label: 'Subject', required: true },
+        body: { type: 'string', label: 'Body', required: false },
+      },
+    },
   ],
 
+  /* ── Test Connection ── */
   async testConnection(config) {
     try {
-      const res = await fetch(
-        'https://gmail.googleapis.com/gmail/v1/users/me/profile',
-        {
-          headers: { Authorization: `Bearer ${config.accessToken}` },
-        },
-      );
-      if (res.ok) {
-        return { success: true };
-      }
-      const body: any = await res.json().catch(() => ({}));
-      const errMsg = body?.error?.message || `HTTP ${res.status}`;
-      return { success: false, error: errMsg };
-    } catch (err) {
-      return { success: false, error: (err as Error).message };
+      await withImap(config, async () => {
+        /* If connect() succeeds, auth is valid */
+      });
+      return { success: true };
+    } catch (err: any) {
+      const msg =
+        err?.responseText || err?.message || 'IMAP connection failed';
+      return { success: false, error: msg };
     }
   },
 
+  /* ── Execute Action ── */
   async executeAction(actionId, config, params = {}): Promise<ConnectorActionResult> {
-    const headers = {
-      Authorization: `Bearer ${config.accessToken}`,
-      'Content-Type': 'application/json',
-    };
-
     try {
       switch (actionId) {
+        // ── list-messages ──
         case 'list-messages': {
-          const maxResults = (params.maxResults as number) || 20;
-          const q = (params.query as string) || '';
-          const labelIds = (params.labelIds as string) || 'INBOX';
-          const url = new URL('https://gmail.googleapis.com/gmail/v1/users/me/messages');
-          url.searchParams.set('maxResults', String(maxResults));
-          if (q) url.searchParams.set('q', q);
-          url.searchParams.set('labelIds', labelIds);
+          const maxResults = Number(params.maxResults) || 20;
+          const mailbox = (params.labelIds as string) || (params.mailbox as string) || 'INBOX';
 
-          const listRes = await fetch(url.toString(), { headers });
-          if (!listRes.ok) {
-            const err: any = await listRes.json().catch(() => ({}));
-            return { success: false, error: err?.error?.message || `HTTP ${listRes.status}` };
-          }
-          const listData: any = await listRes.json();
-          const messageStubs = listData.messages || [];
+          const messages = await withImap(config, async (client) => {
+            const lock = await client.getMailboxLock(mailbox);
+            try {
+              const mb = client.mailbox;
+              const total = mb && typeof mb === 'object' && 'exists' in mb ? (mb as any).exists as number : 0;
+              if (total === 0) return [];
 
-          // Fetch metadata for each message
-          const messages = await Promise.all(
-            messageStubs.slice(0, maxResults).map(async (stub: { id: string }) => {
-              const msgRes = await fetch(
-                `https://gmail.googleapis.com/gmail/v1/users/me/messages/${stub.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date&metadataHeaders=To`,
-                { headers },
-              );
-              if (!msgRes.ok) return null;
-              const msg: any = await msgRes.json();
-              const getHeader = (name: string) =>
-                msg.payload?.headers?.find((h: { name: string; value: string }) => h.name.toLowerCase() === name.toLowerCase())?.value || '';
-              return {
-                id: msg.id,
-                threadId: msg.threadId,
-                snippet: msg.snippet || '',
-                subject: getHeader('Subject'),
-                from: getHeader('From'),
-                to: getHeader('To'),
-                date: getHeader('Date'),
-                labelIds: msg.labelIds || [],
-                isUnread: (msg.labelIds || []).includes('UNREAD'),
-              };
-            }),
-          );
-          return { success: true, data: messages.filter(Boolean) };
+              const startSeq = Math.max(1, total - maxResults + 1);
+              const range = `${startSeq}:*`;
+
+              const results: any[] = [];
+              for await (const msg of client.fetch(range, {
+                envelope: true,
+                flags: true,
+                uid: true,
+              })) {
+                const env = msg.envelope ?? {} as any;
+                const flags: Set<string> = msg.flags ?? new Set();
+                results.push({
+                  id: String(msg.uid),
+                  seq: msg.seq,
+                  threadId: env.messageId || '',
+                  snippet: '',
+                  subject: env.subject || '',
+                  from: env.from?.[0]
+                    ? `${env.from[0].name || ''} <${env.from[0].address || ''}>`
+                    : '',
+                  to: (env.to || [])
+                    .map((a: any) => `${a.name || ''} <${a.address || ''}>`)
+                    .join(', '),
+                  date: env.date ? new Date(env.date).toUTCString() : '',
+                  labelIds: [mailbox],
+                  isUnread: !flags.has('\\Seen'),
+                });
+              }
+              // newest first
+              results.reverse();
+              return results.slice(0, maxResults);
+            } finally {
+              lock.release();
+            }
+          });
+
+          return { success: true, data: messages };
         }
 
+        // ── get-message ──
         case 'get-message': {
-          const messageId = params.messageId as string;
-          if (!messageId) return { success: false, error: 'messageId is required' };
-          const res = await fetch(
-            `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}?format=full`,
-            { headers },
-          );
-          if (!res.ok) {
-            const err: any = await res.json().catch(() => ({}));
-            return { success: false, error: err?.error?.message || `HTTP ${res.status}` };
-          }
-          const msg = await res.json();
-          return { success: true, data: msg };
+          const uid = params.messageId as string;
+          if (!uid) return { success: false, error: 'messageId (UID) is required' };
+          const mailbox = (params.mailbox as string) || 'INBOX';
+
+          const message = await withImap(config, async (client) => {
+            const lock = await client.getMailboxLock(mailbox);
+            try {
+              const raw = await client.download(uid, undefined, { uid: true });
+              if (!raw?.content) return null;
+
+              const parsed = await simpleParser(raw.content as any);
+              return {
+                id: uid,
+                subject: parsed.subject || '',
+                from: parsed.from?.text || '',
+                to: parsed.to
+                  ? (Array.isArray(parsed.to) ? parsed.to.map(a => a.text).join(', ') : parsed.to.text)
+                  : '',
+                date: parsed.date ? parsed.date.toUTCString() : '',
+                text: parsed.text || '',
+                html: parsed.html || '',
+                attachments: (parsed.attachments || []).map(a => ({
+                  filename: a.filename,
+                  contentType: a.contentType,
+                  size: a.size,
+                })),
+              };
+            } finally {
+              lock.release();
+            }
+          });
+
+          if (!message) return { success: false, error: 'Message not found' };
+          return { success: true, data: message };
         }
 
+        // ── list-labels ──
         case 'list-labels': {
-          const res = await fetch(
-            'https://gmail.googleapis.com/gmail/v1/users/me/labels',
-            { headers },
-          );
-          if (!res.ok) {
-            const err: any = await res.json().catch(() => ({}));
-            return { success: false, error: err?.error?.message || `HTTP ${res.status}` };
-          }
-          const data: any = await res.json();
-          return { success: true, data: data.labels || [] };
+          const labels = await withImap(config, async (client) => {
+            const mailboxes = await client.list();
+            return mailboxes.map((mb: any) => ({
+              id: mb.path,
+              name: friendlyLabel(mb.path),
+              type: mb.specialUse || 'user',
+              delimiter: mb.delimiter,
+            }));
+          });
+
+          return { success: true, data: labels };
         }
 
+        // ── send-message ──
         case 'send-message': {
           const to = params.to as string;
           const subject = params.subject as string;
           const body = params.body as string;
-          if (!to || !subject) return { success: false, error: 'to and subject are required' };
+          if (!to || !subject)
+            return { success: false, error: 'to and subject are required' };
 
-          const rawEmail = [
-            `To: ${to}`,
-            `Subject: ${subject}`,
-            'Content-Type: text/plain; charset=utf-8',
-            '',
-            body || '',
-          ].join('\r\n');
+          const transporter = nodemailer.createTransport({
+            host: 'smtp.gmail.com',
+            port: 465,
+            secure: true,
+            auth: { user: config.email, pass: config.appPassword },
+          });
 
-          // Base64url encode
-          const encoded = Buffer.from(rawEmail)
-            .toString('base64')
-            .replace(/\+/g, '-')
-            .replace(/\//g, '_')
-            .replace(/=+$/, '');
+          const info = await transporter.sendMail({
+            from: config.email,
+            to,
+            subject,
+            text: body || '',
+          });
 
-          const res = await fetch(
-            'https://gmail.googleapis.com/gmail/v1/users/me/messages/send',
-            {
-              method: 'POST',
-              headers,
-              body: JSON.stringify({ raw: encoded }),
-            },
-          );
-          if (!res.ok) {
-            const err: any = await res.json().catch(() => ({}));
-            return { success: false, error: err?.error?.message || `HTTP ${res.status}` };
-          }
-          const data = await res.json();
-          return { success: true, data };
+          return {
+            success: true,
+            data: { messageId: info.messageId, accepted: info.accepted },
+          };
         }
 
         default:
