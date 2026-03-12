@@ -1,0 +1,29 @@
+{
+  "name": "flovia",
+  "version": "1.0.0",
+  "description": "flovia — AI-powered developer workspace. Downloads and launches the desktop app. (flovia.io)",
+  "bin": {
+    "flovia": "./bin/launch.js"
+  },
+  "files": [
+    "bin/**/*"
+  ],
+  "keywords": [
+    "ai",
+    "electron",
+    "desktop",
+    "coding-assistant",
+    "developer-tools",
+    "flovia"
+  ],
+  "author": "flovia-io",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/flovia-io/flovia"
+  },
+  "homepage": "https://flovia.io",
+  "engines": {
+    "node": ">=18"
+  }
+}

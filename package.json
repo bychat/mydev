@@ -3,15 +3,7 @@
   "version": "1.0.0",
   "description": "flovia.io — AI-powered developer workspace (Desktop, Web, CLI)",
   "main": "dist-main/main/index.js",
-  "bin": {
-    "flovia": "./dist-cli/cli/index.js"
-  },
-  "files": [
-    "dist-cli/**/*",
-    "package.json",
-    "README.md",
-    "LICENSE"
-  ],
+  "private": true,
   "scripts": {
     "//── Desktop (Electron) ──": "",
     "dev": "npm run build:main && concurrently \"npm run dev:renderer\" \"npm run dev:electron\"",
@@ -27,9 +19,10 @@
     "chat": "tsx cli/index.ts -m chat",
     "//── Build ──": "",
     "build": "npm run build:main && vite build && electron-builder",
-    "build:main": "tsc",
-    "build:cli": "tsc --project cli/tsconfig.json",
-    "prepublishOnly": "npm run build:cli",
+    "build:main": "tsc && tsc-alias",
+    "build:cli": "tsc --project cli/tsconfig.json && tsc-alias --project cli/tsconfig.json",
+    "build:server": "tsc --project server/tsconfig.json && tsc-alias --project server/tsconfig.json",
+    "stage-packages": "bash scripts/stage-packages.sh",
     "build:mac": "npm run build:main && vite build && electron-builder --mac",
     "build:win": "npm run build:main && vite build && electron-builder --win",
     "build:linux": "npm run build:main && vite build && electron-builder --linux",
@@ -92,6 +85,7 @@
     "concurrently": "^9.0.0",
     "electron": "^33.0.0",
     "electron-builder": "^25.0.0",
+    "tsc-alias": "^1.8.16",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vite": "^6.0.0",
