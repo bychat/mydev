@@ -1081,6 +1081,87 @@ button{font-family:inherit;cursor:pointer}
 .at-status.inprogress{background:#deebff;color:#0747A6}
 .at-no-issues{padding:8px 28px;font-size:.72rem;color:#aaa}
 
+/* ── Gmail Panel ─── */
+.gm-panel{height:100%;display:flex;flex-direction:column;background:#fff;overflow:hidden}
+.gm-panel-header{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid #e5e5e5;background:#f8f8f8}
+.gm-panel-header h2{font-size:.82rem;font-weight:600;color:#333;flex:1}
+.gm-panel-header svg{color:#EA4335}
+.gm-panel-header-actions{display:flex;align-items:center;gap:4px}
+.gm-refresh-btn{display:flex;align-items:center;justify-content:center;width:22px;height:22px;background:none;border:none;cursor:pointer;border-radius:4px;color:#666}
+.gm-refresh-btn:hover{background:#e5e5e5}
+.gm-refresh-btn:disabled{opacity:.5;cursor:not-allowed}
+.gm-refresh-btn .spinning{animation:spin .8s linear infinite}
+.gm-disconnect-btn{display:flex;align-items:center;justify-content:center;width:22px;height:22px;background:none;border:none;cursor:pointer;border-radius:4px;color:#666;font-size:1rem}
+.gm-disconnect-btn:hover{background:#e5e5e5;color:#EA4335}
+.gm-add-btn-small{display:flex;align-items:center;justify-content:center;width:22px;height:22px;background:none;border:none;cursor:pointer;border-radius:4px;color:#666;font-size:1rem}
+.gm-add-btn-small:hover{background:#e5e5e5;color:#EA4335}
+.gm-panel-empty{padding:16px;text-align:center;color:#888;font-size:.78rem}
+.gm-panel-empty p{margin-bottom:8px}
+.gm-hint{font-size:.72rem;color:#aaa}
+.gm-add-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 16px;margin-top:12px;background:#EA4335;color:#fff;border:none;border-radius:6px;font-size:.78rem;cursor:pointer;transition:background .12s}
+.gm-add-btn:hover{background:#d33426}
+
+/* Gmail connection form */
+.gm-form{padding:10px 12px;border-bottom:1px solid #e5e5e5;background:#fafafa}
+.gm-form-label{display:block;font-size:.7rem;font-weight:600;color:#666;margin-bottom:3px;margin-top:8px}
+.gm-form-label:first-child{margin-top:0}
+.gm-form-input{width:100%;padding:5px 8px;border:1px solid #ddd;border-radius:4px;font-size:.78rem;background:#fff;outline:none;transition:border-color .12s}
+.gm-form-input:focus{border-color:#EA4335}
+.gm-form-help{font-size:.68rem;color:#aaa;margin-top:4px}
+.gm-form-error{font-size:.72rem;color:#de350b;margin-top:6px}
+.gm-form-actions{display:flex;gap:6px;margin-top:10px}
+.gm-form-cancel{flex:1;padding:5px;border:1px solid #ddd;border-radius:4px;background:#fff;font-size:.75rem;cursor:pointer;color:#666}
+.gm-form-cancel:hover{background:#f5f5f5}
+.gm-form-save{flex:1;padding:5px;border:none;border-radius:4px;background:#EA4335;color:#fff;font-size:.75rem;cursor:pointer}
+.gm-form-save:hover{background:#d33426}
+.gm-form-save:disabled{opacity:.6;cursor:not-allowed}
+
+/* Gmail account info */
+.gm-account{display:flex;align-items:center;gap:6px;padding:6px 12px;border-bottom:1px solid #e5e5e5;background:#fafafa}
+.gm-account-dot{font-size:.5rem;color:#34A853}
+.gm-account-email{font-size:.75rem;color:#333;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Gmail label selector */
+.gm-label-selector{border-bottom:1px solid #e5e5e5}
+.gm-label-toggle{display:flex;align-items:center;gap:6px;padding:6px 12px;cursor:pointer;font-size:.78rem;transition:background .1s}
+.gm-label-toggle:hover{background:#f5f5f5}
+.gm-chevron{display:flex;align-items:center;color:#999;flex-shrink:0}
+.gm-label-current{font-weight:600;color:#333}
+.gm-labels-list{max-height:200px;overflow-y:auto;background:#fafafa;border-top:1px solid #f0f0f0}
+.gm-loading-labels{display:flex;align-items:center;gap:8px;padding:8px 24px;color:#888;font-size:.72rem}
+.gm-label-item{display:flex;align-items:center;justify-content:space-between;padding:4px 12px 4px 28px;cursor:pointer;font-size:.73rem;color:#555;transition:background .1s}
+.gm-label-item:hover{background:#f0f0f0}
+.gm-label-item.active{background:#fce8e6;color:#EA4335;font-weight:600}
+.gm-label-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gm-label-unread{font-size:.65rem;font-weight:600;color:#EA4335;background:#fce8e6;padding:1px 5px;border-radius:8px}
+
+/* Gmail loading & error */
+.gm-loading{display:flex;align-items:center;gap:8px;padding:16px;color:#888;font-size:.78rem}
+.gm-error{padding:8px 12px;font-size:.72rem;color:#de350b;background:#fff5f5;border-bottom:1px solid #ffebe6;display:flex;align-items:center;gap:8px}
+.gm-error-retry{background:none;border:none;color:#EA4335;cursor:pointer;font-size:.72rem;text-decoration:underline}
+.gm-empty-messages{padding:16px;text-align:center;color:#aaa;font-size:.75rem}
+
+/* Gmail messages list */
+.gm-messages{flex:1;overflow-y:auto;padding:4px 0}
+.gm-message-group{border-bottom:1px solid #f0f0f0}
+.gm-message-item{display:flex;align-items:center;gap:6px;padding:6px 12px;cursor:pointer;font-size:.78rem;transition:background .1s}
+.gm-message-item:hover{background:#f5f5f5}
+.gm-message-item.unread{font-weight:600}
+.gm-message-indicator{font-size:.5rem;flex-shrink:0;color:#FBBC04}
+.gm-message-item.unread .gm-message-indicator{color:#EA4335}
+.gm-message-from{font-weight:600;color:#333;font-size:.73rem;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0}
+.gm-message-subject{flex:1;color:#555;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.73rem}
+.gm-message-date{font-size:.65rem;color:#999;flex-shrink:0;white-space:nowrap}
+
+/* Gmail message detail */
+.gm-message-detail{background:#fafafa;padding:8px 12px 8px 28px;font-size:.73rem;border-top:1px solid #f0f0f0}
+.gm-detail-row{display:flex;gap:6px;padding:2px 0}
+.gm-detail-label{font-weight:600;color:#666;flex-shrink:0;min-width:50px}
+.gm-detail-value{color:#333;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gm-message-snippet{margin-top:6px;padding:6px 8px;background:#fff;border:1px solid #e5e5e5;border-radius:4px;font-size:.72rem;color:#555;line-height:1.4}
+.gm-message-labels{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.gm-msg-label{font-size:.62rem;padding:1px 5px;border-radius:3px;font-weight:600;background:#e8f0fe;color:#1967d2}
+
 /* ── MCP Servers Panel ─── */
 .mcp-panel{height:100%;display:flex;flex-direction:column;background:#fff;overflow:hidden}
 .mcp-panel-header{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid #e5e5e5;background:#f8f8f8}
@@ -1384,6 +1465,8 @@ button{font-family:inherit;cursor:pointer}
 .github-clone-submit{padding:.45rem 1rem;background:#333;border:none;border-radius:6px;color:#fff;font-size:.82rem;font-weight:500;cursor:pointer;transition:all .15s}
 .github-clone-submit:hover{background:#555}
 .github-clone-submit:disabled{background:#ddd;cursor:not-allowed}
+.github-clone-connected{display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;color:#16a34a;font-size:.82rem;font-weight:500}
+.github-clone-connected-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;flex-shrink:0}
 
 @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}

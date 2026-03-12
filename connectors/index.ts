@@ -17,6 +17,7 @@ import { githubConnector } from './github';
 import { atlassianConnector } from './atlassian';
 import { supabaseConnector } from './supabase';
 import { digitaloceanConnector } from './digitalocean';
+import { gmailConnector } from './gmail.connector';
 
 /**
  * All built-in connectors. Add new ones here.
@@ -27,6 +28,7 @@ export const builtInConnectors: Connector<any>[] = [
   atlassianConnector,
   supabaseConnector,
   digitaloceanConnector,
+  gmailConnector,
   // ↓ Add new connectors here ↓
   // linearConnector,
   // slackConnector,
