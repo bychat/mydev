@@ -1,18 +1,18 @@
 #!/usr/bin/env node
 
 /**
- * bychat CLI
+ * flovia CLI
  *
  * Shares the same AI provider, model, and prompts as the desktop app.
  * Reads ai-settings.json and prompt-settings.json from the Electron
  * userData directory — configure once in the UI, use everywhere.
  *
  * Usage:
- *   bychat "explain the auth flow"
- *   bychat ask "what does this project do"
- *   bychat agent "add dark mode support"
- *   bychat agent -w ./my-project "refactor the utils folder"
- *   echo "fix the bug" | bychat agent
+ *   flovia "explain the auth flow"
+ *   flovia ask "what does this project do"
+ *   flovia agent "add dark mode support"
+ *   flovia agent -w ./my-project "refactor the utils folder"
+ *   echo "fix the bug" | flovia agent
  */
 
 import * as fs from 'fs';
@@ -32,11 +32,11 @@ import {
   buildFileChangePrompt,
   buildVerifyPrompt,
   parseVerifyResponse,
-} from '../core/chat';
-import { getUserDataDir } from '../core/dataDir';
-import { loadAISettings, loadPromptSettings } from '../main/storage';
-import type { AISettings } from '../main/ai';
-import type { PromptSettings } from '../main/prompts';
+} from '@flovia/core/chat';
+import { getUserDataDir } from '@flovia/core/dataDir';
+import { loadAISettings, loadPromptSettings } from '@flovia/main/storage';
+import type { AISettings } from '@flovia/main/ai';
+import type { PromptSettings } from '@flovia/main/prompts';
 
 // ─── Argument Parsing ───
 
@@ -80,7 +80,7 @@ function parseArgs(argv: string[]): CliArgs {
   while (i < argv.length) {
     const arg = argv[i];
 
-    // Support subcommand-style: bychat ask, bychat agent, bychat chat
+    // Support subcommand-style: flovia ask, flovia agent, flovia chat
     if (!subcommandParsed && !arg.startsWith('-') && ['ask', 'agent', 'chat'].includes(arg)) {
       args.mode = arg as CliArgs['mode'];
       subcommandParsed = true;
@@ -132,15 +132,15 @@ function parseArgs(argv: string[]): CliArgs {
 function showHelp(): void {
   const settings = loadAISettings();
   console.log(`
-\x1b[1mbychat\x1b[0m — AI-powered developer assistant CLI (bychat.io)
+\x1b[1mflovia\x1b[0m — AI-powered developer assistant CLI (flovia.io)
 
   Uses the same AI provider, model, and prompts configured in the desktop app.
 
 \x1b[1mUSAGE\x1b[0m
-  bychat ask [options] "your message"
-  bychat agent [options] "your message"
-  bychat chat [options] "your message"
-  echo "your message" | bychat agent [options]
+  flovia ask [options] "your message"
+  flovia agent [options] "your message"
+  flovia chat [options] "your message"
+  echo "your message" | flovia agent [options]
 
 \x1b[1mCOMMANDS\x1b[0m
   \x1b[36mask\x1b[0m     Answer questions about the codebase (default)
@@ -167,20 +167,20 @@ function showHelp(): void {
   Config:    ${getUserDataDir()}
 
 \x1b[1mEXAMPLES\x1b[0m
-  bychat ask "explain the auth flow"
-  bychat agent "add input validation to the signup form"
-  bychat ask -w ./my-project "what testing framework is used?"
-  echo "summarize this project" | bychat agent
-  bychat --list-models
+  flovia ask "explain the auth flow"
+  flovia agent "add input validation to the signup form"
+  flovia ask -w ./my-project "what testing framework is used?"
+  echo "summarize this project" | flovia agent
+  flovia --list-models
 `);
 }
 
 function showVersion(): void {
   try {
     const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf-8'));
-    console.log(`bychat v${pkg.version}`);
+    console.log(`flovia v${pkg.version}`);
   } catch {
-    console.log('bychat v1.0.0');
+    console.log('flovia v1.0.0');
   }
 }
 
@@ -476,9 +476,9 @@ async function main(): Promise<void> {
   if (!message) message = await readStdin();
   if (!message) {
     console.error('\x1b[31mError:\x1b[0m No message provided.\n');
-    console.error('Usage: bychat ask "your message"');
-    console.error('       echo "your message" | bychat agent\n');
-    console.error('Run \x1b[36mbychat --help\x1b[0m for all options.');
+    console.error('Usage: flovia ask "your message"');
+    console.error('       echo "your message" | flovia agent\n');
+    console.error('Run \x1b[36mflovia --help\x1b[0m for all options.');
     process.exit(1);
   }
 
@@ -490,12 +490,12 @@ async function main(): Promise<void> {
   if (!model) {
     console.error(`\x1b[31mError:\x1b[0m No model configured.`);
     console.error(`Configure one in the desktop app, or pass --model <name>.\n`);
-    console.error(`Run \x1b[36mbychat --list-models\x1b[0m to see available models.`);
+    console.error(`Run \x1b[36mflovia --list-models\x1b[0m to see available models.`);
     process.exit(1);
   }
 
   if (args.verbose) {
-    console.error(`\x1b[2m── bychat CLI ──\x1b[0m`);
+    console.error(`\x1b[2m── flovia CLI ──\x1b[0m`);
     console.error(`\x1b[2mConfig:    ${getUserDataDir()}\x1b[0m`);
     console.error(`\x1b[2mProvider:  ${settings.provider}\x1b[0m`);
     console.error(`\x1b[2mBase URL:  ${baseUrl}\x1b[0m`);

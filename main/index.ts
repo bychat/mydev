@@ -6,7 +6,7 @@ import { app, BrowserWindow, Menu } from 'electron';
 import * as fs from 'fs';
 import { registerIpcHandlers } from './ipc';
 import { registerTerminalHandlers, killAllTerminals } from './terminal';
-import { registerBuiltInConnectors } from '../connectors';
+import { registerBuiltInConnectors } from '@flovia/connectors';
 import { registerConnectorIpcHandlers } from './connectorIpc';
 import { killAllMcpServers } from './mcpServers';
 
@@ -110,7 +110,7 @@ function buildMenu(): void {
       label: 'Help',
       submenu: [
         {
-          label: 'About bychat',
+          label: 'About flovia',
           click: () => { /* placeholder */ },
         },
       ],

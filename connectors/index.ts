@@ -12,7 +12,7 @@
  * That's it — the UI, IPC layer, and REST API all pick it up automatically.
  */
 
-import { getConnectorRegistry, type Connector } from '../core/connector';
+import { getConnectorRegistry, type Connector } from '@flovia/core/connector';
 import { githubConnector } from './github';
 import { atlassianConnector } from './atlassian';
 import { supabaseConnector } from './supabase';
@@ -52,7 +52,7 @@ export function registerBuiltInConnectors(): void {
 /**
  * Re-export everything the rest of the app needs.
  */
-export { getConnectorRegistry } from '../core/connector';
+export { getConnectorRegistry } from '@flovia/core/connector';
 export type {
   Connector,
   ConnectorMetadata,
@@ -62,4 +62,4 @@ export type {
   ConnectorActionResult,
   ConnectorState,
   ConnectorEvent,
-} from '../core/connector';
+} from '@flovia/core/connector';

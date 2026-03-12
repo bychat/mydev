@@ -148,7 +148,7 @@ export const DEFAULT_AGENT_PARAMETERS: AgentParameters = {
 
   // Prompts
   systemContextPrompt: [
-    'You are an expert coding assistant inside the "bychat" desktop IDE (bychat.io).',
+    'You are an expert coding assistant inside the "flovia" desktop IDE (flovia.io).',
     '',
     '## Workspace',
     '- **Directory**: {{folderPath}}',

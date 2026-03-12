@@ -5,7 +5,7 @@
  * Exposes GitHub Actions, Issues, and repo operations.
  */
 
-import type { Connector, ConnectorActionResult } from '../core/connector';
+import type { Connector, ConnectorActionResult } from '@flovia/core/connector';
 
 export interface GitHubConnectorConfig {
   token: string;

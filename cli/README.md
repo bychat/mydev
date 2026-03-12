@@ -1,6 +1,6 @@
 # cli/
 
-Command-line interface for bychat. No Electron required — runs in any Node.js ≥ 18 environment and shares the same AI settings, prompts, and models configured in the desktop app.
+Command-line interface for flovia. No Electron required — runs in any Node.js ≥ 18 environment and shares the same AI settings, prompts, and models configured in the desktop app.
 
 ## Usage
 
@@ -11,10 +11,10 @@ npm run agent -- "add input validation to the signup form"
 npm run chat  -- "what is the difference between REST and GraphQL"
 
 # Via globally-installed binary
-bychat ask "explain the auth flow"
-bychat agent "add dark mode support"
-bychat agent -w ./other-project "refactor the utils folder"
-echo "summarize this project" | bychat agent
+flovia ask "explain the auth flow"
+flovia agent "add dark mode support"
+flovia agent -w ./other-project "refactor the utils folder"
+echo "summarize this project" | flovia agent
 ```
 
 ## Commands
@@ -47,7 +47,7 @@ All steps use the shared prompt builders from `core/chat.ts`.
 | Flag | Description |
 |------|-------------|
 | `-w, --workspace <path>` | Workspace directory (default: `cwd`) |
-| `--model <name>` | Model override (or `BYCHAT_MODEL` env var) |
+| `--model <name>` | Model override (or `FLOVIA_MODEL` env var) |
 | `--base-url <url>` | API base URL (or `OPENAI_BASE_URL`) |
 | `--api-key <key>` | API key (or `OPENAI_API_KEY`) |
 | `-s, --system <prompt>` | Custom system prompt |
@@ -67,14 +67,14 @@ The CLI reads settings from the **same** data directory as the desktop app (`cor
 
 Configure once in the desktop UI → use everywhere (desktop, web, CLI).
 
-Override at runtime via environment variables: `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `BYCHAT_MODEL`.
+Override at runtime via environment variables: `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `FLOVIA_MODEL`.
 
 ## Global Install
 
 ```bash
 npm run build:cli
 npm link
-bychat ask "explain the auth flow"
+flovia ask "explain the auth flow"
 ```
 
 ## Files

@@ -11,11 +11,11 @@
  */
 
 import { ipcMain, BrowserWindow } from 'electron';
-import type { AgentProfile, Workflow } from '../../core/orchestrator';
-import { getStorage } from '../../core/storage';
-import { getEventBus, type BusEvent } from '../../core/event-bus';
-import type { ExecutionRun } from '../../core/execution-run';
-import { genId, upsertById, removeById, appendCapped } from '../../core/utils';
+import type { AgentProfile, Workflow } from '@flovia/core/orchestrator';
+import { getStorage } from '@flovia/core/storage';
+import { getEventBus, type BusEvent } from '@flovia/core/event-bus';
+import type { ExecutionRun } from '@flovia/core/execution-run';
+import { genId, upsertById, removeById, appendCapped } from '@flovia/core/utils';
 
 export function registerOrchestratorIpc(): void {
   const storage = getStorage();

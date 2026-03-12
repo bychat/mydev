@@ -9,6 +9,14 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
+    "paths": {
+      "@flovia/core/*": ["./core/*"],
+      "@flovia/core": ["./core/index.ts"],
+      "@flovia/connectors/*": ["./connectors/*"],
+      "@flovia/connectors": ["./connectors/index.ts"],
+      "@flovia/main/*": ["./main/*"],
+      "@flovia/main": ["./main/index.ts"]
+    },
     "outDir": "dist-main",
     "rootDir": ".",
     "declaration": false,

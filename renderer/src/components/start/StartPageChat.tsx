@@ -565,7 +565,7 @@ export default function StartPageChat({ importFolder, onWorkspaceCreated }: Star
       <div className="start-page-chat-header">
         <div className="start-page-chat-title">
           <MessageCircleIcon />
-          <span>mydev.bychat.io</span>
+          <span>mydev.flovia.io</span>
         </div>
         <div className="start-page-chat-header-actions">
           {messages.length > 0 && (

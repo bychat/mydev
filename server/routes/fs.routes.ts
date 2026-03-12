@@ -3,8 +3,8 @@
  */
 import { Router } from 'express';
 import fs from 'fs';
-import * as fileSystem from '../../main/fileSystem';
-import { openFolder } from '../../main/workspace';
+import * as fileSystem from '@flovia/main/fileSystem';
+import { openFolder } from '@flovia/main/workspace';
 import { ok, fail } from '../helpers';
 
 const router = Router();

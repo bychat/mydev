@@ -15,7 +15,7 @@
  * ───────────────────────────────────────────────────────
  */
 
-import type { Connector, ConnectorActionResult } from '../core/connector';
+import type { Connector, ConnectorActionResult } from '@flovia/core/connector';
 
 // 1. Define your config shape
 export interface MyServiceConfig {

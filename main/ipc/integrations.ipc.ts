@@ -16,7 +16,7 @@ import {
   fetchSupabaseStorage,
   fetchSupabaseTables,
   executeSupabaseQuery,
-} from '../../connectors/supabase/api';
+} from '@flovia/connectors/supabase/api';
 import {
   extractRepoInfo,
   listWorkflows,
@@ -27,13 +27,13 @@ import {
   rerunWorkflow,
   listIssues,
   type GitHubIssueFilterState,
-} from '../../connectors/github/api';
+} from '@flovia/connectors/github/api';
 import {
   testConnection,
   fetchProjects,
   fetchProjectIssues,
   type AtlassianConnection,
-} from '../../connectors/atlassian/api';
+} from '@flovia/connectors/atlassian/api';
 import { loadAtlassianConnections, saveAtlassianConnections } from '../storage';
 
 export function registerIntegrationsIpc(): void {

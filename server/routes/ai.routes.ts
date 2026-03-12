@@ -2,8 +2,8 @@
  * AI routes.
  */
 import { Router } from 'express';
-import * as ai from '../../main/ai';
-import { loadAISettings, saveAISettings, loadEnvApiKeys } from '../../main/storage';
+import * as ai from '@flovia/main/ai';
+import { loadAISettings, saveAISettings, loadEnvApiKeys } from '@flovia/main/storage';
 import { ok, fail } from '../helpers';
 
 const router = Router();

@@ -4,7 +4,7 @@
  * Wraps the existing Supabase integration as a Connector plugin.
  */
 
-import type { Connector, ConnectorActionResult } from '../core/connector';
+import type { Connector, ConnectorActionResult } from '@flovia/core/connector';
 
 export interface SupabaseConnectorConfig {
   projectUrl: string;

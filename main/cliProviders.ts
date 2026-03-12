@@ -17,7 +17,7 @@ import {
   type CliProviderId,
   type CliProviderStatus,
   type CliChatResult,
-} from '../core/cliProvider';
+} from '@flovia/core/cliProvider';
 
 const execFileAsync = promisify(execFile);
 

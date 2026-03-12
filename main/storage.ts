@@ -9,10 +9,10 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
-import { getUserDataDir } from '../core/dataDir';
-import { getStorage } from '../core/storage';
-import { upsertById, removeById } from '../core/utils';
-export type { PersistedConnectorData, StoragePort } from '../core/storage';
+import { getUserDataDir } from '@flovia/core/dataDir';
+import { getStorage } from '@flovia/core/storage';
+import { upsertById, removeById } from '@flovia/core/utils';
+export type { PersistedConnectorData, StoragePort } from '@flovia/core/storage';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -55,7 +55,7 @@ function defaultsFromEnv(): AISettings {
   const openaiBase = process.env.OPENAI_BASE_URL?.trim();
   const ollamaBase = process.env.OLLAMA_BASE_URL?.trim();
   const ollamaKey = process.env.OLLAMA_API_KEY?.trim();
-  const defaultModel = process.env.BYCHAT_MODEL?.trim() || '';
+  const defaultModel = process.env.FLOVIA_MODEL?.trim() || '';
 
   if (anthropicKey) {
     return { provider: 'anthropic', baseUrl: 'anthropic', apiKey: anthropicKey, selectedModel: defaultModel };

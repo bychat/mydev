@@ -26,10 +26,10 @@ import cors from 'cors';
 import http from 'http';
 import path from 'path';
 import { WebSocketServer, WebSocket } from 'ws';
-import { getConnectorRegistry } from '../core/connector';
-import { registerBuiltInConnectors } from '../connectors';
-import { restoreConnectorStates } from '../core/connector-bootstrap';
-import { getStorage } from '../core/storage';
+import { getConnectorRegistry } from '@flovia/core/connector';
+import { registerBuiltInConnectors } from '@flovia/connectors';
+import { restoreConnectorStates } from '@flovia/core/connector-bootstrap';
+import { getStorage } from '@flovia/core/storage';
 import apiRoutes from './routes';
 
 const app = express();
@@ -211,7 +211,7 @@ wss.on('connection', (ws: WebSocket) => {
 // ─── Start Server ───
 
 server.listen(PORT, () => {
-  console.log(`\n🚀 bychat Server running on http://localhost:${PORT}`);
+  console.log(`\n🚀 flovia Server running on http://localhost:${PORT}`);
   console.log(`   ${registry.listConnectors().length} connectors registered`);
   console.log(`   REST API:  http://localhost:${PORT}/api`);
   console.log(`   WebSocket: ws://localhost:${PORT}/ws`);

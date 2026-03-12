@@ -6,8 +6,8 @@
  * (`/api/connectors/:id/actions/:actionId`) in `server/index.ts`.
  */
 import { Router } from 'express';
-import { findNpmProjects } from '../../main/workspace';
-import type { GitHubIssueFilterState } from '../../connectors/github/api';
+import { findNpmProjects } from '@flovia/main/workspace';
+import type { GitHubIssueFilterState } from '@flovia/connectors/github/api';
 import { ok, fail } from '../helpers';
 
 const router = Router();

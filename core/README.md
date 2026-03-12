@@ -56,9 +56,9 @@ Prompt builders, parsers, and SEARCH/REPLACE utilities shared between the deskto
 Returns the user-data directory used for persisting settings, chat history, and prompt configs. All three runtimes resolve to the **same** path, so configuration is shared.
 
 **Resolution order:**
-1. `BYCHAT_DATA_DIR` environment variable (explicit override)
+1. `FLOVIA_DATA_DIR` environment variable (explicit override)
 2. Electron's `app.getPath('userData')` (when running inside Electron)
-3. Platform default: `~/Library/Application Support/bychat` (macOS)
+3. Platform default: `~/Library/Application Support/flovia` (macOS)
 
 **Used by:** `main/ai.ts`, `main/chatHistory.ts`, `main/prompts.ts`, `main/atlassian.ts`, `cli/index.ts`, `server/routes.ts`
 

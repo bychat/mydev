@@ -1,8 +1,8 @@
-# bychat — Roadmap & What's Needed to Ship
+# flovia — Roadmap & What's Needed to Ship
 
 > Last updated: March 2026
 
-This document outlines what needs to happen to make bychat production-ready across all three runtimes (Desktop, Web/Cloud, CLI).
+This document outlines what needs to happen to make flovia production-ready across all three runtimes (Desktop, Web/Cloud, CLI).
 
 ---
 
@@ -143,9 +143,9 @@ This document outlines what needs to happen to make bychat production-ready acro
 | **Auto-updates** | Electron auto-updater (electron-updater) with release channels (stable, beta). |
 | **Code signing** | macOS notarization, Windows Authenticode signing. |
 | **Snap / Flatpak** | Linux package manager distribution. |
-| **Homebrew formula** | `brew install bychat` for the CLI. |
+| **Homebrew formula** | `brew install flovia` for the CLI. |
 | **npm publish** | Publish CLI to npm registry. |
-| **VS Code extension** | Lightweight extension that integrates bychat AI into VS Code directly. |
+| **VS Code extension** | Lightweight extension that integrates flovia AI into VS Code directly. |
 
 ### 11. Monitoring & Observability
 

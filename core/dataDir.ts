@@ -16,19 +16,19 @@ let _dataDir: string | null = null;
  * Returns the user-data directory (equivalent to Electron's `app.getPath('userData')`).
  *
  * Resolution order:
- *  1. `BYCHAT_DATA_DIR` environment variable (explicit override).
+ *  1. `FLOVIA_DATA_DIR` environment variable (explicit override).
  *  2. Electron `app.getPath('userData')` (if running inside Electron).
  *  3. Platform default matching Electron's convention:
- *     - macOS:   ~/Library/Application Support/bychat
- *     - Linux:   ~/.config/bychat
- *     - Windows: %APPDATA%/bychat
+ *     - macOS:   ~/Library/Application Support/flovia
+ *     - Linux:   ~/.config/flovia
+ *     - Windows: %APPDATA%/flovia
  */
 export function getUserDataDir(): string {
   if (_dataDir) return _dataDir;
 
   // 1. Env override
-  if (process.env.BYCHAT_DATA_DIR) {
-    _dataDir = process.env.BYCHAT_DATA_DIR;
+  if (process.env.FLOVIA_DATA_DIR) {
+    _dataDir = process.env.FLOVIA_DATA_DIR;
     return _dataDir!;
   }
 
@@ -46,7 +46,7 @@ export function getUserDataDir(): string {
 
   // 3. Platform default
   const platform = os.platform();
-  const appName = 'bychat';
+  const appName = 'flovia';
 
   if (platform === 'darwin') {
     _dataDir = path.join(os.homedir(), 'Library', 'Application Support', appName);

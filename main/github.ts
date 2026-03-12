@@ -15,7 +15,7 @@ export {
   getJobLogs,
   listIssues,
   rerunWorkflow,
-} from '../connectors/github/api';
+} from '@flovia/connectors/github/api';
 
 export type {
   GitHubWorkflow,
@@ -30,5 +30,5 @@ export type {
   GitHubJobsResult,
   GitHubLogsResult,
   GitHubIssuesResult,
-} from '../connectors/github/api';
+} from '@flovia/connectors/github/api';
 

@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
-import { getUserDataDir } from '../core/dataDir';
+import { getUserDataDir } from '@flovia/core/dataDir';
 
 // ── Types ──
 

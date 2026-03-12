@@ -10,7 +10,7 @@
  *  3. Enter their Gmail address + the 16-char app password in the connector form
  */
 
-import type { Connector, ConnectorActionResult } from '../core/connector';
+import type { Connector, ConnectorActionResult } from '@flovia/core/connector';
 import { ImapFlow } from 'imapflow';
 import { simpleParser } from 'mailparser';
 import nodemailer from 'nodemailer';

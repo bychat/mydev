@@ -9,9 +9,9 @@
  */
 
 import { ipcMain } from 'electron';
-import { getConnectorRegistry } from '../connectors';
-import { restoreConnectorStates } from '../core/connector-bootstrap';
-import type { PersistedConnectorData } from '../core/storage';
+import { getConnectorRegistry } from '@flovia/connectors';
+import { restoreConnectorStates } from '@flovia/core/connector-bootstrap';
+import type { PersistedConnectorData } from '@flovia/core/storage';
 import {
   loadConnectorConfigs,
   saveConnectorConfig,

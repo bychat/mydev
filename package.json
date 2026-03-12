@@ -1,11 +1,17 @@
 {
-  "name": "bychat",
+  "name": "flovia",
   "version": "1.0.0",
-  "description": "bychat.io — AI-powered developer workspace (Desktop, Web, CLI)",
+  "description": "flovia.io — AI-powered developer workspace (Desktop, Web, CLI)",
   "main": "dist-main/main/index.js",
   "bin": {
-    "bychat": "./dist-cli/cli/index.js"
+    "flovia": "./dist-cli/cli/index.js"
   },
+  "files": [
+    "dist-cli/**/*",
+    "package.json",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "//── Desktop (Electron) ──": "",
     "dev": "npm run build:main && concurrently \"npm run dev:renderer\" \"npm run dev:electron\"",
@@ -23,6 +29,7 @@
     "build": "npm run build:main && vite build && electron-builder",
     "build:main": "tsc",
     "build:cli": "tsc --project cli/tsconfig.json",
+    "prepublishOnly": "npm run build:cli",
     "build:mac": "npm run build:main && vite build && electron-builder --mac",
     "build:win": "npm run build:main && vite build && electron-builder --win",
     "build:linux": "npm run build:main && vite build && electron-builder --linux",
@@ -32,15 +39,15 @@
     "//── Test ──": "",
     "test:server": "bash scripts/test-server.sh",
     "//── Docker ──": "",
-    "docker:build": "docker build -t bychat .",
-    "docker:run": "docker run --rm -it -v $(pwd):/workspace bychat",
+    "docker:build": "docker build -t flovia .",
+    "docker:run": "docker run --rm -it -v $(pwd):/workspace flovia",
     "//── Native rebuild ──": "",
-    "postinstall": "electron-rebuild -f -w node-pty",
+    "postinstall": "node -e \"try{require('electron')}catch(e){process.exit(0)}\" && electron-rebuild -f -w node-pty || true",
     "rebuild": "electron-rebuild -f -w node-pty"
   },
   "build": {
-    "appId": "io.bychat.app",
-    "productName": "bychat",
+    "appId": "io.flovia.app",
+    "productName": "flovia",
     "directories": {
       "output": "dist"
     },

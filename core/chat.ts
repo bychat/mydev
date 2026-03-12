@@ -143,7 +143,7 @@ export function buildSystemContext(
   }
 
   const lines = [
-    `You are an expert coding assistant inside the "bychat" desktop IDE (bychat.io).`,
+    `You are an expert coding assistant inside the "flovia" desktop IDE (flovia.io).`,
     ``,
     `## Workspace`,
     `- **Directory**: ${folderPath ?? 'No project open'}`,

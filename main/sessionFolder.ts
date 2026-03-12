@@ -8,7 +8,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { execSync } from 'child_process';
-import { getUserDataDir } from '../core/dataDir';
+import { getUserDataDir } from '@flovia/core/dataDir';
 
 /** Git clone timeout in milliseconds (2 minutes for large repositories) */
 const GIT_CLONE_TIMEOUT_MS = 2 * 60 * 1000;

@@ -1,6 +1,6 @@
-# bychat
+# flovia
 
-An open-source AI-powered developer workspace — runs as an Electron desktop app, a CLI, or an enterprise cloud server. The core app for [bychat.io](https://bychat.io).
+An open-source AI-powered developer workspace — runs as an Electron desktop app, a CLI, or an enterprise cloud server. The core app for [flovia.io](https://flovia.io).
 
 ## Prerequisites
 
@@ -114,7 +114,7 @@ The Express server (`npm run server:dev`) exposes the same connector operations 
 
 ### CLI
 
-The command-line interface (`cli/index.ts`) lets you use bychat from the terminal — no Electron required. It reads your workspace, builds context, and talks to any OpenAI-compatible API.
+The command-line interface (`cli/index.ts`) lets you use flovia from the terminal — no Electron required. It reads your workspace, builds context, and talks to any OpenAI-compatible API.
 
 ### Agent Builder & Trace Viewer
 
@@ -128,8 +128,8 @@ The app includes a **visual agent builder** and **execution trace viewer**:
 ## CLI
 
 ```
-bychat <command> [options] "your message"
-echo "your message" | bychat agent [options]
+flovia <command> [options] "your message"
+echo "your message" | flovia agent [options]
 ```
 
 ### Commands
@@ -145,7 +145,7 @@ echo "your message" | bychat agent [options]
 | Flag | Description |
 |------|-------------|
 | `-w, --workspace <path>` | Workspace directory (default: current directory) |
-| `--model <name>` | Model to use (or set `BYCHAT_MODEL` env var) |
+| `--model <name>` | Model to use (or set `FLOVIA_MODEL` env var) |
 | `--base-url <url>` | OpenAI-compatible API URL (or set `OPENAI_BASE_URL`) |
 | `--api-key <key>` | API key (or set `OPENAI_API_KEY`) |
 | `-s, --system <prompt>` | Custom system prompt |
@@ -158,25 +158,25 @@ echo "your message" | bychat agent [options]
 
 ```bash
 # Ask about a codebase
-bychat ask "explain the auth flow"
+flovia ask "explain the auth flow"
 
 # Agent mode — get code changes
-bychat agent "add input validation to the signup form"
+flovia agent "add input validation to the signup form"
 
 # Point at a different workspace
-bychat ask -w ./my-project "what testing framework is used?"
+flovia ask -w ./my-project "what testing framework is used?"
 
 # Use a specific model and API key
-bychat ask --model gpt-4o --api-key sk-... "refactor the utils folder"
+flovia ask --model gpt-4o --api-key sk-... "refactor the utils folder"
 
 # Pipe input
-echo "summarize this project" | bychat agent
+echo "summarize this project" | flovia agent
 
 # List available models
-bychat --list-models
+flovia --list-models
 
 # Save response to a file
-bychat agent -o changes.md "add dark mode support"
+flovia agent -o changes.md "add dark mode support"
 ```
 
 ### Environment Variables
@@ -186,15 +186,15 @@ bychat agent -o changes.md "add dark mode support"
 | `OPENAI_API_KEY` | API key for the AI provider |
 | `OPENAI_BASE_URL` | Base URL for the AI provider |
 | `OLLAMA_BASE_URL` | Base URL for Ollama (fallback) |
-| `BYCHAT_MODEL` | Default model name |
+| `FLOVIA_MODEL` | Default model name |
 
 ### Global Install
 
 ```bash
 npm run build:cli
 npm link
-# Now use "bychat" from anywhere:
-bychat ask -w ~/projects/my-app "explain the auth flow"
+# Now use "flovia" from anywhere:
+flovia ask -w ~/projects/my-app "explain the auth flow"
 ```
 
 ## Docker
@@ -203,7 +203,7 @@ Build the CLI Docker image:
 
 ```bash
 npm run docker:build
-# or: docker build -t bychat .
+# or: docker build -t flovia .
 ```
 
 ### Mount your workspace at runtime
@@ -213,26 +213,26 @@ docker run --rm -it \
   -e OPENAI_API_KEY="sk-..." \
   -e OPENAI_BASE_URL="https://api.openai.com/v1" \
   -v $(pwd):/workspace \
-  bychat agent -w /workspace "add input validation"
+  flovia agent -w /workspace "add input validation"
 ```
 
 ### Embed a workspace into the image
 
 ```bash
-docker build -t bychat-project --build-arg EMBED_WORKSPACE=./my-project .
+docker build -t flovia-project --build-arg EMBED_WORKSPACE=./my-project .
 docker run --rm -it \
   -e OPENAI_API_KEY="sk-..." \
-  bychat-project agent -w /workspace "add tests"
+  flovia-project agent -w /workspace "add tests"
 ```
 
 ### Persist data between runs
 
 ```bash
 docker run --rm -it \
-  -v bychat-data:/data \
+  -v flovia-data:/data \
   -v $(pwd):/workspace \
   -e OPENAI_API_KEY="sk-..." \
-  bychat agent -w /workspace "refactor utils"
+  flovia agent -w /workspace "refactor utils"
 ```
 
 ## Project Structure
@@ -530,7 +530,7 @@ npm run web:prod
 | Environment Variable | Description |
 |---------------------|-------------|
 | `PORT` | Server port (default: `3001`) |
-| `BYCHAT_DATA_DIR` | Override the data directory (shared between desktop/CLI/server) |
+| `FLOVIA_DATA_DIR` | Override the data directory (shared between desktop/CLI/server) |
 
 ## License
 
@@ -542,4 +542,4 @@ See [`ROADMAP.md`](ROADMAP.md) for what's needed to make the app production-read
 
 ---
 
-Made with ❤️ by [bychat.io](https://bychat.io)
+Made with ❤️ by [flovia.io](https://flovia.io)

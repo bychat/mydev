@@ -2,7 +2,7 @@
  * Prompt settings routes.
  */
 import { Router } from 'express';
-import { loadPromptSettings, savePromptSettings, resetPromptSettings } from '../../main/storage';
+import { loadPromptSettings, savePromptSettings, resetPromptSettings } from '@flovia/main/storage';
 import { ok, fail } from '../helpers';
 
 const router = Router();

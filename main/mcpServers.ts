@@ -9,7 +9,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import { spawn, type ChildProcess } from 'child_process';
-import { getUserDataDir } from '../core/dataDir';
+import { getUserDataDir } from '@flovia/core/dataDir';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -320,7 +320,7 @@ export async function connectMcpServer(config: McpServerConfig): Promise<McpServ
         const initResult = await sendJsonRpc(server, 'initialize', {
           protocolVersion: '2024-11-05',
           capabilities: {},
-          clientInfo: { name: 'bychat', version: '1.0.0' },
+          clientInfo: { name: 'flovia', version: '1.0.0' },
         });
 
         // Send initialized notification (no response expected)

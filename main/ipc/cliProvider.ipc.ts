@@ -16,7 +16,7 @@
  *   cli-provider-chat-chunk-done  → { providerId }
  */
 import { ipcMain, type BrowserWindow } from 'electron';
-import type { CliProviderId } from '../../core/cliProvider';
+import type { CliProviderId } from '@flovia/core/cliProvider';
 import {
   detectAllCliProviders,
   detectCliProvider,

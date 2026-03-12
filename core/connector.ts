@@ -1,7 +1,7 @@
 /**
  * Connector Plugin System
  * 
- * This is the core extensibility layer for bychat. Each integration
+ * This is the core extensibility layer for flovia. Each integration
  * (GitHub, Atlassian, Supabase, Slack, Linear, etc.) implements the
  * Connector interface and registers itself with the ConnectorRegistry.
  * 

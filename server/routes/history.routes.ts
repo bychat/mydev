@@ -2,7 +2,7 @@
  * Chat history routes.
  */
 import { Router } from 'express';
-import * as chatHistory from '../../main/chatHistory';
+import * as chatHistory from '@flovia/main/chatHistory';
 import { ok, fail } from '../helpers';
 
 const router = Router();

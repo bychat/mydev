@@ -7,7 +7,7 @@ import {
   cloneGitHubRepo,
   listSessionFolders,
   deleteSessionFolder,
-} from '../../main/sessionFolder';
+} from '@flovia/main/sessionFolder';
 import { ok, fail } from '../helpers';
 
 const router = Router();

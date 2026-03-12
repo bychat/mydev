@@ -104,7 +104,7 @@ export default function StatusBar() {
           </>
         ) : (
           <Typography variant="body2" fontWeight={700} sx={{ color: 'text.primary' }}>
-            mydev.bychat.io
+            mydev.flovia.io
           </Typography>
         )}
         {hasGit && (

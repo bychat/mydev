@@ -12,7 +12,7 @@
  * No imports from `main/` — this connector is fully portable.
  */
 
-import type { Connector, ConnectorActionResult } from '../../core/connector';
+import type { Connector, ConnectorActionResult } from '@flovia/core/connector';
 import * as api from './api';
 
 export interface DigitalOceanConnectorConfig {
