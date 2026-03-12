@@ -1,13 +1,13 @@
 /**
- * HtmlPreview - Compact action card for full HTML documents detected in chat.
- * No inline iframe — just a one-line bar with Open Preview / Copy / Save buttons
- * and a collapsible source code view.
+ * HtmlPreview - Inline rendered preview for full HTML documents detected in chat.
+ * Shows HTML in a sandboxed iframe that updates in real-time during streaming.
+ * Includes action bar with Copy / Save / Source toggle.
  *
  * Supports two contexts:
- * - Inside workspace: Preview opens in editor tab
- * - Start page: Preview opens workspace + preview tab
+ * - Inside workspace: Save writes file to workspace
+ * - Start page: Open button opens workspace + preview tab
  *
- * Shows real-time line count that updates as HTML streams in.
+ * During streaming, iframe updates are throttled (~800ms) to avoid flicker.
  */
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useBackend } from '../context/BackendContext';
@@ -41,14 +41,30 @@ export function extractPreviewName(html: string): string {
   return 'Preview';
 }
 
-/** Extract the first full HTML document from markdown text (inside ```html blocks or raw) */
-export function extractHtmlFromMarkdown(text: string): string | null {
+/**
+ * Extract the first full HTML document from markdown text (inside ```html blocks or raw).
+ * When `isStreaming` is true, also detects partial code blocks (no closing ```) so the
+ * preview appears immediately when HTML is first detected.
+ */
+export function extractHtmlFromMarkdown(text: string, isStreaming?: boolean): string | null {
+  // Complete code blocks (with closing ```)
   const codeBlockRegex = /```html\s*\n([\s\S]*?)```/gi;
   let match;
   while ((match = codeBlockRegex.exec(text)) !== null) {
     const code = match[1].trim();
     if (isFullHtmlDocument(code)) return code;
   }
+
+  // During streaming, detect partial code blocks (assume ending will come)
+  if (isStreaming) {
+    const partialRegex = /```html\s*\n([\s\S]+)$/i;
+    const partialMatch = partialRegex.exec(text);
+    if (partialMatch) {
+      const code = partialMatch[1].trim();
+      if (isFullHtmlDocument(code)) return code;
+    }
+  }
+
   if (isFullHtmlDocument(text.trim())) return text.trim();
   return null;
 }
@@ -56,39 +72,50 @@ export function extractHtmlFromMarkdown(text: string): string | null {
 export default function HtmlPreview({ html, sessionFolderPath, isStreaming }: HtmlPreviewProps) {
   const backend = useBackend();
   const { folderPath, openFile, refreshTree } = useWorkspace();
-  const [codeOpen, setCodeOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'preview' | 'source'>('preview');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const prevLinesRef = useRef(0);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const htmlRef = useRef(html);
+  htmlRef.current = html;
 
   const name = extractPreviewName(html);
   const lines = html.split('\n').length;
 
-  // Track line count changes for streaming animation
-  const linesChanged = lines !== prevLinesRef.current;
-  useEffect(() => { prevLinesRef.current = lines; }, [lines]);
-
-  // In-workspace preview: open in editor tab
-  // Start page preview: open workspace with preview tab
-  const handleOpenPreview = useCallback(() => {
-    if (folderPath) {
-      // Already in a workspace — just open preview tab
-      window.dispatchEvent(new CustomEvent('open-html-preview-tab', {
-        detail: { name, tabKey: `html-preview:${Date.now()}`, html }
-      }));
-    } else if (sessionFolderPath) {
-      // On start page — open workspace with preview (does NOT interrupt streaming)
-      window.dispatchEvent(new CustomEvent('open-workspace', {
-        detail: {
-          folderPath: sessionFolderPath,
-          openPreview: true,
-          previewHtml: html,
-          previewName: name,
-        }
-      }));
+  // Write HTML to iframe via contentDocument to avoid full srcdoc reloads
+  const writeToIframe = useCallback((content: string) => {
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+    try {
+      const doc = iframe.contentDocument;
+      if (!doc) return;
+      doc.open();
+      doc.write(content);
+      doc.close();
+    } catch {
+      // Fallback: set srcdoc attribute directly
+      iframe.srcdoc = content;
     }
-  }, [html, name, folderPath, sessionFolderPath]);
+  }, []);
+
+  // Throttled updates during streaming, immediate when not streaming
+  useEffect(() => {
+    if (viewMode !== 'preview') return;
+    if (!isStreaming) {
+      writeToIframe(html);
+      return;
+    }
+    // During streaming, throttle iframe writes to ~800ms
+    writeToIframe(html);
+    const id = setInterval(() => writeToIframe(htmlRef.current), 800);
+    return () => clearInterval(id);
+  }, [isStreaming, viewMode]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // When streaming ends, write the final content
+  useEffect(() => {
+    if (!isStreaming && viewMode === 'preview') writeToIframe(html);
+  }, [html, isStreaming, viewMode, writeToIframe]);
 
   const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(html);
@@ -100,7 +127,8 @@ export default function HtmlPreview({ html, sessionFolderPath, isStreaming }: Ht
     if (!folderPath) return;
     setSaving(true);
     try {
-      const fileName = `preview-${Date.now()}.html`;
+      const safeName = name.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
+      const fileName = `${safeName || 'preview'}.html`;
       const filePath = `${folderPath}/${fileName}`;
       const result = await backend.createFile(filePath, html);
       if (result.success) {
@@ -114,42 +142,68 @@ export default function HtmlPreview({ html, sessionFolderPath, isStreaming }: Ht
     } finally {
       setSaving(false);
     }
-  }, [folderPath, html, backend, openFile, refreshTree]);
+  }, [folderPath, html, name, backend, openFile, refreshTree]);
+
+  const handleOpenWorkspace = useCallback(() => {
+    if (sessionFolderPath) {
+      window.dispatchEvent(new CustomEvent('open-workspace', {
+        detail: {
+          folderPath: sessionFolderPath,
+          openPreview: true,
+          previewHtml: html,
+          previewName: name,
+        }
+      }));
+    }
+  }, [html, name, sessionFolderPath]);
 
   return (
     <div className={`html-extract${isStreaming ? ' streaming' : ''}`}>
       <div className="html-extract-header">
         <span className="html-extract-icon">🌐</span>
         <span className="html-extract-name" title={name}>{name}</span>
-        <span className={`html-extract-meta${isStreaming ? ' pulse' : ''}${linesChanged ? ' bump' : ''}`}>
+        <span className={`html-extract-meta${isStreaming ? ' pulse' : ''}`}>
           {isStreaming && <span className="streaming-dot" />}
           {lines} ln
         </span>
         <div className="html-extract-actions">
+          <button
+            className={`html-extract-btn${viewMode === 'preview' ? ' active' : ''}`}
+            onClick={() => setViewMode(v => v === 'preview' ? 'source' : 'preview')}
+            title={viewMode === 'preview' ? 'Show source' : 'Show preview'}
+          >
+            {viewMode === 'preview' ? '⟨/⟩' : '▶'}
+          </button>
           <button className="html-extract-btn" onClick={handleCopy} title="Copy HTML">
             {copied ? '✓' : '⎘'}
           </button>
-          <button className="html-extract-btn primary" onClick={handleOpenPreview} title={folderPath ? 'Open preview in editor' : 'Open workspace with preview'}>
-            ▶ Preview
-          </button>
-          {folderPath && (
-            <button className="html-extract-btn" onClick={handleSave} disabled={saving} title="Save to workspace">
-              {saved ? '✓' : saving ? '…' : '💾'}
+          {folderPath ? (
+            <button
+              className="html-extract-btn save"
+              onClick={handleSave}
+              disabled={saving}
+              title="Save to workspace"
+            >
+              {saved ? `✓ ${saved}` : saving ? '…' : '💾 Save'}
             </button>
-          )}
+          ) : sessionFolderPath ? (
+            <button className="html-extract-btn primary" onClick={handleOpenWorkspace} title="Open in workspace">
+              ▶ Open
+            </button>
+          ) : null}
         </div>
       </div>
 
-      {/* Collapsible source */}
-      <button
-        className={`html-extract-toggle ${codeOpen ? 'open' : ''}`}
-        onClick={() => setCodeOpen(v => !v)}
-      >
-        <span className="html-extract-chevron">{codeOpen ? '▾' : '▸'}</span>
-        Source
-        <span className={`html-extract-line-count${isStreaming ? ' pulse' : ''}`}>{lines} ln</span>
-      </button>
-      {codeOpen && (
+      {viewMode === 'preview' ? (
+        <div className="html-extract-iframe-wrap">
+          <iframe
+            ref={iframeRef}
+            sandbox="allow-scripts"
+            className="html-extract-iframe"
+            title={name}
+          />
+        </div>
+      ) : (
         <div className="html-extract-code">
           <pre className="html-extract-pre"><code>{html}</code></pre>
         </div>

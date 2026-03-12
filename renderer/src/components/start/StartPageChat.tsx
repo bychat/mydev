@@ -24,7 +24,7 @@ interface StartPageChatProps {
 
 /** Bot message content with stable HtmlPreview sibling (survives streaming re-renders) */
 function StartBotContent({ text, isStreaming, sessionFolderPath }: { text: string; isStreaming?: boolean; sessionFolderPath?: string | null }) {
-  const extractedHtml = useMemo(() => extractHtmlFromMarkdown(text), [text]);
+  const extractedHtml = useMemo(() => extractHtmlFromMarkdown(text, isStreaming), [text, isStreaming]);
   return (
     <>
       <div className="md-content">
@@ -508,7 +508,7 @@ export default function StartPageChat({ importFolder, onWorkspaceCreated }: Star
     if (isCurrentlyStreaming) {
       // Check if there's HTML being streamed — detect for preview
       const lastBot = messages.filter(m => m.sender === 'bot').pop();
-      const partialHtml = lastBot ? extractHtmlFromMarkdown(lastBot.text) : null;
+      const partialHtml = lastBot ? extractHtmlFromMarkdown(lastBot.text, true) : null;
       const previewName = partialHtml ? extractPreviewName(partialHtml) : undefined;
 
       streamingBridge.startBridge({
