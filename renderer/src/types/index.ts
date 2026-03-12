@@ -98,7 +98,8 @@ export type {
   TraceStep,
   AgentTrace,
 } from './agent.types';
-export { ALL_AGENT_TOOLS } from './agent.types';
+export { ALL_AGENT_TOOLS, CORE_AGENT_TOOLS, connectorActionsToAgentTools, buildAllAgentTools } from './agent.types';
+export type { ConnectorToolSource } from './agent.types';
 
 // Session types
 export type {

@@ -22,8 +22,8 @@ export interface AgentTool {
   label: string;
   /** Icon emoji or short identifier */
   icon: string;
-  /** Which sidebar integration this maps to (if any) */
-  integration?: 'filesystem' | 'git' | 'github' | 'atlassian' | 'supabase' | 'mcp' | 'search' | 'terminal' | 'npm';
+  /** Which sidebar integration this maps to (if any). Core integrations are predefined; connector plugins add their own. */
+  integration?: string;
   /** Whether this tool is enabled for this node */
   enabled: boolean;
 }
@@ -373,9 +373,11 @@ export interface AgentTrace {
   finishedAt?: string;
 }
 
-// ── All available tools (registry) ──
+// ── Core tools (non-plugin) ──
+// Plugin-specific tools (GitHub, Atlassian, Supabase, etc.) are derived from
+// their connector definitions at runtime via connectorActionsToAgentTools().
 
-export const ALL_AGENT_TOOLS: AgentTool[] = [
+export const CORE_AGENT_TOOLS: AgentTool[] = [
   // ── Filesystem ──
   { id: 'file-read',       label: 'Read Files',          icon: '📖', integration: 'filesystem', enabled: true },
   { id: 'file-write',      label: 'Write Files',         icon: '💾', integration: 'filesystem', enabled: true },
@@ -392,24 +394,46 @@ export const ALL_AGENT_TOOLS: AgentTool[] = [
   { id: 'git-commit',      label: 'Git Commit',          icon: '✅', integration: 'git',        enabled: false },
   { id: 'git-branch',      label: 'Git Branch Ops',      icon: '🌿', integration: 'git',        enabled: false },
   { id: 'git-push-pull',   label: 'Git Push/Pull',       icon: '🔄', integration: 'git',        enabled: false },
-  // ── GitHub ──
-  { id: 'github-issues',   label: 'GitHub Issues',       icon: '🐛', integration: 'github',     enabled: false },
-  { id: 'github-actions',  label: 'GitHub Actions',      icon: '⚡', integration: 'github',     enabled: false },
-  { id: 'github-workflows',label: 'GitHub Workflows',    icon: '🔁', integration: 'github',     enabled: false },
-  { id: 'github-prs',      label: 'GitHub Pull Requests',icon: '🔀', integration: 'github',     enabled: false },
-  // ── Atlassian / Jira ──
-  { id: 'atlassian-issues', label: 'Jira Issues',        icon: '🔵', integration: 'atlassian',  enabled: false },
-  { id: 'atlassian-projects',label: 'Jira Projects',     icon: '📁', integration: 'atlassian',  enabled: false },
-  // ── Supabase ──
-  { id: 'supabase-query',  label: 'Supabase SQL Query',  icon: '🗄️', integration: 'supabase',   enabled: false },
-  { id: 'supabase-tables', label: 'Supabase Tables',     icon: '📋', integration: 'supabase',   enabled: false },
-  { id: 'supabase-users',  label: 'Supabase Users',      icon: '👥', integration: 'supabase',   enabled: false },
-  { id: 'supabase-storage',label: 'Supabase Storage',    icon: '📦', integration: 'supabase',   enabled: false },
   // ── MCP Servers ──
   { id: 'mcp-tools',       label: 'MCP Tool Call',       icon: '🔌', integration: 'mcp',        enabled: false },
   { id: 'mcp-resources',   label: 'MCP Resources',       icon: '📚', integration: 'mcp',        enabled: false },
   // ── Terminal & NPM ──
   { id: 'terminal',        label: 'Terminal Command',     icon: '🖥️', integration: 'terminal',   enabled: false },
   { id: 'npm-scripts',     label: 'NPM Scripts',         icon: '📦', integration: 'npm',        enabled: false },
-  { id: 'npm-install',     label: 'NPM Install',         icon: '�', integration: 'npm',        enabled: false },
+  { id: 'npm-install',     label: 'NPM Install',         icon: '📦', integration: 'npm',        enabled: false },
 ];
+
+/** @deprecated Use CORE_AGENT_TOOLS + connectorActionsToAgentTools() instead */
+export const ALL_AGENT_TOOLS = CORE_AGENT_TOOLS;
+
+/** Default icon map for known connectors */
+const CONNECTOR_ICONS: Record<string, string> = {
+  github: '⚡',
+  atlassian: '🔵',
+  supabase: '🗄️',
+};
+
+/** Connector data needed to derive agent tools */
+export interface ConnectorToolSource {
+  id: string;
+  name: string;
+  actions: Array<{ id: string; name: string; description: string }>;
+}
+
+/** Convert a connector's actions into AgentTool entries so they appear in the agent builder */
+export function connectorActionsToAgentTools(connector: ConnectorToolSource): AgentTool[] {
+  const icon = CONNECTOR_ICONS[connector.id] || '🔌';
+  return connector.actions.map(action => ({
+    id: `${connector.id}:${action.id}`,
+    label: `${connector.name}: ${action.name}`,
+    icon,
+    integration: connector.id,
+    enabled: false,
+  }));
+}
+
+/** Build the full agent tool list by merging core tools with connector-provided tools */
+export function buildAllAgentTools(connectors: ConnectorToolSource[] = []): AgentTool[] {
+  const connectorTools = connectors.flatMap(c => connectorActionsToAgentTools(c));
+  return [...CORE_AGENT_TOOLS, ...connectorTools];
+}
