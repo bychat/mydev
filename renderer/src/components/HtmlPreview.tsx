@@ -99,22 +99,18 @@ export default function HtmlPreview({ html, sessionFolderPath, isStreaming }: Ht
     }
   }, []);
 
-  // Throttled updates during streaming, immediate when not streaming
+  // Streaming: throttled updates via interval
   useEffect(() => {
-    if (viewMode !== 'preview') return;
-    if (!isStreaming) {
-      writeToIframe(html);
-      return;
-    }
-    // During streaming, throttle iframe writes to ~800ms
-    writeToIframe(html);
+    if (viewMode !== 'preview' || !isStreaming) return;
+    writeToIframe(htmlRef.current);
     const id = setInterval(() => writeToIframe(htmlRef.current), 800);
     return () => clearInterval(id);
-  }, [isStreaming, viewMode]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isStreaming, viewMode, writeToIframe]);
 
-  // When streaming ends, write the final content
+  // Non-streaming: immediate updates when html changes
   useEffect(() => {
-    if (!isStreaming && viewMode === 'preview') writeToIframe(html);
+    if (viewMode !== 'preview' || isStreaming) return;
+    writeToIframe(html);
   }, [html, isStreaming, viewMode, writeToIframe]);
 
   const handleCopy = useCallback(() => {
@@ -127,7 +123,7 @@ export default function HtmlPreview({ html, sessionFolderPath, isStreaming }: Ht
     if (!folderPath) return;
     setSaving(true);
     try {
-      const safeName = name.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
+      const safeName = name.replace(/[^a-zA-Z0-9_-]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '').toLowerCase();
       const fileName = `${safeName || 'preview'}.html`;
       const filePath = `${folderPath}/${fileName}`;
       const result = await backend.createFile(filePath, html);
