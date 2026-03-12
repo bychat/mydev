@@ -16,6 +16,7 @@ import { getConnectorRegistry, type Connector } from '../core/connector';
 import { githubConnector } from './github';
 import { atlassianConnector } from './atlassian';
 import { supabaseConnector } from './supabase';
+import { digitaloceanConnector } from './digitalocean';
 
 /**
  * All built-in connectors. Add new ones here.
@@ -25,6 +26,7 @@ export const builtInConnectors: Connector<any>[] = [
   githubConnector,
   atlassianConnector,
   supabaseConnector,
+  digitaloceanConnector,
   // ↓ Add new connectors here ↓
   // linearConnector,
   // slackConnector,
