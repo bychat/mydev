@@ -1,7 +1,7 @@
 /**
  * GmailPanel - Gmail integration with OAuth token-based connection, labels and messages
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useBackend } from '../context/BackendContext';
 import { ChevronDownIcon, ChevronRightIcon, RefreshIcon } from './icons';
 
@@ -48,6 +48,7 @@ export default function GmailPanel() {
   const [expandedMsg, setExpandedMsg] = useState<string | null>(null);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [loadingLabels, setLoadingLabels] = useState(false);
+  const [labelsFetched, setLabelsFetched] = useState(false);
   const [showLabels, setShowLabels] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -69,13 +70,7 @@ export default function GmailPanel() {
   }, []);
 
   // Load messages when connected or label changes
-  useEffect(() => {
-    if (connected && accessToken) {
-      loadMessages();
-    }
-  }, [connected, selectedLabel]);
-
-  const loadMessages = async () => {
+  const loadMessages = useCallback(async () => {
     setLoadingMessages(true);
     setError(null);
     try {
@@ -93,7 +88,13 @@ export default function GmailPanel() {
     } finally {
       setLoadingMessages(false);
     }
-  };
+  }, [backend, selectedLabel]);
+
+  useEffect(() => {
+    if (connected && accessToken) {
+      loadMessages();
+    }
+  }, [connected, accessToken, selectedLabel, loadMessages]);
 
   const loadLabels = async () => {
     setLoadingLabels(true);
@@ -101,6 +102,7 @@ export default function GmailPanel() {
       const result = await backend.connectorExecute('gmail', 'list-labels');
       if (result.success && result.data) {
         setLabels(result.data as GmailLabel[]);
+        setLabelsFetched(true);
       }
     } catch (err) {
       console.error('Failed to load labels:', err);
@@ -152,6 +154,7 @@ export default function GmailPanel() {
     setAccessToken('');
     setMessages([]);
     setLabels([]);
+    setLabelsFetched(false);
     setExpandedMsg(null);
     await backend.connectorSaveConfig('gmail', {});
   };
@@ -161,7 +164,7 @@ export default function GmailPanel() {
   };
 
   const toggleLabels = () => {
-    if (!showLabels && labels.length === 0) {
+    if (!showLabels && !labelsFetched) {
       loadLabels();
     }
     setShowLabels(!showLabels);
