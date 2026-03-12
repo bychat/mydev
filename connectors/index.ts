@@ -16,6 +16,7 @@ import { getConnectorRegistry, type Connector } from '../core/connector';
 import { githubConnector } from './github';
 import { atlassianConnector } from './atlassian';
 import { supabaseConnector } from './supabase';
+import { digitaloceanConnector } from './digitalocean';
 import { gmailConnector } from './gmail.connector';
 
 /**
@@ -26,6 +27,7 @@ export const builtInConnectors: Connector<any>[] = [
   githubConnector,
   atlassianConnector,
   supabaseConnector,
+  digitaloceanConnector,
   gmailConnector,
   // ↓ Add new connectors here ↓
   // linearConnector,

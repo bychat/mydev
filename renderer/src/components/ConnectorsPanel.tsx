@@ -127,6 +127,25 @@ const DEMO_CONNECTORS: ConnectorInfo[] = [
       { id: 'create-issue', name: 'Create Issue', description: 'Create a new Jira issue' },
     ],
   },
+  {
+    id: 'digitalocean',
+    name: 'DigitalOcean',
+    description: 'App Platform — view apps, deployments, and deploy',
+    category: 'cloud',
+    status: 'disconnected',
+    configFields: [
+      { key: 'token', label: 'API Token', type: 'password', required: true, helpText: 'Generate at cloud.digitalocean.com/account/api/tokens. Needs read+write scope.' },
+    ],
+    actions: [
+      { id: 'list-apps', name: 'List Apps', description: 'List all App Platform apps' },
+      { id: 'get-app', name: 'Get App', description: 'Get details for a specific app' },
+      { id: 'list-deployments', name: 'List Deployments', description: 'List deployments for an app' },
+      { id: 'get-deployment', name: 'Get Deployment', description: 'Get details for a specific deployment' },
+      { id: 'create-deployment', name: 'Deploy', description: 'Trigger a new deployment' },
+      { id: 'cancel-deployment', name: 'Cancel Deployment', description: 'Cancel a running deployment' },
+      { id: 'get-deployment-logs', name: 'Get Logs', description: 'View build logs for a deployment' },
+    ],
+  },
 ];
 
 interface ConnectorCardProps {
