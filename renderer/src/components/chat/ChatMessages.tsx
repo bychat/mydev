@@ -37,7 +37,7 @@ function BotMessageContent({
   onFileClick: (relativePath: string) => void;
   isStreaming?: boolean;
 }) {
-  const extractedHtml = useMemo(() => extractHtmlFromMarkdown(text), [text]);
+  const extractedHtml = useMemo(() => extractHtmlFromMarkdown(text, isStreaming), [text, isStreaming]);
 
   return (
     <>
