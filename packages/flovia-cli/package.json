@@ -1,5 +1,5 @@
 {
-  "name": "flovia-cli",
+  "name": "@flovia-io/cli",
   "version": "1.0.0",
   "description": "flovia CLI — AI-powered coding assistant from the terminal (flovia.io)",
   "bin": {

@@ -1,5 +1,5 @@
 {
-  "name": "flovia",
+  "name": "@flovia-io/flovia",
   "version": "1.0.0",
   "description": "flovia — AI-powered developer workspace. Downloads and launches the desktop app. (flovia.io)",
   "bin": {
