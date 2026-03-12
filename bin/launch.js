@@ -73,8 +73,21 @@ function installDeps(installDir) {
     return;
   }
 
+  const pkgPath = path.join(installDir, 'package.json');
+  if (!fs.existsSync(pkgPath)) {
+    error(`No package.json found in ${installDir}. The download may have failed.`);
+    error('Try running again, or download manually from https://flovia.io');
+    process.exit(1);
+  }
+
   log('Installing dependencies (this may take a minute on first run)...');
-  execSync('npm install', { cwd: installDir, stdio: 'inherit' });
+  try {
+    execSync('npm install', { cwd: installDir, stdio: 'inherit' });
+  } catch (e) {
+    error('Failed to install dependencies: ' + e.message);
+    error('Try deleting ' + installDir + ' and running again.');
+    process.exit(1);
+  }
 }
 
 // ── Launch Electron ──────────────────────────────────────────────────────────
@@ -113,6 +126,20 @@ function launch(installDir) {
 
 function main() {
   const args = process.argv.slice(2);
+
+  // Detect headless / no-GUI environments
+  if (!args.includes('--help') && !args.includes('-h') &&
+      !args.includes('--install-dir') && !args.includes('--uninstall') &&
+      !args.includes('--update')) {
+    const isHeadless = !process.env.DISPLAY && !process.env.WAYLAND_DISPLAY && process.platform === 'linux';
+    if (isHeadless) {
+      log('No display detected. The desktop app requires a GUI environment.');
+      log('For terminal usage, install the CLI instead:');
+      log('  npx @flovia-io/cli ask "your question"');
+      log('  npm i -g @flovia-io/cli');
+      process.exit(1);
+    }
+  }
 
   // Pass-through to CLI mode if subcommands are given
   if (args.includes('--help') || args.includes('-h')) {
