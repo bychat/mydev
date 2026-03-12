@@ -1,6 +1,6 @@
 {
   "name": "flovia",
-  "version": "1.0.0",
+  "version": "0.0.0",
   "description": "flovia.io — AI-powered developer workspace (Desktop, Web, CLI)",
   "main": "dist-main/main/index.js",
   "private": true,

@@ -1,6 +1,6 @@
 {
   "name": "@flovia-io/cli",
-  "version": "1.0.0",
+  "version": "0.0.0",
   "description": "flovia CLI — AI-powered coding assistant from the terminal (flovia.io)",
   "bin": {
     "flovia-cli": "./dist-cli/cli/index.js"
