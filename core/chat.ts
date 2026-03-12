@@ -127,7 +127,7 @@ export function buildSystemContext(
   params?: PromptParameters,
 ): ChatMessage {
   const sorted = [...fileList].sort();
-  const maxDisplay = params?.maxFileListDisplay ?? 300;
+  const maxDisplay = params?.maxFileListDisplay ?? 303;
 
   if (params?.systemContextPrompt) {
     const listLines = sorted.slice(0, maxDisplay).map(f => `  - ${f}`).join('\n')
@@ -166,8 +166,8 @@ export function buildResearchPrompt(
   params?: PromptParameters,
 ): ChatMessage[] {
   const sorted = [...fileList].sort();
-  const minFiles = params?.minResearchFiles ?? 4;
-  const maxFiles = params?.maxResearchFiles ?? 9;
+  const minFiles = params?.minResearchFiles ?? 7;
+  const maxFiles = params?.maxResearchFiles ?? 12;
 
   let systemContent: string;
   if (params?.researchAgentPrompt) {
@@ -200,7 +200,7 @@ export function buildResearchPrompt(
  * Parse research agent response into validated file paths.
  */
 export function parseResearchResponse(raw: string, validFiles: Set<string>, params?: PromptParameters): string[] {
-  const maxFiles = params?.maxResearchFiles ?? 9;
+  const maxFiles = params?.maxResearchFiles ?? 12;
   try {
     const cleaned = raw.replace(/```json?\s*/gi, '').replace(/```/g, '').trim();
     const parsed = JSON.parse(cleaned);
@@ -225,8 +225,8 @@ export function buildSearchDecisionPrompt(
   fileCount: number,
   params?: PromptParameters,
 ): ChatMessage[] {
-  const maxQueries = params?.maxSearchQueries ?? 3;
-  const maxPatterns = params?.maxFilePatterns ?? 3;
+  const maxQueries = params?.maxSearchQueries ?? 6;
+  const maxPatterns = params?.maxFilePatterns ?? 6;
 
   let systemContent: string;
   if (params?.searchDecisionPrompt) {
@@ -275,8 +275,8 @@ export function buildSearchDecisionPrompt(
 }
 
 export function parseSearchDecisionResponse(raw: string, params?: PromptParameters): SearchDecision {
-  const maxQueries = params?.maxSearchQueries ?? 3;
-  const maxPatterns = params?.maxFilePatterns ?? 3;
+  const maxQueries = params?.maxSearchQueries ?? 6;
+  const maxPatterns = params?.maxFilePatterns ?? 6;
   try {
     const cleaned = raw.replace(/```json?\s*/gi, '').replace(/```/g, '').trim();
     const parsed = JSON.parse(cleaned);
@@ -302,7 +302,7 @@ export function buildCheckAgentPrompt(
   chatHistory: ChatMessage[],
   params?: PromptParameters,
 ): ChatMessage[] {
-  const historyDepth = params?.chatHistoryDepth ?? 6;
+  const historyDepth = params?.chatHistoryDepth ?? 9;
 
   let systemContent: string;
   if (params?.checkAgentPrompt) {
@@ -349,8 +349,8 @@ export function buildActionPlanPrompt(
   params?: PromptParameters,
 ): ChatMessage[] {
   const sorted = [...fileList].sort();
-  const historyDepth = params?.chatHistoryDepth ?? 6;
-  const maxFiles = params?.maxActionPlanFiles ?? 10;
+  const historyDepth = params?.chatHistoryDepth ?? 9;
+  const maxFiles = params?.maxActionPlanFiles ?? 13;
 
   const contextBlock = fileContexts && fileContexts.length > 0
     ? '\n\n## File contents already loaded:\n' + fileContexts.map(f => `--- File: ${f.path} ---\n${f.content}`).join('\n\n')
@@ -391,7 +391,7 @@ export function buildActionPlanPrompt(
  * Parse action plan response.
  */
 export function parseActionPlanResponse(raw: string, params?: PromptParameters): FileActionPlan[] {
-  const maxFiles = params?.maxActionPlanFiles ?? 10;
+  const maxFiles = params?.maxActionPlanFiles ?? 13;
   try {
     const cleaned = raw.replace(/```json?\s*/gi, '').replace(/```/g, '').trim();
     const parsed = JSON.parse(cleaned);

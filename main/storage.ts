@@ -11,6 +11,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { getUserDataDir } from '../core/dataDir';
 import { getStorage } from '../core/storage';
+import { upsertById, removeById } from '../core/utils';
 export type { PersistedConnectorData, StoragePort } from '../core/storage';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -242,20 +243,14 @@ export function saveAgentConfigs(configs: StoredAgentConfig[]): void {
 
 export function saveAgentConfig(config: StoredAgentConfig): void {
   const all = loadAgentConfigs();
-  const idx = all.findIndex(c => c.id === config.id);
-  if (idx >= 0) {
-    all[idx] = config;
-  } else {
-    all.push(config);
-  }
-  saveAgentConfigs(all);
+  saveAgentConfigs(upsertById(all, config));
 }
 
 export function deleteAgentConfig(agentId: string): boolean {
   const all = loadAgentConfigs();
-  const filtered = all.filter(c => c.id !== agentId);
-  if (filtered.length === all.length) return false;
-  saveAgentConfigs(filtered);
+  const { list, removed } = removeById(all, agentId);
+  if (!removed) return false;
+  saveAgentConfigs(list);
   return true;
 }
 

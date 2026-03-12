@@ -72,9 +72,7 @@ export interface StepLogEntry {
 
 // ─── Run Manager ────────────────────────────────────────────────────────────
 
-const genId = (): string => {
-  try { return crypto.randomUUID(); } catch { return `run-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`; }
-};
+import { genId } from './utils';
 
 export class RunManager {
   private runs: ExecutionRun[] = [];

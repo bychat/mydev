@@ -8,6 +8,7 @@ import SqlQueryResultTab from './SqlQueryResultTab';
 import GitHubLogsViewer from './GitHubLogsViewer';
 import AgentsPanel from './AgentsPanel';
 import WorkflowEditor from './WorkflowEditor';
+import AIDebugPanel from './AIDebugPanel';
 import type { DiffResult } from '../types';
 
 export default function Editor() {
@@ -24,6 +25,7 @@ export default function Editor() {
   const isGitHubLogs = activeTab?.path.startsWith('github-logs:');
   const isAgents = activeTab?.path === 'agents:flow';
   const isWorkflow = activeTab?.path.startsWith('workflow:');
+  const isDebugTrace = activeTab?.path === 'debug:trace';
   const isHtmlPreview = activeTab?.path.startsWith('html-preview:');
   const isHtmlFile = !isDiff && !isHtmlPreview && activeTab?.path.endsWith('.html');
 
@@ -144,6 +146,16 @@ export default function Editor() {
       <div className="editor-container">
         <EditorTabs />
         <WorkflowEditor />
+      </div>
+    );
+  }
+
+  // AI Debug trace view
+  if (isDebugTrace) {
+    return (
+      <div className="editor-container">
+        <EditorTabs />
+        <AIDebugPanel />
       </div>
     );
   }

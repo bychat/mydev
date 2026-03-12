@@ -507,8 +507,8 @@ async function main(): Promise<void> {
 
   const startTime = Date.now();
 
-  // ── Agent Mode — full pipeline ──
-  if (args.mode === 'agent') {
+  // ── Agent Mode — full pipeline (both 'agent' and 'ask' now use the full agentic pipeline) ──
+  if (args.mode === 'agent' || args.mode === 'ask') {
     if (!fs.existsSync(args.workspace)) {
       console.error(`\x1b[31mError:\x1b[0m Workspace not found: ${args.workspace}\n`);
       process.exit(1);

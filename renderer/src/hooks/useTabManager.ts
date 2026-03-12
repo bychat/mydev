@@ -28,6 +28,7 @@ export interface TabManagerActions {
   openAgentsTab: () => void;
   openHtmlPreview: (tabKey: string, name: string, html: string) => void;
   openWorkflowEditor: (workflowId?: string, workflowName?: string) => void;
+  openDebugTraceTab: () => void;
 }
 
 export function useTabManager(folderPath: string | null): TabManagerState & TabManagerActions {
@@ -130,6 +131,20 @@ export function useTabManager(folderPath: string | null): TabManagerState & TabM
     setActiveTabPath(tabKey);
   }, [openTabs]);
 
+  const openDebugTraceTab = useCallback(() => {
+    const tabKey = 'debug:trace';
+    const existing = openTabs.find(t => t.path === tabKey);
+    if (existing) { setActiveTabPath(tabKey); return; }
+    setOpenTabs(prev => [...prev, {
+      name: '🐛 AI Debug',
+      path: tabKey,
+      content: '',
+      modified: false,
+      readOnly: true,
+    }]);
+    setActiveTabPath(tabKey);
+  }, [openTabs]);
+
   const closeTab = useCallback((filePath: string) => {
     setOpenTabs(prev => {
       const next = prev.filter(t => t.path !== filePath);
@@ -197,5 +212,6 @@ export function useTabManager(folderPath: string | null): TabManagerState & TabM
     openAgentsTab,
     openHtmlPreview,
     openWorkflowEditor,
+    openDebugTraceTab,
   };
 }

@@ -15,6 +15,7 @@ import type { AgentProfile, Workflow } from '../../core/orchestrator';
 import { getStorage } from '../../core/storage';
 import { getEventBus, type BusEvent } from '../../core/event-bus';
 import type { ExecutionRun } from '../../core/execution-run';
+import { genId, upsertById, removeById, appendCapped } from '../../core/utils';
 
 export function registerOrchestratorIpc(): void {
   const storage = getStorage();
@@ -37,21 +38,15 @@ export function registerOrchestratorIpc(): void {
 
   ipcMain.handle('orchestrator-save-profile', async (_event, profile: AgentProfile) => {
     const all = await storage.readJSON<AgentProfile[]>('agent-profiles', []);
-    const idx = all.findIndex(p => p.id === profile.id);
-    if (idx >= 0) {
-      all[idx] = profile;
-    } else {
-      all.push(profile);
-    }
-    await storage.writeJSON('agent-profiles', all);
+    await storage.writeJSON('agent-profiles', upsertById(all, profile));
     return { success: true };
   });
 
   ipcMain.handle('orchestrator-delete-profile', async (_event, profileId: string) => {
     const all = await storage.readJSON<AgentProfile[]>('agent-profiles', []);
-    const filtered = all.filter(p => p.id !== profileId);
-    if (filtered.length === all.length) return { success: false, error: 'Profile not found' };
-    await storage.writeJSON('agent-profiles', filtered);
+    const { list, removed } = removeById(all, profileId);
+    if (!removed) return { success: false, error: 'Profile not found' };
+    await storage.writeJSON('agent-profiles', list);
     return { success: true };
   });
 
@@ -63,21 +58,15 @@ export function registerOrchestratorIpc(): void {
 
   ipcMain.handle('orchestrator-save-workflow', async (_event, workflow: Workflow) => {
     const all = await storage.readJSON<Workflow[]>('workflows', []);
-    const idx = all.findIndex(w => w.id === workflow.id);
-    if (idx >= 0) {
-      all[idx] = workflow;
-    } else {
-      all.push(workflow);
-    }
-    await storage.writeJSON('workflows', all);
+    await storage.writeJSON('workflows', upsertById(all, workflow));
     return { success: true };
   });
 
   ipcMain.handle('orchestrator-delete-workflow', async (_event, workflowId: string) => {
     const all = await storage.readJSON<Workflow[]>('workflows', []);
-    const filtered = all.filter(w => w.id !== workflowId);
-    if (filtered.length === all.length) return { success: false, error: 'Workflow not found' };
-    await storage.writeJSON('workflows', filtered);
+    const { list, removed } = removeById(all, workflowId);
+    if (!removed) return { success: false, error: 'Workflow not found' };
+    await storage.writeJSON('workflows', list);
     return { success: true };
   });
 
@@ -108,15 +97,9 @@ export function registerOrchestratorIpc(): void {
   // ── Visual Workflow Editor (persist editor-specific workflow data) ──
 
   ipcMain.handle('orchestrator-save-editor-workflow', async (_event, editorData: unknown) => {
-    const all = await storage.readJSON<unknown[]>('editor-workflows', []);
+    const all = await storage.readJSON<Array<{ id: string }>>('editor-workflows', []);
     const data = editorData as { id: string };
-    const idx = all.findIndex((w: any) => w.id === data.id);
-    if (idx >= 0) {
-      all[idx] = editorData;
-    } else {
-      all.push(editorData);
-    }
-    await storage.writeJSON('editor-workflows', all);
+    await storage.writeJSON('editor-workflows', upsertById(all, data));
     return { success: true };
   });
 
@@ -134,7 +117,7 @@ export function registerOrchestratorIpc(): void {
   // ── Execute Workflow (start a tracked run) ──
 
   ipcMain.handle('orchestrator-execute-workflow', async (_event, workflowData: { id: string; name: string; nodes: unknown[]; edges: unknown[] }) => {
-    const runId = `run-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const runId = genId('run');
     const correlationId = runId;
 
     // Emit workflow-started event
@@ -202,10 +185,7 @@ export function registerOrchestratorIpc(): void {
     };
 
     const allRuns = await storage.readJSON<unknown[]>('execution-runs', []);
-    allRuns.push(run);
-    // Keep last 200 runs
-    if (allRuns.length > 200) allRuns.splice(0, allRuns.length - 200);
-    await storage.writeJSON('execution-runs', allRuns);
+    await storage.writeJSON('execution-runs', appendCapped(allRuns, run, 200));
 
     return { success: true, run };
   });
@@ -213,16 +193,10 @@ export function registerOrchestratorIpc(): void {
   // ── Save Run (manual save from renderer) ──
 
   ipcMain.handle('orchestrator-save-run', async (_event, run: unknown) => {
-    const allRuns = await storage.readJSON<unknown[]>('execution-runs', []);
+    const allRuns = await storage.readJSON<Array<{ id: string }>>('execution-runs', []);
     const data = run as { id: string };
-    const idx = allRuns.findIndex((r: any) => r.id === data.id);
-    if (idx >= 0) {
-      allRuns[idx] = run;
-    } else {
-      allRuns.push(run);
-    }
-    if (allRuns.length > 200) allRuns.splice(0, allRuns.length - 200);
-    await storage.writeJSON('execution-runs', allRuns);
+    const updated = upsertById(allRuns, data);
+    await storage.writeJSON('execution-runs', updated.length > 200 ? updated.slice(-200) : updated);
     return { success: true };
   });
 }

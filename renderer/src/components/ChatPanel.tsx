@@ -43,7 +43,7 @@ interface ChatPanelProps {
 }
 
 export default function ChatPanel({ onCollapse }: ChatPanelProps) {
-  const { openTabs, activeTabPath, tree, folderPath, openFile, setActivePanel, gitIgnoredPaths } = useWorkspace();
+  const { openTabs, activeTabPath, tree, folderPath, openFile, setActivePanel, gitIgnoredPaths, openDebugTraceTab } = useWorkspace();
   const backend = useBackend();
   
   // Use extracted hooks
@@ -320,8 +320,8 @@ export default function ChatPanel({ onCollapse }: ChatPanelProps) {
     const isFirstMessage = history.length === 0;
     setLoading(true);
 
-    // Start a trace for this agent run
-    const isAgentMode = mode === 'Agent';
+    // Always run in agentic mode — every message goes through the full pipeline
+    const isAgentMode = true;
     if (isAgentMode) {
       agentExec.startTrace(agentExec.activeAgentId, agentExec.activeAgent.name, text);
       // Trace: user input step
@@ -332,7 +332,8 @@ export default function ChatPanel({ onCollapse }: ChatPanelProps) {
     const ai = { baseUrl: settings.baseUrl, apiKey: settings.apiKey, model };
     let researchedFiles: Array<{ name: string; path: string; content?: string; searchContext?: string }> = [];
 
-    if (isFirstMessage && folderPath && workspaceFiles.size > 0) {
+    // Always run research step when a workspace is open
+    if (folderPath && workspaceFiles.size > 0) {
       researchedFiles = await agentPipeline.runResearchStep(text, ai);
     }
 
@@ -371,10 +372,9 @@ export default function ChatPanel({ onCollapse }: ChatPanelProps) {
 
     setHistory(newHistory);
 
-    const isFollowUp = !isFirstMessage && mode === 'Agent' && folderPath && workspaceFiles.size > 0;
+    // Always run check + file change steps in agentic mode when workspace is available
     let needsFileChanges = false;
-
-    if (isFollowUp) {
+    if (folderPath && workspaceFiles.size > 0) {
       needsFileChanges = await agentPipeline.runCheckStep(text, newHistory, ai);
     }
 
@@ -460,7 +460,7 @@ export default function ChatPanel({ onCollapse }: ChatPanelProps) {
           historySidebarOpen={historySidebarOpen}
           onToggleHistory={() => setHistorySidebarOpen(!historySidebarOpen)}
           onNewChat={handleNewChat}
-          onDebugOpen={() => backend.debugOpen()}
+          onDebugOpen={() => openDebugTraceTab()}
           onClearChat={clearChat}
           onOpenSettings={() => setSettingsOpen(true)}
           onCollapse={onCollapse}

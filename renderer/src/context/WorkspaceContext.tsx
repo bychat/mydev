@@ -54,6 +54,7 @@ interface WorkspaceContextValue {
   openSqlQueryTab: (query: string) => void;
   openAgentsTab: () => void;
   openWorkflowEditor: (workflowId?: string, workflowName?: string) => void;
+  openDebugTraceTab: () => void;
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null);
@@ -301,6 +302,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       openSqlQueryTab: tabManager.openSqlQueryTab,
       openAgentsTab: tabManager.openAgentsTab,
       openWorkflowEditor: tabManager.openWorkflowEditor,
+      openDebugTraceTab: tabManager.openDebugTraceTab,
     }}>
       {children}
     </WorkspaceContext.Provider>

@@ -83,7 +83,7 @@ interface ActivityBarProps {
 }
 
 export default function ActivityBar({ onToggleTerminal, terminalVisible }: ActivityBarProps) {
-  const { activePanel, setActivePanel, hasGit, npmProjects, gitSplitChanges, openAgentsTab, openWorkflowEditor } = useWorkspace();
+  const { activePanel, setActivePanel, hasGit, npmProjects, gitSplitChanges, openAgentsTab, openWorkflowEditor, openDebugTraceTab } = useWorkspace();
   const backend = useBackend();
   const [promptSettingsOpen, setPromptSettingsOpen] = useState(false);
 
@@ -95,17 +95,17 @@ export default function ActivityBar({ onToggleTerminal, terminalVisible }: Activ
     return cleanup;
   }, []);
 
-  // Listen for menu-triggered open debug
+  // Listen for menu-triggered open debug — now opens inline debug trace tab
   useEffect(() => {
     const cleanup = backend.onOpenDebug(async () => {
       try {
-        await backend.debugOpen();
+        openDebugTraceTab();
       } catch (err) {
-        console.error('Failed to open debug window:', err);
+        console.error('Failed to open debug trace tab:', err);
       }
     });
     return cleanup;
-  }, []);
+  }, [openDebugTraceTab]);
 
   // Listen for menu-triggered open agents
   useEffect(() => {
@@ -261,6 +261,25 @@ export default function ActivityBar({ onToggleTerminal, terminalVisible }: Activ
             }}
           >
             <AccountTreeIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
+
+        {/* AI Debug Trace */}
+        <Tooltip title="AI Debug — view all agent calls" placement="right">
+          <IconButton
+            onClick={() => openDebugTraceTab()}
+            sx={{
+              width: 40,
+              height: 40,
+              borderRadius: 1.5,
+              color: 'text.secondary',
+              '&:hover': {
+                bgcolor: 'rgba(0,0,0,0.05)',
+                color: 'text.primary',
+              },
+            }}
+          >
+            <span style={{ fontSize: 18 }}>🐛</span>
           </IconButton>
         </Tooltip>
 

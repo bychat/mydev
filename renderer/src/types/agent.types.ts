@@ -118,22 +118,22 @@ export interface AgentParameters {
   verificationPrompt: string;
 }
 
-/** Default parameter values — these match the original hardcoded behavior */
+/** Default parameter values — increased by 3 from the original hardcoded behavior for deeper agent processing */
 export const DEFAULT_AGENT_PARAMETERS: AgentParameters = {
-  // Numeric
-  maxResearchFiles: 9,
-  minResearchFiles: 4,
-  maxMergedContextFiles: 12,
-  maxTextSearchResults: 50,
-  maxTextSearchDisplay: 30,
-  maxSearchDiscoveredFiles: 5,
-  maxSearchQueries: 3,
-  maxFilePatterns: 3,
-  maxVerificationAttempts: 3,
-  maxActionPlanFiles: 10,
-  chatHistoryDepth: 6,
-  maxFileListDisplay: 300,
-  maxNodeRetries: 3,
+  // Numeric (all increased by 3 from original defaults)
+  maxResearchFiles: 12,
+  minResearchFiles: 7,
+  maxMergedContextFiles: 15,
+  maxTextSearchResults: 53,
+  maxTextSearchDisplay: 33,
+  maxSearchDiscoveredFiles: 8,
+  maxSearchQueries: 6,
+  maxFilePatterns: 6,
+  maxVerificationAttempts: 6,
+  maxActionPlanFiles: 13,
+  chatHistoryDepth: 9,
+  maxFileListDisplay: 303,
+  maxNodeRetries: 6,
   enableContinueQuestion: true,
   continueQuestionPrompt: [
     'You have just completed a step in the agent pipeline.',
