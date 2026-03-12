@@ -5,11 +5,11 @@
  * agent flow. New agents start as a clone of this config.
  */
 import type { AgentConfig, AgentNode, AgentEdge, AgentTool } from '../types/agent.types';
-import { ALL_AGENT_TOOLS } from '../types/agent.types';
+import { CORE_AGENT_TOOLS } from '../types/agent.types';
 
 /** Clone the tool list with specific tools enabled */
 function tools(...enabledIds: string[]): AgentTool[] {
-  return ALL_AGENT_TOOLS.map(t => ({ ...t, enabled: enabledIds.includes(t.id) }));
+  return CORE_AGENT_TOOLS.map(t => ({ ...t, enabled: enabledIds.includes(t.id) }));
 }
 
 const DEFAULT_NODES: AgentNode[] = [
@@ -44,7 +44,7 @@ const DEFAULT_NODES: AgentNode[] = [
     promptKey: 'researchAgentPrompt',
     inputs: ['user question', 'workspace file list'],
     outputs: ['relevant file paths (JSON array)'],
-    tools: tools('file-search', 'file-tree', 'file-read', 'github-issues', 'atlassian'),
+    tools: tools('file-search', 'file-tree', 'file-read'),
     enabled: true,
     position: { x: 80, y: 300 },
   },

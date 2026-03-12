@@ -84,8 +84,10 @@ import type {
   AgentEdge as AgentEdgeType,
   AgentParameters,
 } from '../types/agent.types';
-import { ALL_AGENT_TOOLS, DEFAULT_AGENT_PARAMETERS, resolveAgentParameters } from '../types/agent.types';
+import { CORE_AGENT_TOOLS, buildAllAgentTools, DEFAULT_AGENT_PARAMETERS, resolveAgentParameters } from '../types/agent.types';
+import type { ConnectorToolSource } from '../types/agent.types';
 import { useAgentExecution } from '../context/AgentExecutionContext';
+import { useBackend } from '../context/BackendContext';
 
 /* ─── Constants ─── */
 const categoryColors: Record<string, { bg: string; border: string; accent: string }> = {
@@ -379,7 +381,7 @@ function StepDetailPanel({ step }: { step: TraceStep }) {
    n8n-Style Node Parameter Drawer
    ══════════════════════════════════════ */
 function NodeParameterDrawer({
-  node, isEditable, onSave, onDelete, onSaveTools, onClose,
+  node, isEditable, onSave, onDelete, onSaveTools, onClose, allTools,
 }: {
   node: AgentNodeType;
   isEditable: boolean;
@@ -387,6 +389,7 @@ function NodeParameterDrawer({
   onDelete: (nodeId: string) => void;
   onSaveTools: (nodeId: string, tools: AgentTool[]) => void;
   onClose: () => void;
+  allTools: AgentTool[];
 }) {
   const [tab, setTab] = useState(0);
   const [label, setLabel] = useState(node.label);
@@ -402,7 +405,7 @@ function NodeParameterDrawer({
     node.continueQuestionPrompt ?? 'Based on the results, should we continue to the next step or stop here?'
   );
   const [localTools, setLocalTools] = useState<AgentTool[]>(() =>
-    ALL_AGENT_TOOLS.map(t => {
+    allTools.map(t => {
       const existing = node.tools?.find(e => e.id === t.id);
       return existing ? { ...t, enabled: existing.enabled } : { ...t };
     })
@@ -421,15 +424,15 @@ function NodeParameterDrawer({
     setMaxRetries(node.maxRetries ?? 0);
     setContinueQuestion(node.continueQuestion ?? false);
     setContinueQuestionPrompt(node.continueQuestionPrompt ?? 'Based on the results, should we continue to the next step or stop here?');
-    setLocalTools(ALL_AGENT_TOOLS.map(t => {
+    setLocalTools(allTools.map(t => {
       const existing = node.tools?.find(e => e.id === t.id);
       return existing ? { ...t, enabled: existing.enabled } : { ...t };
     }));
     setTab(0);
-  }, [node.id]);
+  }, [node.id, allTools]);
 
   const toggleTool = (toolId: string) => setLocalTools(prev => prev.map(t => t.id === toolId ? { ...t, enabled: !t.enabled } : t));
-  const integrations = Array.from(new Set(ALL_AGENT_TOOLS.map(t => t.integration).filter(Boolean)));
+  const integrations = Array.from(new Set(allTools.map(t => t.integration).filter(Boolean)));
   const colors = categoryColors[node.category] || categoryColors.output;
 
   const handleSave = () => {
@@ -656,11 +659,12 @@ function NodeParameterDrawer({
 /* ══════════════════════════════════════
    Add Node Dialog
    ══════════════════════════════════════ */
-function AddNodeDialog({ open, onAdd, onClose, existingNodes }: {
+function AddNodeDialog({ open, onAdd, onClose, existingNodes, allTools }: {
   open: boolean;
   onAdd: (node: AgentNodeType) => void;
   onClose: () => void;
   existingNodes: AgentNodeType[];
+  allTools: AgentTool[];
 }) {
   const [label, setLabel] = useState('');
   const [description, setDescription] = useState('');
@@ -679,7 +683,7 @@ function AddNodeDialog({ open, onAdd, onClose, existingNodes }: {
       description: description.trim() || `Custom ${label.trim()} node`,
       category, icon, enabled: true,
       position: { x: 200, y: maxY + 160 },
-      tools: hasTools ? ALL_AGENT_TOOLS.map(t => ({ ...t, enabled: false })) : undefined,
+      tools: hasTools ? allTools.map(t => ({ ...t, enabled: false })) : undefined,
       continueQuestion: continueQuestion || undefined,
       maxRetries: maxRetries > 0 ? maxRetries : undefined,
     };
@@ -964,6 +968,7 @@ export default function AgentsPanel() {
     createAgent, updateAgent, deleteAgent, renameAgent, duplicateAgent,
     traces,
   } = useAgentExecution();
+  const backend = useBackend();
 
   const [view, setView] = useState<PanelView>('canvas');
   const [creating, setCreating] = useState(false);
@@ -975,6 +980,26 @@ export default function AgentsPanel() {
   const [addingNode, setAddingNode] = useState(false);
   const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null);
   const [editingParams, setEditingParams] = useState(false);
+
+  // Build tool list dynamically from core tools + registered connector actions
+  const [allTools, setAllTools] = useState<AgentTool[]>(CORE_AGENT_TOOLS);
+  useEffect(() => {
+    (async () => {
+      try {
+        const list = await backend.connectorList();
+        const sources: ConnectorToolSource[] = [];
+        for (const meta of list) {
+          const detail = await backend.connectorGet(meta.id);
+          if (detail && detail.actions.length > 0) {
+            sources.push({ id: detail.metadata.id, name: detail.metadata.name, actions: detail.actions });
+          }
+        }
+        setAllTools(buildAllAgentTools(sources));
+      } catch {
+        // fallback to core tools only
+      }
+    })();
+  }, [backend]);
 
   const isEditable = !activeAgent.isDefault;
   const drawerNode = selectedNode ? activeAgent.nodes.find((n: AgentNodeType) => n.id === selectedNode) : null;
@@ -1000,7 +1025,7 @@ export default function AgentsPanel() {
       ...activeAgent,
       nodes: activeAgent.nodes.map((n: AgentNodeType) => {
         if (n.id !== nodeId) return n;
-        return { ...n, tools: ALL_AGENT_TOOLS.map(t => ({ ...t, enabled: enabledTools.some(e => e.id === t.id) })) };
+        return { ...n, tools: allTools.map(t => ({ ...t, enabled: enabledTools.some(e => e.id === t.id) })) };
       }),
     });
   }, [activeAgent, updateAgent]);
@@ -1307,11 +1332,12 @@ export default function AgentsPanel() {
           onDelete={handleDeleteNode}
           onSaveTools={handleSaveTools}
           onClose={() => setSelectedNode(null)}
+          allTools={allTools}
         />
       )}
 
       {/* Add Node Dialog */}
-      <AddNodeDialog open={addingNode} existingNodes={activeAgent.nodes} onAdd={handleAddNode} onClose={() => setAddingNode(false)} />
+      <AddNodeDialog open={addingNode} existingNodes={activeAgent.nodes} onAdd={handleAddNode} onClose={() => setAddingNode(false)} allTools={allTools} />
 
       {/* Parameters Dialog */}
       <ParametersDialog

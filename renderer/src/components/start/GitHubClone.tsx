@@ -1,6 +1,7 @@
 /**
  * GitHubClone - GitHub repository clone component for the start page
- * Allows users to clone a GitHub repository into a new session folder
+ * Allows users to clone a GitHub repository into a new session folder.
+ * Automatically uses the token from the connected GitHub plugin when available.
  */
 import { useState, useCallback, type ChangeEvent, type FormEvent } from 'react';
 import { useBackend } from '../../context/BackendContext';
@@ -15,19 +16,33 @@ export default function GitHubClone({ onWorkspaceCreated }: GitHubCloneProps) {
   const [expanded, setExpanded] = useState(false);
   const [repoUrl, setRepoUrl] = useState('');
   const [token, setToken] = useState('');
-  const [saveToken, setSaveToken] = useState(false);
+  const [connectorConnected, setConnectorConnected] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
 
-  // Load saved token on expand
+  // Load saved token on expand — prefer the connected GitHub plugin token
   const handleExpand = useCallback(async () => {
     setExpanded(true);
     try {
+      // First, try to get token from the connected GitHub connector (plugin)
+      const state = await backend.connectorGetState('github');
+      if (state.status === 'connected') {
+        const config = await backend.connectorLoadConfig('github');
+        if (config?.token) {
+          setToken(config.token as string);
+          setConnectorConnected(true);
+          return;
+        }
+      }
+    } catch {
+      // connector not available — fall through
+    }
+    try {
+      // Fallback: try environment keys
       const envKeys = await backend.aiGetEnvKeys();
       if (envKeys.github?.apiKey) {
         setToken(envKeys.github.apiKey);
-        setSaveToken(true);
       }
     } catch {
       // Ignore - no saved token
@@ -119,19 +134,26 @@ export default function GitHubClone({ onWorkspaceCreated }: GitHubCloneProps) {
           />
         </div>
 
-        <div className="github-clone-field">
-          <label htmlFor="github-token">
-            GitHub Token <span className="optional">(optional, for private repos)</span>
-          </label>
-          <input
-            id="github-token"
-            type="password"
-            placeholder="ghp_..."
-            value={token}
-            onChange={(e) => setToken(e.target.value)}
-            disabled={loading}
-          />
-        </div>
+        {connectorConnected ? (
+          <div className="github-clone-connected">
+            <span className="github-clone-connected-dot" />
+            Using connected GitHub account
+          </div>
+        ) : (
+          <div className="github-clone-field">
+            <label htmlFor="github-token">
+              GitHub Token <span className="optional">(optional, for private repos)</span>
+            </label>
+            <input
+              id="github-token"
+              type="password"
+              placeholder="ghp_..."
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+              disabled={loading}
+            />
+          </div>
+        )}
 
         {error && (
           <div className="github-clone-error">{error}</div>
