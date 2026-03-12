@@ -39,8 +39,13 @@ function normalizeBaseUrl(baseUrl: string): string {
  * Works for both local and Ollama Cloud instances.
  */
 async function listOllamaModels(baseUrl: string, apiKey: string): Promise<string[]> {
-  const url = new URL(baseUrl);
-  const ollamaBase = `${url.protocol}//${url.host}`;
+  let ollamaBase: string;
+  try {
+    const url = new URL(baseUrl);
+    ollamaBase = `${url.protocol}//${url.host}`;
+  } catch {
+    return [];
+  }
 
   const headers: Record<string, string> = {};
   if (apiKey && apiKey !== 'ollama') {

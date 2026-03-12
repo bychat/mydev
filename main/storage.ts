@@ -115,6 +115,8 @@ export function loadEnvApiKeys(): Record<string, { apiKey: string; baseUrl: stri
 
   const ollamaBase = process.env.OLLAMA_BASE_URL?.trim();
   const ollamaKey = process.env.OLLAMA_API_KEY?.trim();
+  // Use empty string (not 'ollama') so loadAISettings() falls through to the
+  // user-saved key when the env var is not set (see line 82).
   result.ollama = { apiKey: ollamaKey || '', baseUrl: ollamaBase || 'http://localhost:11434/v1' };
 
   return result;
